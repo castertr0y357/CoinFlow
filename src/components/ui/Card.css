@@ -1,0 +1,11 @@
+.card {
+  padding: 1.5rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.card:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  transition: var(--transition-smooth);
+}

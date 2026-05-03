@@ -1,0 +1,194 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                 String          @id @default(cuid())
+  remoteId           String          @unique
+  name               String
+  type               String?
+  balance            Decimal?
+  currency           String?         @default("USD")
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  excludeFromSurplus Boolean         @default(false)
+  isDebt             Boolean         @default(false)
+  tiedCategories     Category[]
+  mortgage           MortgageDetail?
+  transactions       Transaction[]
+}
+
+model MortgageDetail {
+  id             String              @id @default(cuid())
+  accountId      String              @unique
+  interestRate   Decimal
+  monthlyPayment Decimal
+  startDate      DateTime
+  termMonths     Int                 @default(360)
+  homeValue      Decimal?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  providers      HomeValueProvider[]
+  account        Account             @relation(fields: [accountId], references: [id], onDelete: Cascade)
+}
+
+model HomeValueProvider {
+  id         String         @id @default(cuid())
+  name       String
+  url        String
+  lastValue  Decimal?
+  lastSync   DateTime?
+  mortgageId String
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  mortgage   MortgageDetail @relation(fields: [mortgageId], references: [id], onDelete: Cascade)
+
+  @@index([mortgageId])
+}
+
+model Category {
+  id            String             @id @default(cuid())
+  name          String             @unique
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  displayOrder  Int                @default(0)
+  tiedAccountId String?
+  tiedAccount   Account?           @relation(fields: [tiedAccountId], references: [id])
+  commitments   Commitment[]
+  splits        TransactionSplit[]
+  isPaused      Boolean            @default(false)
+  configs       YearlyCategory[]
+
+  @@index([name])
+}
+
+model BudgetYear {
+  id        String           @id @default(cuid())
+  year      Int              @unique
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  configs   YearlyCategory[]
+}
+
+model YearlyCategory {
+  id            String     @id @default(cuid())
+  yearId        String
+  categoryId    String
+  monthlyBudget Decimal    @default(0)
+  adjustment    Decimal    @default(0)
+  rollover      Decimal    @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  category      Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  year          BudgetYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
+
+  @@unique([yearId, categoryId])
+}
+
+model Transaction {
+  id            String             @id @default(cuid())
+  remoteId      String?            @unique
+  date          DateTime
+  amount        Decimal
+  payee         String
+  memo          String?
+  posted        Boolean            @default(true)
+  accountId     String
+  amazonOrderId String?            @unique
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  rawPayee      String?
+  isHidden      Boolean            @default(false)
+  account       Account            @relation(fields: [accountId], references: [id])
+  amazonOrder   AmazonOrder?       @relation(fields: [amazonOrderId], references: [id])
+  splits        TransactionSplit[]
+
+  @@index([date])
+}
+
+model TransactionSplit {
+  id            String      @id @default(cuid())
+  transactionId String
+  categoryId    String?
+  amount        Decimal
+  memo          String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  category      Category?   @relation(fields: [categoryId], references: [id])
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([transactionId])
+  @@index([categoryId])
+}
+
+model AmazonOrder {
+  id          String       @id @default(cuid())
+  orderId     String       @unique
+  date        DateTime
+  totalAmount Decimal
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  items       AmazonItem[]
+  transaction Transaction?
+}
+
+model AmazonItem {
+  id            String      @id @default(cuid())
+  amazonOrderId String
+  title         String
+  price         Decimal
+  quantity      Int         @default(1)
+  categoryHint  String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  amazonOrder   AmazonOrder @relation(fields: [amazonOrderId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  apiKeys   ApiKey[]
+}
+
+model ApiKey {
+  id        String    @id @default(cuid())
+  key       String    @unique
+  name      String
+  userId    String
+  lastUsed  DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Settings {
+  id                    String    @id @default("global")
+  savingsTarget         Decimal   @default(650.00)
+  simpleFinToken        String?
+  lastSync              DateTime?
+  savingsCategoryId     String?
+  monthlyIncome         Decimal   @default(5000.00)
+}
+
+model Commitment {
+  id          String    @id @default(cuid())
+  name        String
+  amount      Decimal
+  frequency   String    @default("MONTHLY")
+  type        String    @default("SUBSCRIPTION")
+  nextDueDate DateTime?
+  categoryId  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  category    Category? @relation(fields: [categoryId], references: [id])
+
+  @@index([categoryId])
+}

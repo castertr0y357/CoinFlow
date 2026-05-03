@@ -1,0 +1,147 @@
+.reports-container {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.reports-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  border: 1px solid var(--glass-border);
+}
+
+.year-selector {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.year-selector select {
+  padding: 0.5rem 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: white;
+  font-weight: 700;
+}
+
+.reports-grid {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: 2rem;
+}
+
+.performance-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 1.5rem;
+}
+
+.performance-header {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  padding: 1rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--glass-border);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+
+.performance-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  padding: 1.25rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.3s ease;
+}
+
+.performance-row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.cat-name {
+  font-weight: 600;
+}
+
+.cat-spent {
+  color: var(--danger);
+}
+
+.cat-budget {
+  color: var(--text-dim);
+}
+
+.cat-remaining {
+  font-weight: 700;
+  text-align: right;
+}
+
+.ai-report {
+  border-left: 4px solid var(--primary);
+  margin-bottom: 2rem;
+}
+
+.ai-report-content {
+  line-height: 1.6;
+}
+
+.rollover-box {
+  position: sticky;
+  top: 2rem;
+}
+
+.rollover-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.rollover-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.rollover-info {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+}
+
+.surplus-val {
+  color: var(--accent);
+}
+
+.rollover-action {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.rollover-action input {
+  flex: 1;
+  padding: 0.4rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  color: white;
+  font-size: 0.85rem;
+}
+
+.rollover-footer {
+  margin-top: 2rem;
+}
+
+@media (max-width: 1100px) {
+  .reports-grid {
+    grid-template-columns: 1fr;
+  }
+}

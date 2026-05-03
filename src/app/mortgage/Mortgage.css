@@ -1,0 +1,224 @@
+.mortgage-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.mortgage-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.mortgage-tools {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.payoff-calculator {
+  padding: 2rem;
+}
+
+.calculator-ui {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.payment-slider {
+  width: 100%;
+  height: 6px;
+  background: var(--glass-border);
+  border-radius: 5px;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.payment-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  background: var(--primary);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 15px var(--primary-glow);
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.current-extra {
+  color: var(--accent);
+  font-size: 1.25rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--glass-border);
+}
+
+.result-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.result-item .label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.result-item .value {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.equity-viz {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.equity-bar-container {
+  margin-top: 2rem;
+}
+
+.equity-bar {
+  width: 100%;
+  height: 24px;
+  background: var(--accent);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+}
+
+.bar-fill.principal {
+  background: var(--danger);
+  height: 100%;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bar-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.setup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+}
+
+.form-group input, .form-group select {
+  width: 100%;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: white;
+}
+
+.mortgage-side-tools {
+  display: flex;
+  flex-direction: column;
+}
+
+.providers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.provider-item {
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+}
+
+.provider-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.provider-name {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.provider-value {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.provider-sync {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.provider-form {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+}
+
+.provider-form select {
+  padding: 0.5rem;
+  background: transparent;
+  border: none;
+  color: white;
+  font-weight: 600;
+  outline: none;
+}
+
+.provider-form input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 0.85rem;
+  outline: none;
+}
+
+@media (max-width: 900px) {
+  .mortgage-tools {
+    grid-template-columns: 1fr;
+  }
+}
