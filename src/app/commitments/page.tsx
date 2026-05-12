@@ -2,7 +2,7 @@ import prisma from "@/lib/prisma";
 import CommitmentsClient from "./CommitmentsClient";
 
 export const metadata = {
-  title: "Commitments & Fixed Costs | WebBudget",
+  title: "Commitments & Fixed Costs | CoinFlow",
 };
 
 export default async function CommitmentsPage() {

@@ -6,8 +6,8 @@ const fetcher = (url: string) => fetch(url, {
   }
 }).then(res => res.json());
 
-export function useTransactions(inboxOnly: boolean = true, includeHidden: boolean = false) {
-  const url = `/api/v1/transactions?inboxOnly=${inboxOnly}&includeHidden=${includeHidden}`;
+export function useTransactions(inboxOnly: boolean = true, includeHidden: boolean = false, hiddenOnly: boolean = false) {
+  const url = `/api/v1/transactions?inboxOnly=${inboxOnly}&includeHidden=${includeHidden}&hiddenOnly=${hiddenOnly}`;
   const { data, error, isLoading, mutate } = useSWR(url, fetcher);
 
   return {

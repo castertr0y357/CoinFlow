@@ -1,7 +1,4 @@
 .transactions-container {
-  display: flex;
-  flex-direction: column;
-  gap: 2.5rem;
   max-width: 1000px;
   margin: 0 auto;
 }
@@ -193,6 +190,21 @@
   color: var(--danger);
 }
 
+.add-split-btn {
+  margin-left: 0.5rem;
+  opacity: 0.4;
+  font-size: 0.8rem;
+}
+
+.tx-row:hover .add-split-btn {
+  opacity: 1;
+}
+
+.add-split-btn:hover {
+  color: var(--accent);
+  background: var(--primary-glow);
+}
+
 .tx-split {
   display: flex;
   align-items: center;
@@ -226,4 +238,192 @@
 .empty-state {
   padding: 3rem;
   text-align: center;
+}
+
+.external-order-info {
+  display: inline-block;
+  position: relative;
+  margin-left: 10px;
+}
+
+.order-details-popover {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 320px;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 12px;
+  z-index: 1000;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  display: none;
+  backdrop-filter: blur(12px);
+  pointer-events: none;
+}
+
+.external-order-info:hover .order-details-popover {
+  display: block;
+}
+
+.order-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+  color: var(--primary);
+}
+
+.order-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.order-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 0.8rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.order-item:last-child {
+  border-bottom: none;
+}
+
+.item-qty {
+  opacity: 0.6;
+  font-weight: 600;
+}
+
+.item-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-price {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--accent);
+}
+
+/* Sticky Header & Bulk Selection */
+.transactions-actions.sticky-header {
+  position: sticky;
+  top: -1px; /* Slight offset to prevent gaps */
+  z-index: 100;
+  background: var(--bg-color);
+  backdrop-filter: blur(12px);
+  padding: 1.5rem 0;
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  margin-bottom: 1.5rem;
+}
+
+/* Ensure the parent doesn't restrict the sticky element */
+.transactions-container {
+  display: block; /* Change from flex to block to avoid height issues with sticky children */
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.page-header {
+  margin-bottom: 2.5rem;
+}
+
+.tx-checkbox-cell {
+  width: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-right: 0.5rem;
+}
+
+.tx-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--primary);
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.tx-checkbox:hover {
+  opacity: 1;
+}
+
+.bulk-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: var(--primary-glow);
+  border: 1px solid var(--primary);
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  animation: slideDown 0.3s ease-out;
+  box-shadow: 0 8px 32px rgba(var(--primary-rgb), 0.2);
+}
+
+.bulk-actions-info {
+  font-weight: 600;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bulk-category-select {
+  padding: 0.5rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--primary);
+  color: white;
+  min-width: 200px;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Adjust row to accommodate checkbox */
+.tx-list-header, .tx-row {
+  padding-left: 1rem;
+}
+/* Sorting */
+.sortable-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: color 0.2s;
+  user-select: none;
+}
+
+.sortable-header:hover {
+  color: var(--text-main);
+}
+
+.sortable-header.active {
+  color: var(--primary);
+}
+
+.sort-icon-placeholder {
+  opacity: 0.1;
+  font-size: 0.75rem;
+}
+
+.sortable-header:hover .sort-icon-placeholder {
+  opacity: 0.5;
+}
+
+.sort-icon.active {
+  font-size: 0.75rem;
+  opacity: 1;
 }

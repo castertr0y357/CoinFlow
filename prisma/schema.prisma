@@ -91,22 +91,22 @@ model YearlyCategory {
 }
 
 model Transaction {
-  id            String             @id @default(cuid())
-  remoteId      String?            @unique
-  date          DateTime
-  amount        Decimal
-  payee         String
-  memo          String?
-  posted        Boolean            @default(true)
-  accountId     String
-  amazonOrderId String?            @unique
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-  rawPayee      String?
-  isHidden      Boolean            @default(false)
-  account       Account            @relation(fields: [accountId], references: [id])
-  amazonOrder   AmazonOrder?       @relation(fields: [amazonOrderId], references: [id])
-  splits        TransactionSplit[]
+  id              String             @id @default(cuid())
+  remoteId        String?            @unique
+  date            DateTime
+  amount          Decimal
+  payee           String
+  memo            String?
+  posted          Boolean            @default(true)
+  accountId       String
+  externalOrderId String?            @unique
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  rawPayee        String?
+  isHidden        Boolean            @default(false)
+  account         Account            @relation(fields: [accountId], references: [id])
+  externalOrder   ExternalOrder?     @relation(fields: [externalOrderId], references: [id])
+  splits          TransactionSplit[]
 
   @@index([date])
 }
@@ -126,27 +126,28 @@ model TransactionSplit {
   @@index([categoryId])
 }
 
-model AmazonOrder {
-  id          String       @id @default(cuid())
-  orderId     String       @unique
+model ExternalOrder {
+  id          String              @id @default(cuid())
+  orderId     String              @unique
+  source      String              @default("AMAZON") // AMAZON, WALMART, LOWES, etc
   date        DateTime
   totalAmount Decimal
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  items       AmazonItem[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  items       ExternalOrderItem[]
   transaction Transaction?
 }
 
-model AmazonItem {
-  id            String      @id @default(cuid())
-  amazonOrderId String
-  title         String
-  price         Decimal
-  quantity      Int         @default(1)
-  categoryHint  String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  amazonOrder   AmazonOrder @relation(fields: [amazonOrderId], references: [id], onDelete: Cascade)
+model ExternalOrderItem {
+  id              String        @id @default(cuid())
+  externalOrderId String
+  title           String
+  price           Decimal
+  quantity        Int           @default(1)
+  categoryHint    String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  externalOrder   ExternalOrder @relation(fields: [externalOrderId], references: [id], onDelete: Cascade)
 }
 
 model User {

@@ -3,13 +3,50 @@
   grid-template-columns: 350px 1fr;
   gap: 2rem;
   margin-top: 2rem;
+  align-items: flex-start;
+}
+
+.category-config {
+  position: sticky;
+  top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
 .card-header-with-action {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.sticky-ledger-header {
+  position: sticky;
+  top: 2rem;
+  z-index: 100;
+  background: var(--bg-color);
+  backdrop-filter: blur(12px);
+  margin: -1.5rem -1.5rem 0 -1.5rem;
+  padding: 1.5rem 1.5rem 0.75rem 1.5rem;
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* Shield to hide transactions that scroll past the sticky point */
+.sticky-ledger-header::before {
+  content: '';
+  position: absolute;
+  top: -2rem;
+  left: 0;
+  right: 0;
+  height: 2rem;
+  background: var(--bg-color);
+  z-index: -1;
+}
+
+.transactions-card {
+  overflow: visible !important;
 }
 
 .config-form {
@@ -106,6 +143,10 @@
   gap: 0.5rem;
 }
 
+.edit-fields-full {
+  grid-column: 1 / -1;
+}
+
 .edit-btns {
   display: flex;
   gap: 0.5rem;
@@ -139,6 +180,8 @@
 }
 
 .tx-amount {
+  width: 120px;
+  text-align: right;
   font-weight: 700;
   font-family: 'JetBrains Mono', monospace;
 }
@@ -235,4 +278,83 @@
   display: flex;
   gap: 0.75rem;
   justify-content: flex-end;
+}
+/* Sorting */
+.detail-tx-header {
+  display: grid;
+  grid-template-columns: 140px 1fr 120px;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid var(--glass-border);
+  font-weight: 700;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sortable-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer !important;
+  transition: color 0.2s;
+  user-select: none;
+}
+
+.sortable-header:hover {
+  color: var(--text-main);
+}
+
+.sortable-header.active {
+  color: var(--primary);
+}
+
+.sort-icon-placeholder {
+  opacity: 0.1;
+  font-size: 0.7rem;
+}
+
+.sortable-header:hover .sort-icon-placeholder {
+  opacity: 0.5;
+}
+
+.sort-icon.active {
+  font-size: 0.7rem;
+  opacity: 1;
+}
+
+/* Adjust tx-info for header alignment */
+.tx-info {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.detail-tx-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.tx-date {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 0; /* Override previous gap */
+}
+
+.tx-payee-memo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.tx-memo {
+  font-size: 0.75rem;
+  opacity: 0.7;
 }

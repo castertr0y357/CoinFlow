@@ -9,8 +9,9 @@ export async function GET(req: NextRequest) {
     const skip = parseInt(searchParams.get("skip") || "0");
     const inboxOnly = searchParams.get("inboxOnly") === "true";
     const includeHidden = searchParams.get("includeHidden") === "true";
+    const hiddenOnly = searchParams.get("hiddenOnly") === "true";
 
-    const transactions = await getTransactions({ take, skip, inboxOnly, includeHidden });
+    const transactions = await getTransactions({ take, skip, inboxOnly, includeHidden, hiddenOnly });
     return NextResponse.json(transactions);
   });
 }

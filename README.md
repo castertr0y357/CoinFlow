@@ -1,6 +1,6 @@
-# WebBudget 💎🏦
+# CoinFlow 💎🏦
 
-WebBudget is a premium, self-hosted financial automation hub designed for those who want institutional-grade insights with 100% privacy. Built with a "Carbonated Glass" aesthetic, it combines bank-sync automation with local AI to transform cryptic transaction data into a clear financial strategy.
+CoinFlow is a premium, self-hosted financial automation hub designed for those who want institutional-grade insights with 100% privacy. Built with a "Carbonated Glass" aesthetic, it combines bank-sync automation with local AI to transform cryptic transaction data into a clear financial strategy.
 
 ## 🚀 Core Pillar Features
 

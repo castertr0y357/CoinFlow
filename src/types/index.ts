@@ -17,7 +17,8 @@ export type Transaction = {
   rawPayee: string | null;
   amount: any;
   splits: Split[];
-  amazonOrderId: string | null;
+  externalOrderId: string | null;
+  externalOrder?: any;
   isHidden: boolean;
 }
 

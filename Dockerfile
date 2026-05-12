@@ -13,6 +13,7 @@ RUN npm ci
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
+RUN apk add --no-cache zip
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
@@ -28,6 +29,7 @@ ENV NEXT_PUBLIC_INTERNAL_API_KEY="dummy"
 
 RUN npx prisma generate
 RUN npm run build
+RUN zip -r public/coinflow-extension.zip extension
 
 # Production image, copy all the files and run next
 FROM base AS runner

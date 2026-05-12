@@ -1,18 +1,35 @@
-# Current Project Status
+# Project Status: CoinFlow Browser Extension (v2.2)
 
-**Date:** May 1, 2026
-**State:** Stable, compiled, and deployed via Docker.
+## Current Progress
+- [x] **Unified Scraper Framework**: Standardized Amazon, Walmart, and Lowe's scrapers using `CoinFlowUtils`.
+- [x] **Deep Sync Engine**: Implemented cross-site order detail fetching for high-precision itemized data.
+- [x] **Robust Messaging**: Unified background communication using `{ action: 'syncOrders' }`.
+- [x] **Hardened Error Handling**: 3-attempt retry logic with exponential backoff and 15s request timeouts.
+- [x] **Premium UI**: Integrated glassmorphism-themed sync buttons and notifications.
+- [x] **Duplicate Prevention**: Implemented `chrome.storage.local` tracking to prevent redundant syncs.
+- [x] **Standardized Logging**: Implemented `CoinFlow [Component]:` tagging across all scripts for instant debugging.
+- [x] **Hardened Matching (v2.0)**: Broadened transaction matching window to 13 days (-3/+10) with boundary normalization.
+- [x] **Scraper Precision (v2.2)**: Fixed Amazon `items` scope leak and implemented multi-layer deduplication.
 
-## Recent Work Completed
-*   **Seamless Background Updates**: Replaced all hard page reloads (`window.location.reload()`) with Next.js router refreshing and SWR global mutations (`mutate('/api/v1/budget/tally')`). Sidebar toggles and Category Detail actions now update the UI instantly and optimistically.
-*   **Global CSS Fixes**: Ensured high-contrast visibility for all dropdown `<option>` elements across the app by centralizing styles in `globals.css`.
-*   **Commitments Page Modernization**: 
-    *   Fixed a typo ("TAXS" -> "TAXES").
-    *   Added automatic monthly sum calculations directly into the category headers.
-    *   Refined the CSS grid so headers fit neatly.
-    *   Implemented full **inline editing**: clicking a commitment turns it into a form allowing quick updates to name, amount, and frequency.
-*   **Context Handoff**: Established a new `context_handoff` skill and `status.md` protocol to prevent context-length generation errors.
+## Recent Fixes (v2.2)
+- **Amazon Item Duplication**: Resolved a critical bug where `items` was leaked as a global variable, causing item accumulation.
+- **Cross-Layer Deduplication**: Implemented item title/price deduplication in both the scraper and the backend API.
+- **Resolved $0 Total Extraction**: Added targeted selectors and "Grand Total:" label search for Amazon Order Details.
+- **Item Deduplication**: Consolidated overlapping selectors to prevent items from being counted twice.
+- **ID Standardization**: Implemented strict sanitization to strip "ORDER #" prefixes consistently across all pages.
+- **Database Maintenance**: Ran reconciliation scripts to merge duplicate order records and restore broken transaction links.
+- **Preserved Logs**: Removed automatic page reload after sync to enable easier debugging.
 
-## Next Steps for New Agent
-*   Verify with the user if they have any immediate next features they want to tackle (e.g., further enhancements to the Commitments logic, new charts, or fixing any lingering bugs).
-*   Ensure all standard `docker_autofix` deployment protocols are followed strictly for any new code changes.
+## Pending Verification
+- [ ] Verify Amazon Deep Sync precision on complex multi-item orders.
+- [ ] Confirm Walmart TC# extraction accuracy in varied regional layouts.
+- [ ] Monitor Lowe's "Transaction #" extraction for potential selector drift.
+
+## Technical Details
+- **Version**: 2.2
+- **Core Files**:
+  - `manifest.json`: Versioning and script mapping.
+  - `background.js`: Sync engine, retry logic, and API communication.
+  - `utils.js`: UI components, storage management, and price/date parsing.
+  - `content-scripts/amazon.js`: Precision-hardened Amazon scraper.
+  - `src/app/api/v1/external-orders/sync/route.ts`: Hardened matching logic.

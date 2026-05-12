@@ -1,5 +1,6 @@
 import Papa from 'papaparse';
 import prisma from './prisma';
+import { applySplits } from './services/transactionService';
 
 export interface AmazonCsvRow {
   'Order ID': string;
@@ -48,14 +49,16 @@ export async function processAmazonCsv(csvContent: string) {
 
   // Save to database and match with transactions
   for (const [orderId, data] of ordersMap.entries()) {
-    const amazonOrder = await prisma.amazonOrder.upsert({
+    const externalOrder = await prisma.externalOrder.upsert({
       where: { orderId },
       update: {
         date: data.date,
         totalAmount: data.total,
+        source: 'AMAZON'
       },
       create: {
         orderId,
+        source: 'AMAZON',
         date: data.date,
         totalAmount: data.total,
         items: {
@@ -68,30 +71,86 @@ export async function processAmazonCsv(csvContent: string) {
     results.itemsCreated += data.items.length;
 
     // Matching logic: Look for transactions around the same date with the same amount
-    // Amazon transactions often post a day or two later
+    // Broaden search window to handle timezone shifts and posting delays
+    // Range: [OrderDate - 3 days, OrderDate + 10 days]
     const startDate = new Date(data.date);
+    startDate.setDate(startDate.getDate() - 3);
+    startDate.setHours(0, 0, 0, 0);
+
     const endDate = new Date(data.date);
-    endDate.setDate(endDate.getDate() + 5); // Look up to 5 days after
+    endDate.setDate(endDate.getDate() + 10);
+    endDate.setHours(23, 59, 59, 999);
 
     const transaction = await prisma.transaction.findFirst({
       where: {
-        amount: -data.total, // Amazon orders are usually debits (negative)
+        amount: -data.total, 
         date: {
           gte: startDate,
           lte: endDate
         },
-        amazonOrderId: null // Not already matched
-      }
+        externalOrderId: null 
+      },
+      orderBy: { date: 'asc' }
     });
 
     if (transaction) {
       await prisma.transaction.update({
         where: { id: transaction.id },
-        data: { amazonOrderId: amazonOrder.id }
+        data: { externalOrderId: externalOrder.id }
       });
+
+      // Auto-split the transaction based on items
+      const splits = calculateProportionalSplits(Number(transaction.amount), data.items);
+      await applySplits(transaction.id, splits);
+
       results.matchedTransactions++;
     }
   }
 
   return results;
+}
+
+export function calculateProportionalSplits(totalAmount: number, items: { title: string, price: number, quantity: number }[]) {
+  const absTotal = Math.abs(totalAmount);
+  const itemsSum = items.reduce((acc, item) => acc + (Number(item.price) * item.quantity), 0);
+  
+  if (items.length === 0 || itemsSum <= 0) {
+    const itemCount = items.length || 1;
+    const perItem = absTotal / itemCount;
+    
+    if (items.length === 0) {
+      return [{
+        categoryId: null,
+        amount: totalAmount,
+        memo: "External Order (No items found)"
+      }];
+    }
+
+    return items.map(item => ({
+      categoryId: null,
+      amount: totalAmount < 0 ? -perItem : perItem,
+      memo: item.title
+    }));
+  }
+
+  const ratio = absTotal / itemsSum;
+  let currentSum = 0;
+  
+  const splits = items.map((item, index) => {
+    let amount: number;
+    if (index === items.length - 1) {
+      amount = Math.round((absTotal - currentSum) * 100) / 100;
+    } else {
+      amount = Math.round((Number(item.price) * item.quantity * ratio) * 100) / 100;
+      currentSum += amount;
+    }
+    
+    return {
+      categoryId: null,
+      amount: totalAmount < 0 ? -amount : amount,
+      memo: item.title
+    };
+  });
+
+  return splits;
 }

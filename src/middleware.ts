@@ -4,25 +4,45 @@ import { decrypt, updateSession } from "@/lib/auth";
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1. Allow public assets and login page
+  // 1. Always allow preflight requests with CORS headers
+  if (request.method === "OPTIONS") {
+    return new NextResponse(null, {
+      status: 200,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, X-API-KEY, Authorization",
+        "Access-Control-Max-Age": "86400",
+      },
+    });
+  }
+
+  // 2. Allow public assets and login page
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/static") ||
     pathname === "/login" ||
     pathname === "/favicon.ico" ||
     pathname === "/manifest.json" ||
+    pathname === "/coinflow-extension.zip" ||
     pathname.startsWith("/api/v1/auth") ||
     // Allow background sync with API Key
-    pathname.startsWith("/api/v1/sync/background")
+    pathname.startsWith("/api/v1/sync/background") ||
+    request.headers.has("X-API-KEY")
   ) {
     return NextResponse.next();
   }
 
-  // 2. Check session
+  // 3. Check session
   const session = request.cookies.get("session")?.value;
 
   if (!session) {
-    console.log(`[MIDDLEWARE] No session cookie found for ${pathname}. Redirecting to /login`);
+    console.log(`[MIDDLEWARE] No session cookie found for ${pathname}.`);
+    if (pathname.startsWith("/api/")) {
+      const response = NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      response.headers.set("Access-Control-Allow-Origin", "*");
+      return response;
+    }
     return NextResponse.redirect(new URL("/login", request.url));
   }
 

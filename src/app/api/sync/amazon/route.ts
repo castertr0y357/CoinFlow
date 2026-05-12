@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { processAmazonCsv } from '@/lib/amazon';
+import { processAmazonCsv } from '@/lib/external-orders';
 
 export async function POST(req: NextRequest) {
   try {

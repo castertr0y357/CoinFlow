@@ -149,7 +149,7 @@ export async function detectSubscriptions(transactions: any[]) {
       payee,
       count: txs.length,
       avgAmount: Math.abs(txs.reduce((acc, t) => acc + Number(t.amount), 0) / txs.length).toFixed(2),
-      examples: txs.slice(0, 2).map(t => `${new Date(t.date).toLocaleDateString()}: $${Math.abs(Number(t.amount))}`)
+      examples: txs.slice(0, 2).map(t => `${new Date(t.date).toLocaleDateString(undefined, { timeZone: 'UTC' })}: $${Math.abs(Number(t.amount))}`)
     }));
 
   if (candidates.length === 0) return { subscriptions: [] };

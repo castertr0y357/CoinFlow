@@ -75,3 +75,10 @@ export async function hideTransaction(transactionId: string, hide: boolean = tru
   revalidatePath("/transactions");
   revalidatePath("/");
 }
+
+export async function bulkCategorizeTransactions(transactionIds: string[], categoryId: string | null) {
+  const { bulkCategorize } = await import("@/lib/services/transactionService");
+  await bulkCategorize(transactionIds, categoryId);
+  revalidatePath("/transactions");
+  revalidatePath("/");
+}

@@ -138,7 +138,7 @@ export async function splitTransactionInCategory(transactionId: string, currentC
     prisma.transactionSplit.create({
       data: {
         transactionId,
-        categoryId: targetCategoryId,
+        categoryId: targetCategoryId === "" ? null : targetCategoryId,
         amount: adjustedMoveAmount,
         memo: split.memo
       }

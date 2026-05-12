@@ -1,6 +1,6 @@
 {
-  "name": "WebBudget",
-  "short_name": "WebBudget",
+  "name": "CoinFlow",
+  "short_name": "CoinFlow",
   "description": "Flexible Zero-Based Budgeting",
   "start_url": "/",
   "display": "standalone",

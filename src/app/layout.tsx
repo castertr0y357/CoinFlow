@@ -7,13 +7,13 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "WebBudget | Flexible Zero-Based Budgeting",
+  title: "CoinFlow | Flexible Zero-Based Budgeting",
   description: "A premium, flexible zero-based budgeting app for modern financial tracking.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "WebBudget",
+    title: "CoinFlow",
   },
 };
 

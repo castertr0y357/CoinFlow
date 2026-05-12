@@ -156,6 +156,7 @@ export async function syncSimpleFin() {
               payee: cleanName,
               rawPayee: remoteTx.description,
               accountId: account.id,
+              isHidden: account.excludeFromSurplus,
               splits: {
                 create: {
                   amount: remoteTx.amount,

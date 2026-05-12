@@ -15,6 +15,7 @@ interface Category {
   spent: number;
   remaining: number;
   tiedAccountId?: string | null;
+  isOffBudget: boolean;
   isPaused: boolean;
 }
 
@@ -100,7 +101,7 @@ export default function CategorySpreadsheet({ categories, integrityWarnings = []
               return (
                 <tr 
                   key={cat.id} 
-                  className={`spreadsheet-row ${draggedId === cat.id ? 'dragging' : ''}`}
+                  className={`spreadsheet-row ${draggedId === cat.id ? 'dragging' : ''} ${cat.isOffBudget ? 'off-budget-row' : ''}`}
                   draggable={isEditingOrder}
                   onDragStart={(e) => handleDragStart(e, cat.id)}
                   onDragOver={handleDragOver}
@@ -116,7 +117,8 @@ export default function CategorySpreadsheet({ categories, integrityWarnings = []
                   <td className="sticky-col">
                     <Link href={`/categories/${cat.id}`} className="row-link">
                       <span className="cat-name">{cat.name}</span>
-                      {cat.tiedAccountId && <span className="tied-badge" title="Tied to specific account">⚓</span>}
+                      {cat.tiedAccountId && <span className="tied-badge" title={cat.isOffBudget ? "Tied to Off-Budget Account" : "Tied to specific account"}>⚓</span>}
+                      {cat.isOffBudget && <span className="off-budget-badge" title="Excluded from Available to Budget">🏦</span>}
                       {cat.isPaused && <span className="paused-badge" title="Automatic budgeting paused">⏸️</span>}
                       {integrityWarnings.find(w => w.accountId === cat.tiedAccountId) && (
                         <span className="integrity-danger" title={integrityWarnings.find(w => w.accountId === cat.tiedAccountId)?.message}>❗</span>
@@ -188,6 +190,12 @@ export default function CategorySpreadsheet({ categories, integrityWarnings = []
         .spreadsheet-row:hover {
           background: rgba(255, 255, 255, 0.03);
         }
+        .off-budget-row {
+          opacity: 0.6;
+        }
+        .off-budget-row:hover {
+          opacity: 1;
+        }
         .row-link {
           color: var(--text-main);
           font-weight: 500;
@@ -198,6 +206,11 @@ export default function CategorySpreadsheet({ categories, integrityWarnings = []
         .tied-badge {
           font-size: 0.7rem;
           opacity: 0.5;
+        }
+        .off-budget-badge {
+          font-size: 0.7rem;
+          filter: grayscale(1);
+          opacity: 0.6;
         }
         .paused-badge {
           font-size: 0.7rem;

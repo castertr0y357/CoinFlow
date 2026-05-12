@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Card from "@/components/ui/Card";
@@ -26,6 +27,11 @@ export default function AddTransactionModal({
     memo: ""
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +41,7 @@ export default function AddTransactionModal({
     try {
       await addManualTransaction({
         ...formData,
-        amount: parseFloat(formData.amount) * -1, // Spending is negative
+        amount: parseFloat(formData.amount), // Support positive (income) and negative (expense) values
         categoryId
       });
       onSuccess();
@@ -48,7 +54,9 @@ export default function AddTransactionModal({
     }
   };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div className="modal-overlay">
       <Card className="modal-card glass animate-scale-in">
         <h3>Add Transaction to {categoryName}</h3>
@@ -72,7 +80,7 @@ export default function AddTransactionModal({
             />
           </div>
           <div className="form-group">
-            <label>Amount (Positive Number)</label>
+            <label>Amount (Negative for expense, Positive for income)</label>
             <Input 
               type="number" 
               step="0.01" 
@@ -110,10 +118,10 @@ export default function AddTransactionModal({
           background: rgba(0, 0, 0, 0.7);
           backdrop-filter: blur(4px);
           display: flex;
-          align-items: center;
+          align-items: flex-start;
           justify-content: center;
           z-index: 1000;
-          padding: 1rem;
+          padding: 8vh 1rem 1rem;
         }
         .modal-card {
           width: 100%;
@@ -138,6 +146,7 @@ export default function AddTransactionModal({
           margin-top: 1rem;
         }
       `}</style>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -3,7 +3,7 @@ import { getMortgageData } from "@/lib/services/mortgageService";
 import MortgageClient from "./MortgageClient";
 
 export const metadata = {
-  title: "Mortgage Mastery | WebBudget",
+  title: "Mortgage Mastery | CoinFlow",
 };
 
 export default async function MortgagePage() {

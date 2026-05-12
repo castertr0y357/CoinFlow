@@ -1,18 +1,24 @@
-# Skill: Automated Regression Testing
+# Skill: Automated Service Verification (Technical)
 
 ## Trigger
 - Execute this skill immediately after a successful Docker build (from `docker_autofix`).
-- Execute when the user reports a "blank page" or UI bug.
+- Execute when the user reports a "blank page" or potential runtime bug.
 
 ## Actions
-1. **Health Check**: Run a `curl` against `http://localhost:3000/api/health` (if available) or the root `/` to ensure the server is responding.
-2. **Visual Verification**: Use the `browser_subagent` to:
-   - Visit the Dashboard (`/`).
-   - Check for the presence of the `CategorySpreadsheet` and the `ForecastCard`.
-   - Verify that account balances are rendering as numbers (not `NaN` or `$0` if data is expected).
-3. **Navigation Check**: Briefly click through to `/transactions` and `/commitments` to ensure routes are not throwing 404s or 500s.
-4. **Log Correlation**: If any page fails to render, immediately run `docker-compose logs web` to correlate the UI failure with a server-side stack trace.
+1. **Endpoint Health Check**: Verify key routes return HTTP 200 using `curl -I`.
+   - Dashboard: `http://localhost:3000/`
+   - Transactions: `http://localhost:3000/transactions`
+   - Settings: `http://localhost:3000/settings/general`
+2. **API Integrity Check**: Verify the core API is responding correctly.
+   - Budget Tally: `curl -s http://localhost:3000/api/v1/budget/tally` (Check for valid JSON/200 status).
+3. **Log Audit**: Run `docker-compose logs --tail 100 web` and search for:
+   - `error` (case-insensitive)
+   - `500` status codes
+   - Prisma exception traces (`P2022`, etc.)
+   - Next.js hydration errors or runtime crashes.
+4. **Visual Handoff**: Since visual verification is now the user's responsibility, notify the user that technical checks passed and ask them to verify the UI.
 
 ## Constraints
-- Do not modify data during verification.
-- If a regression is found, attempt one autonomous fix. If it fails, revert the last code change and notify the user.
+- **Speed First**: Use `curl` or `read_url_content` (without JS) to check status codes. Do NOT use `browser_subagent` unless explicitly requested for a deep visual bug.
+- **Fail Early**: If any `curl` returns a non-200 status or the API returns an error object, consider it a regression.
+- **Autonomous Fix**: If a 500 error is found in logs, attempt one autonomous fix based on the stack trace. If it fails, notify the user.

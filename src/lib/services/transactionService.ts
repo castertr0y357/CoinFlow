@@ -4,9 +4,10 @@ export async function getTransactions(options: {
   take?: number, 
   skip?: number, 
   inboxOnly?: boolean,
-  includeHidden?: boolean 
+  includeHidden?: boolean,
+  hiddenOnly?: boolean 
 } = {}) {
-  const { take = 1000, skip = 0, inboxOnly = false, includeHidden = false } = options;
+  const { take = 1000, skip = 0, inboxOnly = false, includeHidden = false, hiddenOnly = false } = options;
 
   const where: any = {
     account: {
@@ -14,7 +15,9 @@ export async function getTransactions(options: {
     }
   };
 
-  if (inboxOnly) {
+  if (hiddenOnly) {
+    where.isHidden = true;
+  } else if (inboxOnly) {
     where.splits = {
       some: {
         categoryId: null
@@ -30,7 +33,11 @@ export async function getTransactions(options: {
     orderBy: { date: 'desc' },
     include: { 
       splits: true, 
-      amazonOrder: true,
+      externalOrder: {
+        include: {
+          items: true
+        }
+      },
       account: true
     },
     take,
@@ -89,7 +96,7 @@ export async function addSplit(transactionId: string, amount: number, categoryId
   }
 }
 
-export async function applySplits(transactionId: string, splits: { categoryId: string, amount: number, memo?: string }[]) {
+export async function applySplits(transactionId: string, splits: { categoryId: string | null, amount: number, memo?: string }[]) {
   const transaction = await prisma.transaction.findUnique({
     where: { id: transactionId }
   });
@@ -122,5 +129,17 @@ export async function applySplits(transactionId: string, splits: { categoryId: s
     })
   ]);
 }
+
+export async function bulkCategorize(transactionIds: string[], categoryId: string | null) {
+  return prisma.transactionSplit.updateMany({
+    where: {
+      transactionId: { in: transactionIds }
+    },
+    data: {
+      categoryId
+    }
+  });
+}
+
 
 

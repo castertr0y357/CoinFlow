@@ -201,7 +201,7 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
             <div className="results-grid">
               <div className="result-item">
                 <span className="label">New Payoff Date</span>
-                <span className="value">{optimizedSchedule[optimizedSchedule.length - 1]?.date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</span>
+                <span className="value">{optimizedSchedule[optimizedSchedule.length - 1]?.date.toLocaleDateString(undefined, { month: 'long', year: 'numeric', timeZone: 'UTC' })}</span>
               </div>
               <div className="result-item">
                 <span className="label">Interest Savings</span>
@@ -225,7 +225,7 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
                       <span className="provider-value">${(p.lastValue || 0).toLocaleString()}</span>
                       <button onClick={() => handleRemoveProvider(p.id)} className="text-danger ml-2" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
                     </div>
-                    <span className="provider-sync">Last synced: {p.lastSync ? new Date(p.lastSync).toLocaleDateString() : 'Never'}</span>
+                    <span className="provider-sync">Last synced: {p.lastSync ? new Date(p.lastSync).toLocaleDateString(undefined, { timeZone: 'UTC' }) : 'Never'}</span>
                   </div>
                 ))
               )}

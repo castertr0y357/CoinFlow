@@ -36,7 +36,7 @@ export async function login(password: string) {
     (await cookies()).set("session", session, { 
       expires, 
       httpOnly: true, 
-      secure: process.env.NODE_ENV === "production",
+      secure: false, // Changed from process.env.NODE_ENV === "production" to support local Docker/HTTP
       sameSite: "lax",
       path: "/",
     });
@@ -69,7 +69,7 @@ export async function updateSession(request: NextRequest) {
     value: await encrypt(parsed),
     httpOnly: true,
     expires: parsed.expires,
-    secure: process.env.NODE_ENV === "production",
+    secure: false, // Changed from process.env.NODE_ENV === "production"
     sameSite: "lax",
     path: "/",
   });

@@ -9,10 +9,8 @@ function safeNumber(val: any): number {
 export async function getMonthlyTally(year?: number) {
   const currentYear = year || new Date().getFullYear();
   
-  // 0. Run lazy provisioning (only for current year)
-  if (!year || year === new Date().getFullYear()) {
-    await runMonthlyProvisioning();
-  }
+  // 0. Run lazy provisioning
+  await runMonthlyProvisioning(currentYear);
 
   // 1. Get the current active budget year
   let budgetYear = await prisma.budgetYear.findUnique({
@@ -40,6 +38,11 @@ export async function getMonthlyTally(year?: number) {
     include: {
       configs: {
         where: { yearId: budgetYear.id }
+      },
+      tiedAccount: {
+        select: {
+          excludeFromSurplus: true
+        }
       },
       splits: {
         where: {
@@ -80,12 +83,14 @@ export async function getMonthlyTally(year?: number) {
       spent: safeNumber(spending),
       remaining: safeNumber(remaining),
       tiedAccountId: c.tiedAccountId,
+      isOffBudget: !!c.tiedAccount?.excludeFromSurplus,
       isPaused: c.isPaused
     };
   });
 
-  const totalBudgeted = categoryTallies.reduce((acc, c) => acc + c.budget, 0);
-  const currentTally = categoryTallies.reduce((acc, c) => acc + c.remaining, 0);
+  const onBudgetTallies = categoryTallies.filter(c => !c.isOffBudget);
+  const totalBudgeted = onBudgetTallies.reduce((acc, c) => acc + c.budget, 0);
+  const currentTally = onBudgetTallies.reduce((acc, c) => acc + c.remaining, 0);
 
   const settings = await prisma.settings.findUnique({ where: { id: 'global' } });
   

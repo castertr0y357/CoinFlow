@@ -10,7 +10,7 @@ export default function Navbar() {
   return (
     <nav className="navbar glass">
       <div className="nav-container">
-        <Link href="/" className="logo">WebBudget</Link>
+        <Link href="/" className="logo">CoinFlow</Link>
         <div className="nav-links">
           <Link href="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`}>
             <span className="icon">📊</span>

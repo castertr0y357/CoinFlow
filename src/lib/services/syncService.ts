@@ -1,5 +1,5 @@
 import { syncSimpleFin as performSimpleFinSync } from "../simplefin";
-import { processAmazonCsv as performAmazonSync } from "../amazon";
+import { processAmazonCsv as performAmazonSync } from "../external-orders";
 
 export async function syncSimpleFin() {
   // In a more complex app, this would queue a job in the background.

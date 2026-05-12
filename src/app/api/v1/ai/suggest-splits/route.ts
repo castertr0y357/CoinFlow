@@ -16,18 +16,18 @@ export async function POST(req: NextRequest) {
       const transaction = await prisma.transaction.findUnique({
         where: { id: transactionId },
         include: { 
-          amazonOrder: {
+          externalOrder: {
             include: { items: true }
           }
         }
       });
 
-      if (!transaction || !transaction.amazonOrder) {
-        return NextResponse.json({ error: "Transaction not found or not linked to Amazon" }, { status: 404 });
+      if (!transaction || !transaction.externalOrder) {
+        return NextResponse.json({ error: "Transaction not found or not linked to an order" }, { status: 404 });
       }
 
       const categories = await prisma.category.findMany();
-      const items = transaction.amazonOrder.items.map(item => ({
+      const items = transaction.externalOrder.items.map(item => ({
         title: item.title,
         price: Number(item.price)
       }));

@@ -105,7 +105,7 @@ export default function Sidebar({ accounts }: SidebarProps) {
   return (
     <div className="sidebar-container glass">
       <div className="sidebar-header">
-        <Link href="/" className="logo">WebBudget</Link>
+        <Link href="/" className="logo">CoinFlow</Link>
       </div>
 
       <nav className="sidebar-nav">

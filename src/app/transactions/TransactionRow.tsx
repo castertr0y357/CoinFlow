@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { categorizeSplit, applyTransactionSplits, hideTransaction } from "./actions";
+import { categorizeSplit, applyTransactionSplits, hideTransaction, addSplit } from "./actions";
 import Button from "@/components/ui/Button";
 import { Category, Transaction } from "@/types";
 
@@ -9,12 +9,16 @@ export default function TransactionRow({
   tx, 
   categories,
   suggestion,
-  onCategorized
+  onCategorized,
+  isSelected,
+  onSelectionToggle
 }: { 
   tx: Transaction; 
   categories: Category[];
   suggestion?: string;
   onCategorized?: () => void;
+  isSelected?: boolean;
+  onSelectionToggle?: (id: string, selected: boolean) => void;
 }) {
   const [isPending, setIsPending] = useState(false);
   const [isAiSplitting, setIsAiSplitting] = useState(false);
@@ -25,6 +29,29 @@ export default function TransactionRow({
     await categorizeSplit(splitId, categoryId === "floating" ? null : categoryId);
     setIsPending(false);
     if (onCategorized) onCategorized();
+  };
+
+  const handleAddSplit = async () => {
+    const amountStr = prompt("Enter amount for new split:");
+    if (!amountStr) return;
+    
+    const amount = parseFloat(amountStr);
+    if (isNaN(amount) || amount <= 0) {
+      alert("Please enter a valid positive amount.");
+      return;
+    }
+
+    setIsPending(true);
+    try {
+      // For expenses, we send a negative amount to match the transaction sign
+      const splitAmount = Number(tx.amount) < 0 ? -Math.abs(amount) : Math.abs(amount);
+      await addSplit(tx.id, splitAmount, null);
+      if (onCategorized) onCategorized();
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setIsPending(false);
+    }
   };
 
   const handleSmartSplit = async () => {
@@ -64,10 +91,18 @@ export default function TransactionRow({
   const suggestedCategory = categories.find(c => c.id === suggestion);
 
   return (
-    <div className={`tx-row ${isPending ? 'pending' : ''} ${suggestion ? 'has-suggestion' : ''}`}>
+    <div className={`tx-row ${isPending ? 'pending' : ''} ${suggestion ? 'has-suggestion' : ''} ${isSelected ? 'selected' : ''}`}>
+      <div className="tx-checkbox-cell">
+        <input 
+          type="checkbox" 
+          className="tx-checkbox" 
+          checked={isSelected} 
+          onChange={(e) => onSelectionToggle?.(tx.id, e.target.checked)}
+        />
+      </div>
       <div className="tx-main">
         <div className="tx-date">
-          {new Date(tx.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+          {new Date(tx.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
         </div>
         <div className="tx-payee">
           <div className="payee-text" onClick={() => setShowRaw(!showRaw)} style={{ cursor: 'pointer' }}>
@@ -77,19 +112,37 @@ export default function TransactionRow({
                <span className="clean-payee">{tx.payee}</span>
             )}
             
-            {tx.amazonOrderId && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="smart-split-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleSmartSplit();
-                }}
-                disabled={isAiSplitting || isPending}
-              >
-                {isAiSplitting ? "✨ Analyzing..." : "✨ Smart Split"}
-              </Button>
+            {tx.externalOrderId && (
+              <div className="external-order-info">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="smart-split-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSmartSplit();
+                  }}
+                  disabled={isAiSplitting || isPending}
+                >
+                  {isAiSplitting ? "✨ Analyzing..." : "✨ Smart Split"}
+                </Button>
+                {tx.externalOrder && (
+                  <div className="order-details-popover glass">
+                    <div className="order-header">
+                      <strong>{tx.externalOrder.source} Order #{tx.externalOrder.orderId}</strong>
+                    </div>
+                    <ul className="order-items">
+                      {tx.externalOrder.items?.map((item: any) => (
+                        <li key={item.id} className="order-item">
+                          <span className="item-qty">{item.quantity}x</span>
+                          <span className="item-title">{item.title}</span>
+                          <span className="item-price">${Number(item.price).toFixed(2)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
             )}
           </div>
           {suggestion && !tx.splits.every(s => s.categoryId) && (
@@ -124,6 +177,14 @@ export default function TransactionRow({
               </select>
             </div>
           ))}
+          <button 
+            className="row-action-btn add-split-btn" 
+            onClick={handleAddSplit}
+            disabled={isPending}
+            title="Add Split"
+          >
+            ➕
+          </button>
         </div>
         <button 
           className="row-action-btn hide-btn" 

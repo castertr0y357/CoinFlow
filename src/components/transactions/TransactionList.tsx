@@ -7,21 +7,66 @@ interface TransactionListProps {
   categories: Category[];
   suggestions?: Record<string, string>;
   onCategorized?: () => void;
+  selectedIds?: Set<string>;
+  onSelectionToggle?: (id: string, selected: boolean) => void;
+  onSelectAll?: (selected: boolean) => void;
+  sortBy?: 'date' | 'amount' | 'payee';
+  sortOrder?: 'asc' | 'desc';
+  onSort?: (field: 'date' | 'amount' | 'payee') => void;
 }
 
 export default function TransactionList({ 
   transactions, 
   categories, 
   suggestions = {},
-  onCategorized 
+  onCategorized,
+  selectedIds = new Set(),
+  onSelectionToggle,
+  onSelectAll,
+  sortBy,
+  sortOrder,
+  onSort
 }: TransactionListProps) {
+  const allSelected = transactions.length > 0 && transactions.every(tx => selectedIds.has(tx.id));
+
+  const SortIcon = ({ field }: { field: 'date' | 'amount' | 'payee' }) => {
+    if (sortBy !== field) return <span className="sort-icon-placeholder">↕️</span>;
+    return <span className="sort-icon active">{sortOrder === 'asc' ? '🔼' : '🔽'}</span>;
+  };
+
   return (
     <Card className="transactions-list animate-fade-in" delay="0.2s">
       <div className="tx-list-header">
+        <div className="tx-checkbox-cell">
+          <input 
+            type="checkbox" 
+            className="tx-checkbox" 
+            checked={allSelected}
+            onChange={(e) => onSelectAll?.(e.target.checked)}
+          />
+        </div>
         <div className="tx-header-main">
-          <span style={{ flex: 1 }}>Date</span>
-          <span style={{ flex: 2 }}>Payee</span>
-          <span style={{ flex: 1, textAlign: 'right' }}>Amount</span>
+          <span 
+            className={`sortable-header ${sortBy === 'date' ? 'active' : ''}`} 
+            style={{ flex: 1, cursor: 'pointer' }}
+            onClick={() => onSort?.('date')}
+          >
+            Date <SortIcon field="date" />
+          </span>
+          <span 
+            className={`sortable-header ${sortBy === 'payee' ? 'active' : ''}`} 
+            style={{ flex: 2, cursor: 'pointer' }}
+            onClick={() => onSort?.('payee')}
+          >
+            Payee <SortIcon field="payee" />
+          </span>
+          <span 
+            className={`sortable-header ${sortBy === 'amount' ? 'active' : ''}`} 
+            style={{ flex: 1, textAlign: 'right', cursor: 'pointer' }}
+            onClick={() => onSort?.('amount')}
+          >
+            Amount <SortIcon field="amount" />
+          </span>
         </div>
         <div className="tx-header-splits">
           Categorization
@@ -41,6 +86,8 @@ export default function TransactionList({
               categories={categories} 
               suggestion={suggestions[tx.id]}
               onCategorized={onCategorized}
+              isSelected={selectedIds.has(tx.id)}
+              onSelectionToggle={onSelectionToggle}
             />
           ))}
         </div>

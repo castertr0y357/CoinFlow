@@ -3,7 +3,7 @@ import Card from "@/components/ui/Card";
 import ReportsClient from "./ReportsClient";
 
 export const metadata = {
-  title: "Yearly Analysis | WebBudget",
+  title: "Yearly Analysis | CoinFlow",
 };
 
 export default async function ReportsPage() {
