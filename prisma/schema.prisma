@@ -142,6 +142,7 @@ model ExternalOrderItem {
   id              String        @id @default(cuid())
   externalOrderId String
   title           String
+  rawTitle        String?
   price           Decimal
   quantity        Int           @default(1)
   categoryHint    String?

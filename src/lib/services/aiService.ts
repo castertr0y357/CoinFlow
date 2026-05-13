@@ -1,287 +1,219 @@
 import OpenAI from "openai";
-import { Category, Transaction } from "@/types";
 
-let _openai: OpenAI | null = null;
-function getOpenAI() {
-  if (!_openai) {
-    if (!process.env.OPENAI_API_KEY) {
-      return null;
-    }
-    _openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-      baseURL: process.env.OPENAI_BASE_URL,
-    });
-  }
-  return _openai;
-}
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || "sk-placeholder",
+  baseURL: process.env.OPENAI_BASE_URL || "http://localhost:11434/v1",
+});
 
-export async function getCategorySuggestions(
-  transactions: Transaction[], 
-  categories: Category[],
-  examples: { payee: string, categoryName: string }[] = []
-) {
-  const categoryList = categories.map(c => `${c.id}: ${c.name}`).join("\n");
-  
-  const exampleText = examples.length > 0 
-    ? `\nExamples of how this user has categorized items in the past:\n${examples.map(ex => `- ${ex.payee} -> ${ex.categoryName}`).join("\n")}\n`
-    : "";
+const MODEL = process.env.AI_MODEL || "gemma4:e4b";
+
+/**
+ * Normalizes retail product titles into clean, concise names.
+ */
+export async function normalizeItemNames(titles: string[]): Promise<Record<string, string>> {
+  if (titles.length === 0) return {};
 
   const prompt = `
-    You are a professional budgeting assistant. Your task is to categorize bank transactions.
-    ${exampleText}
-    
-    Available Categories (ID: Name):
-    ${categoryList}
-    
-    Transactions to categorize:
-    ${transactions.map(tx => `ID: ${tx.id}, Payee: ${tx.payee}, Amount: ${tx.amount}`).join("\n")}
-    
-    Return a JSON object where keys are Transaction IDs and values are the suggested Category IDs from the list above.
-    Only return the JSON object, nothing else.
-  `;
+Normalize the following Amazon/retail item titles into clean, concise, and descriptive product names.
+Remove version numbers, generation info, colors, and marketing fluff unless essential to identify the item.
+Return a JSON object where the keys are the original titles and the values are the normalized titles.
+
+Items to normalize:
+${titles.map(t => `- ${t}`).join("\n")}
+
+Format the response as valid JSON only.
+`;
 
   try {
-    const ai = getOpenAI();
-    if (!ai) return {};
-    const response = await ai.chat.completions.create({
-      model: process.env.AI_MODEL || "gpt-3.5-turbo",
+    const response = await openai.chat.completions.create({
+      model: MODEL,
       messages: [
-        { role: "system", content: "You are a helpful assistant that returns strictly formatted JSON." },
+        { role: "system", content: "You are a helpful assistant that normalizes retail product titles into clean, concise names." },
         { role: "user", content: prompt }
       ],
-      response_format: { type: "json_object" },
+      response_format: { type: "json_object" }
     });
 
     const content = response.choices[0].message.content;
     if (!content) return {};
 
-    // Resilience: Clean up common LLM markdown wrapping
-    const cleanJson = content.replace(/```json\n?|```/g, "").trim();
-    return JSON.parse(cleanJson);
+    try {
+      const normalizedMap = JSON.parse(content);
+      const result: Record<string, string> = {};
+      for (const title of titles) {
+        result[title] = normalizedMap[title] || title;
+      }
+      return result;
+    } catch (parseError) {
+      console.error("CoinFlow [AI]: Failed to parse JSON response from LLM:", parseError);
+      return titles.reduce((acc, title) => ({ ...acc, [title]: title }), {});
+    }
   } catch (error) {
-    console.error("AI Categorization Error:", error);
+    console.error("CoinFlow [AI]: LLM normalization failed:", error);
+    return titles.reduce((acc, title) => ({ ...acc, [title]: title }), {});
+  }
+}
+
+/**
+ * Detects recurring subscriptions from a list of transactions.
+ */
+export async function detectSubscriptions(transactions: any[]): Promise<any[]> {
+  const prompt = `
+Analyze the following financial transactions and identify potential recurring subscriptions.
+Return a JSON array of objects, each with 'name', 'amount', 'frequency' (e.g., MONTHLY, YEARLY), and 'confidence'.
+
+Transactions:
+${transactions.map(tx => `- ${tx.date}: ${tx.payee} ($${tx.amount})`).join("\n")}
+
+Format the response as valid JSON only.
+`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: MODEL,
+      messages: [
+        { role: "system", content: "You are a financial analyst identifying subscriptions." },
+        { role: "user", content: prompt }
+      ],
+      response_format: { type: "json_object" }
+    });
+    const data = JSON.parse(response.choices[0].message.content || "{\"subscriptions\": []}");
+    return data.subscriptions || [];
+  } catch (error) {
+    console.error("CoinFlow [AI]: detectSubscriptions failed:", error);
+    return [];
+  }
+}
+
+/**
+ * Suggests categories for a list of transactions based on existing categories and examples.
+ */
+export async function getCategorySuggestions(transactions: any[], categories: any[], examples: any[] = []): Promise<Record<string, string>> {
+  const prompt = `
+Suggest the best category for each transaction based on the following categories and examples.
+Return a JSON object where keys are transaction IDs and values are category names.
+
+Categories: ${categories.map(c => c.name).join(", ")}
+
+Examples:
+${examples.map(ex => `- ${ex.payee} -> ${ex.categoryName}`).join("\n")}
+
+Transactions to categorize:
+${transactions.map(tx => `- ID: ${tx.id}, Payee: ${tx.payee}, Amount: ${tx.amount}`).join("\n")}
+
+Format the response as valid JSON only.
+`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: MODEL,
+      messages: [
+        { role: "system", content: "You are a budgeting assistant." },
+        { role: "user", content: prompt }
+      ],
+      response_format: { type: "json_object" }
+    });
+    return JSON.parse(response.choices[0].message.content || "{}");
+  } catch (error) {
+    console.error("CoinFlow [AI]: getCategorySuggestions failed:", error);
     return {};
   }
 }
 
-export async function getSplitSuggestions(
-  transaction: any, 
-  items: { title: string, price: number }[], 
-  categories: Category[]
-) {
-  const categoryList = categories.map(c => `${c.id}: ${c.name}`).join("\n");
-  
+/**
+ * Cleans a raw merchant name from bank data into a human-readable payee name.
+ */
+export async function getCleanMerchantName(rawPayee: string, examples: any[] = []): Promise<string> {
   const prompt = `
-    You are a professional budgeting assistant. A transaction for $${Math.abs(Number(transaction.amount))} at ${transaction.payee} contains multiple items.
-    
-    Available Categories (ID: Name):
-    ${categoryList}
-    
-    Items in this purchase:
-    ${items.map(item => `- ${item.title}: $${item.price}`).join("\n")}
-    
-    Your task:
-    1. Map each item to the most relevant Category ID from the list.
-    2. Ensure the sum of all splits equals the total transaction amount ($${Math.abs(Number(transaction.amount))}).
-    3. If there is a discrepancy (like tax or shipping), distribute it proportionally or assign it to a "General" or most relevant category.
-    
-    Return a JSON object with a "splits" array. Each split should have:
-    - categoryId: The ID of the category.
-    - amount: The decimal amount.
-    - memo: A brief description (e.g., the item name).
-    
-    Only return the JSON object.
-  `;
+Clean this raw merchant name into a human-readable payee name (e.g., "AMZN Mktp US*123" -> "Amazon").
+Return a JSON object with a single key 'cleanName'.
+
+Raw Name: ${rawPayee}
+
+Examples:
+${examples.map(ex => `- ${ex.raw} -> ${ex.clean}`).join("\n")}
+
+Format the response as valid JSON only.
+`;
 
   try {
-    const ai = getOpenAI();
-    if (!ai) return {};
-    const response = await ai.chat.completions.create({
-      model: process.env.AI_MODEL || "gpt-3.5-turbo",
+    const response = await openai.chat.completions.create({
+      model: MODEL,
       messages: [
-        { role: "system", content: "You are a helpful assistant that returns strictly formatted JSON." },
+        { role: "system", content: "You are a data cleaner for bank transactions." },
         { role: "user", content: prompt }
       ],
-      response_format: { type: "json_object" },
+      response_format: { type: "json_object" }
     });
-
-    const content = response.choices[0].message.content;
-    if (!content) return { splits: [] };
-
-    // Resilience: Clean up common LLM markdown wrapping
-    const cleanJson = content.replace(/```json\n?|```/g, "").trim();
-    const parsed = JSON.parse(cleanJson);
-
-    if (parsed.splits && Array.isArray(parsed.splits)) {
-      const txAmount = Math.abs(Number(transaction.amount));
-      const suggestedTotal = parsed.splits.reduce((acc: number, s: any) => acc + Number(s.amount), 0);
-
-      // Math Correction: If the LLM is slightly off, adjust the largest split
-      if (Math.abs(suggestedTotal - txAmount) > 0 && Math.abs(suggestedTotal - txAmount) < 1.0) {
-        const diff = txAmount - suggestedTotal;
-        const largestIdx = parsed.splits.reduce((best: number, s: any, i: number) => 
-          Number(s.amount) > Number(parsed.splits[best].amount) ? i : best, 0);
-        
-        parsed.splits[largestIdx].amount = Number(parsed.splits[largestIdx].amount) + diff;
-      }
-    }
-
-    return parsed;
+    const data = JSON.parse(response.choices[0].message.content || "{\"cleanName\": \"\"}");
+    return data.cleanName || rawPayee;
   } catch (error) {
-    console.error("AI Split Error:", error);
-    return { splits: [] };
-  }
-}
-
-export async function detectSubscriptions(transactions: any[]) {
-  // Pre-filter: Only look at merchants that appear more than once in the last 90 days
-  const merchantCounts = new Map<string, any[]>();
-  for (const tx of transactions) {
-    if (Number(tx.amount) >= 0) continue; // Skip deposits
-    const list = merchantCounts.get(tx.payee) || [];
-    list.push(tx);
-    merchantCounts.set(tx.payee, list);
-  }
-
-  const candidates = Array.from(merchantCounts.entries())
-    .filter(([_, txs]) => txs.length >= 2)
-    .map(([payee, txs]) => ({
-      payee,
-      count: txs.length,
-      avgAmount: Math.abs(txs.reduce((acc, t) => acc + Number(t.amount), 0) / txs.length).toFixed(2),
-      examples: txs.slice(0, 2).map(t => `${new Date(t.date).toLocaleDateString(undefined, { timeZone: 'UTC' })}: $${Math.abs(Number(t.amount))}`)
-    }));
-
-  if (candidates.length === 0) return { subscriptions: [] };
-
-  const prompt = `
-    Analyze these recurring transactions and identify which ones are likely "Subscriptions" (SaaS, Gym, Netflix, Utilities, etc.).
-    
-    Transactions:
-    ${JSON.stringify(candidates)}
-    
-    Return a JSON object with a "subscriptions" array. Each subscription should have:
-    - name: The merchant name.
-    - monthlyCost: The estimated monthly cost.
-    - confidence: "High" or "Medium".
-    - reason: Why you think it's a subscription.
-    
-    Only return JSON.
-  `;
-
-  try {
-    const ai = getOpenAI();
-    if (!ai) return {};
-    const response = await ai.chat.completions.create({
-      model: process.env.AI_MODEL || "gpt-3.5-turbo",
-      messages: [
-        { role: "system", content: "You are a helpful assistant that identifies recurring subscriptions from financial data." },
-        { role: "user", content: prompt }
-      ],
-      response_format: { type: "json_object" },
-    });
-
-    const content = response.choices[0].message.content;
-    if (!content) return { subscriptions: [] };
-
-    return JSON.parse(content.replace(/```json\n?|```/g, "").trim());
-  } catch (error) {
-    console.error("Subscription Detection Error:", error);
-    return { subscriptions: [] };
-  }
-}
-
-export async function getCleanMerchantName(rawPayee: string, examples: { raw: string, clean: string }[] = []) {
-  const exampleText = examples.length > 0
-    ? `\nHere are some examples of how you have cleaned similar names before:\n${examples.map(ex => `- ${ex.raw} -> ${ex.clean}`).join("\n")}\n`
-    : "";
-
-  const prompt = `
-    You are a professional financial assistant. Your task is to transform a cryptic bank transaction memo into a clean, human-readable merchant name.
-    
-    Rules:
-    1. Remove transaction IDs, store numbers, cities, and dates (e.g., "SQ * STEVE'S TRUCK 123 CA" -> "Steve's Truck").
-    2. Capitalize properly.
-    3. Keep it concise.
-    ${exampleText}
-    
-    Raw Memo: "${rawPayee}"
-    
-    Return ONLY the cleaned merchant name. No JSON, no extra text.
-  `;
-
-  try {
-    const ai = getOpenAI();
-    if (!ai) return rawPayee;
-    const response = await ai.chat.completions.create({
-      model: process.env.AI_MODEL || "gpt-3.5-turbo",
-      messages: [
-        { role: "system", content: "You are a helpful assistant that cleans bank memos." },
-        { role: "user", content: prompt }
-      ],
-    });
-
-    return response.choices[0].message.content?.trim() || rawPayee;
-  } catch (error) {
-    console.error("AI Merchant Cleanup Error:", error);
+    console.error("CoinFlow [AI]: getCleanMerchantName failed:", error);
     return rawPayee;
   }
 }
 
-export async function suggestHistoricalMapping(
-  sheetInfo: { name: string, headers: string[], samples: any[] }[],
-  categories: Category[]
-) {
-  const categoryList = categories.map(c => c.name).join(", ");
-  
+/**
+ * Suggests transaction splits for an order with multiple items.
+ */
+export async function getSplitSuggestions(transaction: any, items: any[], categories: any[]): Promise<any> {
   const prompt = `
-    You are a data engineering assistant. I am importing historical financial data from an XLSX file into my budget app.
-    The spreadsheet has multiple tabs (sheets), and each tab likely represents a category or a group of transactions.
-    
-    Current App Categories: ${categoryList}
-    
-    Spreadsheet Structure:
-    ${sheetInfo.map(s => `
-      Sheet: "${s.name}"
-      Headers: ${s.headers.join(", ")}
-      Sample Rows: ${JSON.stringify(s.samples)}
-    `).join("\n")}
-    
-    Your Task:
-    1. For each sheet, determine if it contains transactions.
-    2. If it does, map it to the most relevant "Current App Category". If no good match exists, suggest a new category name.
-    3. Identify which column represents the DATE, which represents the PAYEE/DESCRIPTION, and which represents the AMOUNT.
-    
-    Return a JSON object with a "mappings" array. Each mapping should have:
-    - sheetName: The original sheet name.
-    - isTransactionSheet: boolean.
-    - suggestedCategory: The name of the category to map to.
-    - dateColumn: The header name for the date.
-    - payeeColumn: The header name for the payee/description.
-    - amountColumn: The header name for the amount.
-    
-    Only return the JSON object.
-  `;
+Suggest budget categories for each item in this order to split the transaction.
+Return a JSON object with 'splits', which is an array of { title, price, categoryName }.
+
+Total Amount: ${transaction.amount}
+Items:
+${items.map(i => `- ${i.title} ($${i.price})`).join("\n")}
+
+Available Categories: ${categories.map(c => c.name).join(", ")}
+
+Format the response as valid JSON only.
+`;
 
   try {
-    const ai = getOpenAI();
-    if (!ai) return { mappings: [] };
-    const response = await ai.chat.completions.create({
-      model: process.env.AI_MODEL || "gpt-3.5-turbo",
+    const response = await openai.chat.completions.create({
+      model: MODEL,
       messages: [
-        { role: "system", content: "You are a helpful assistant that maps spreadsheet data to application schemas." },
+        { role: "system", content: "You are a budgeting expert splitting transactions." },
         { role: "user", content: prompt }
       ],
-      response_format: { type: "json_object" },
+      response_format: { type: "json_object" }
     });
-
-    const content = response.choices[0].message.content;
-    if (!content) return { mappings: [] };
-    return JSON.parse(content.replace(/```json\n?|```/g, "").trim());
+    return JSON.parse(response.choices[0].message.content || "{\"splits\": []}");
   } catch (error) {
-    console.error("AI Mapping Error:", error);
-    return { mappings: [] };
+    console.error("CoinFlow [AI]: getSplitSuggestions failed:", error);
+    return { splits: [] };
   }
 }
 
+/**
+ * Suggests historical mappings for importing data from spreadsheets.
+ */
+export async function suggestHistoricalMapping(sheetInfo: any[], categories: any[]): Promise<any> {
+  const prompt = `
+Analyze these spreadsheet headers and samples to suggest which sheet contains transactions and how to map its columns.
+Return a JSON object with 'mappings', which is an array of mapping objects.
 
+Available Categories: ${categories.map(c => c.name).join(", ")}
+
+Sheet Info:
+${JSON.stringify(sheetInfo, null, 2)}
+
+Format the response as valid JSON only.
+`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: MODEL,
+      messages: [
+        { role: "system", content: "You are an expert at data mapping and spreadsheet analysis." },
+        { role: "user", content: prompt }
+      ],
+      response_format: { type: "json_object" }
+    });
+    return JSON.parse(response.choices[0].message.content || "{\"mappings\": []}");
+  } catch (error) {
+    console.error("CoinFlow [AI]: suggestHistoricalMapping failed:", error);
+    return { mappings: [] };
+  }
+}

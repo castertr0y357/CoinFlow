@@ -14,6 +14,12 @@ CoinFlow is a premium, self-hosted financial automation hub designed for those w
 - **Payoff Accelerator**: Interactive slider to visualize how extra principal payments shave years and thousands of dollars off your loan.
 - **Liquidity Health**: Real-time comparison of bank cash vs. budget obligations.
 
+### 🛒 Precision E-Commerce Sync (Browser Extension)
+- **Deep Sync Engine**: Automatically fetches granular order details from Amazon, Walmart, and Lowe's.
+- **Itemized Breakdown**: Converts bulk e-commerce totals into line-by-line transaction splits.
+- **Smart Matching**: Proactively matches purchase data to bank transactions within a rolling 13-day window.
+- **Deduplication v2**: Hardened logic to prevent redundant syncing of overlapping order data.
+
 ### 📈 Reports & Data Portability
 - **Yearly Deep-Dives**: Historical spending analysis with AI-powered trend spotting.
 - **Surplus Rollover**: Intelligently carry over unspent funds from one calendar year to the next.
@@ -25,10 +31,11 @@ CoinFlow is a premium, self-hosted financial automation hub designed for those w
 - **Self-Hosted**: You own your database. No third-party tracking.
 
 ## 🛠️ Tech Stack
-- **Framework**: Next.js 15+ (App Router)
+- **Framework**: Next.js 16+ (Turbopack)
 - **Database**: PostgreSQL with Prisma ORM
 - **Styling**: Vanilla CSS with Glassmorphism Design System
 - **Automation**: SimpleFIN Bridge for bank sync
+- **Extension**: CoinFlow Sync (Manifest v3) for deep e-commerce scraping
 - **AI**: Local LLM Integration (Ollama/Gemma compatible)
 
 ## 🏁 Setup Instructions
@@ -51,7 +58,13 @@ CoinFlow is a premium, self-hosted financial automation hub designed for those w
     npm run start
     ```
 
-4.  **Automate**:
+5.  **Extension Setup**:
+    - Open Chrome Extensions (`chrome://extensions`).
+    - Enable "Developer mode".
+    - Click "Load unpacked" and select the `extension` folder in this repository.
+    - Click the Sync button on supported retailer pages (Amazon, Walmart, Lowe's).
+
+6.  **Automate**:
     Set up a CRON job to call `/api/v1/sync/background` with your internal API key to keep your data live.
 
 ---

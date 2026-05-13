@@ -3,6 +3,7 @@ import { withAuth } from "@/lib/api-utils";
 import prisma from "@/lib/prisma";
 import { applySplits } from "@/lib/services/transactionService";
 import { calculateProportionalSplits } from "@/lib/external-orders";
+import { normalizeItemNames } from "@/lib/services/aiService";
 
 export async function POST(req: NextRequest) {
   return withAuth(req, async () => {
@@ -20,6 +21,19 @@ export async function POST(req: NextRequest) {
         itemsCreated: 0,
         matchedTransactions: 0
       };
+
+      // Extract all unique titles across all orders for batch normalization
+      const allTitles = new Set<string>();
+      for (const order of orders) {
+        if (order.items && Array.isArray(order.items)) {
+          order.items.forEach((item: any) => {
+            if (item.title) allTitles.add(item.title);
+          });
+        }
+      }
+
+      console.log(`CoinFlow [AI]: Normalizing ${allTitles.size} unique titles...`);
+      const normalizedTitles = await normalizeItemNames(Array.from(allTitles));
 
       for (const order of orders) {
         const { orderId, date, totalAmount, items } = order;
@@ -66,7 +80,8 @@ export async function POST(req: NextRequest) {
             source: source,
             items: {
               create: uniqueItems.map((item: any) => ({
-                title: item.title,
+                title: normalizedTitles[item.title] || item.title,
+                rawTitle: item.title,
                 price: item.price,
                 quantity: item.quantity || 1
               }))
@@ -79,7 +94,8 @@ export async function POST(req: NextRequest) {
             totalAmount: totalAmount,
             items: {
               create: uniqueItems.map((item: any) => ({
-                title: item.title,
+                title: normalizedTitles[item.title] || item.title,
+                rawTitle: item.title,
                 price: item.price,
                 quantity: item.quantity || 1
               }))
