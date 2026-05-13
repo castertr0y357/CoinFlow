@@ -10,6 +10,11 @@ export const metadata: Metadata = {
   title: "CoinFlow | Flexible Zero-Based Budgeting",
   description: "A premium, flexible zero-based budgeting app for modern financial tracking.",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

@@ -105,7 +105,10 @@ export default function Sidebar({ accounts }: SidebarProps) {
   return (
     <div className="sidebar-container glass">
       <div className="sidebar-header">
-        <Link href="/" className="logo">CoinFlow</Link>
+        <Link href="/" className="logo-container">
+          <img src="/logo.png" alt="CoinFlow Logo" className="logo-icon" />
+          <span className="logo-text">CoinFlow</span>
+        </Link>
       </div>
 
       <nav className="sidebar-nav">
@@ -201,7 +204,28 @@ export default function Sidebar({ accounts }: SidebarProps) {
 
       <style jsx>{`
         .sidebar-header {
-          padding: 0 1.5rem 1.5rem;
+          padding: 1.5rem 1.5rem 2rem;
+        }
+        .logo-container {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          text-decoration: none;
+        }
+        .logo-icon {
+          width: 32px;
+          height: 32px;
+          object-fit: contain;
+          filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.4));
+        }
+        .logo-text {
+          font-size: 1.5rem;
+          font-weight: 800;
+          letter-spacing: -0.02em;
+          background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          font-family: 'Outfit', sans-serif;
         }
         .sidebar-nav {
           display: flex;
