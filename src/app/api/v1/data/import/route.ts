@@ -16,6 +16,19 @@ export async function POST(req: NextRequest) {
 
       // We use a transaction to ensure atomic restore
       await prisma.$transaction(async (tx) => {
+        // 0. Clean up existing data to prevent unique constraint conflicts (in order of dependencies)
+        await tx.transactionSplit.deleteMany();
+        await tx.transaction.deleteMany();
+        await tx.commitment.deleteMany();
+        await tx.yearlyCategory.deleteMany();
+        await tx.homeValueProvider.deleteMany();
+        await tx.mortgageDetail.deleteMany();
+        await tx.category.deleteMany();
+        await tx.account.deleteMany();
+        await tx.externalOrderItem.deleteMany();
+        await tx.externalOrder.deleteMany();
+        await tx.budgetYear.deleteMany();
+
         // 1. Restore Accounts FIRST (Categories may depend on them)
         if (data.accounts) {
           for (const acc of data.accounts) {
