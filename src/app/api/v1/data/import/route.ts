@@ -115,7 +115,6 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // 5. Settings
         if (data.settings) {
           await tx.settings.upsert({
             where: { id: 'global' },
@@ -123,6 +122,8 @@ export async function POST(req: NextRequest) {
             create: data.settings
           });
         }
+      }, {
+        timeout: 60000 // 60 seconds
       });
 
       return NextResponse.json({ success: true });
