@@ -24,7 +24,13 @@ export async function withAuth(req: NextRequest, handler: (user: any) => Promise
         const user = await prisma.user.findUnique({ 
           where: { email: 'admin@webbudget.local' } 
         });
-        if (user) return addCorsHeaders(await handler(user));
+        if (user) {
+          return addCorsHeaders(await handler(user));
+        } else {
+          console.log(`[AUTH] Valid session but User 'admin@webbudget.local' not found in DB!`);
+        }
+      } else {
+        console.log(`[AUTH] Session cookie decryption failed.`);
       }
     }
 

@@ -46,7 +46,7 @@ export async function login(password: string) {
   
   if (password === expectedPassword) {
     // Ensure the admin user exists in the DB for API calls to work
-    await prisma.user.upsert({
+    const u = await prisma.user.upsert({
       where: { email: 'admin@webbudget.local' },
       update: {},
       create: {
@@ -54,6 +54,7 @@ export async function login(password: string) {
         name: 'Admin User',
       },
     });
+    console.log(`[AUTH] Admin user ensured in DB: ${u.email} (ID: ${u.id})`);
 
     const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
     const session = await encrypt({ user: "admin", expiresAt });
