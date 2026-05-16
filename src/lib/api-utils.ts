@@ -34,7 +34,6 @@ export async function withAuth(req: NextRequest, handler: (user: any) => Promise
       }
     }
 
-    console.log(`[AUTH] Unauthorized API access to ${req.nextUrl.pathname}. Session Present: ${!!(await cookies()).get("session")?.value}`);
     return addCorsHeaders(NextResponse.json({ error: "Unauthorized" }, { status: 401 }));
   } catch (error: any) {
     console.error(`API Error [${req.nextUrl.pathname}]:`, error);

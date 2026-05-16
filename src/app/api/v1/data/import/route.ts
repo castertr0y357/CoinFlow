@@ -16,24 +16,24 @@ export async function POST(req: NextRequest) {
 
       // We use a transaction to ensure atomic restore
       await prisma.$transaction(async (tx) => {
-        // 1. Restore Categories
-        if (data.categories) {
-          for (const cat of data.categories) {
-            await tx.category.upsert({
-              where: { id: cat.id },
-              update: cat,
-              create: cat
-            });
-          }
-        }
-
-        // 2. Restore Accounts
+        // 1. Restore Accounts FIRST (Categories may depend on them)
         if (data.accounts) {
           for (const acc of data.accounts) {
             await tx.account.upsert({
               where: { id: acc.id },
               update: acc,
               create: acc
+            });
+          }
+        }
+
+        // 2. Restore Categories
+        if (data.categories) {
+          for (const cat of data.categories) {
+            await tx.category.upsert({
+              where: { id: cat.id },
+              update: cat,
+              create: cat
             });
           }
         }

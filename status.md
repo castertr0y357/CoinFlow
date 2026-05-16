@@ -11,29 +11,25 @@
 - [x] **Hardened Matching (v2.0)**: Broadened transaction matching window to 13 days (-3/+10) with boundary normalization.
 - [x] **Scraper Precision (v2.2)**: Fixed Amazon `items` scope leak and implemented multi-layer deduplication.
 - [x] **Automated Migrations**: Integrated `prisma migrate deploy` into the container entrypoint for seamless deployment.
-- [x] **Auth Security**: Implemented environment-based `Secure` cookie toggle to resolve login issues on HTTPS/Nginx.
+- [x] **Auth Security**: Implemented environment-based `Secure` cookie toggle and automated user provisioning to resolve production auth loops.
+- [x] **Universal Category Visibility**: Removed "configs-only" filtering to ensure all categories are visible and configurable.
+- [x] **Timestamped Backups (v1.1)**: Updated export/import to include yearly configs and use unique timestamped filenames.
 
-## Recent Fixes (v2.2)
-- **Amazon Item Duplication**: Resolved a critical bug where `items` was leaked as a global variable, causing item accumulation.
-- **Cross-Layer Deduplication**: Implemented item title/price deduplication in both the scraper and the backend API.
-- **Resolved $0 Total Extraction**: Added targeted selectors and "Grand Total:" label search for Amazon Order Details.
-- **Item Deduplication**: Consolidated overlapping selectors to prevent items from being counted twice.
-- **ID Standardization**: Implemented strict sanitization to strip "ORDER #" prefixes consistently across all pages.
-- **Database Maintenance**: Ran reconciliation scripts to merge duplicate order records and restore broken transaction links.
-- **Preserved Logs**: Removed automatic page reload after sync to enable easier debugging.
-- **Deployment Infrastructure**: Added `entrypoint.sh` to handle automated database migrations on startup.
-- **Auth Hardening**: Switched to `secure: true` by default in production with `.env` override (`SECURE_COOKIES`).
+## Recent Fixes (v2.3)
+- **Production Auth Loop**: Resolved 401 Unauthorized errors by implementing automated `admin@webbudget.local` user provisioning upon login.
+- **Invisible Categories**: Fixed a "Catch-22" bug where unconfigured categories were hidden from the UI, making them impossible to set up.
+- **Data Export Precision**: Updated the backup system to include `BudgetYear` and `YearlyCategory` tables, ensuring full budget settings are preserved.
+- **Unique Backups**: Added ISO timestamps to backup filenames to prevent browser overwrites.
+- **Session Reliability**: Forced full page reloads on login to ensure browsers reliably commit the session cookie.
 
 ## Pending Verification
-- [ ] Verify Amazon Deep Sync precision on complex multi-item orders.
-- [ ] Confirm Walmart TC# extraction accuracy in varied regional layouts.
-- [ ] Monitor Lowe's "Transaction #" extraction for potential selector drift.
+- [ ] Verify full data restoration using a v1.1 timestamped backup file.
+- [ ] Monitor Nginx logs for any remaining session cookie rejection under high-load/multiple tabs.
 
 ## Technical Details
-- **Version**: 2.2
+- **Version**: 2.3
 - **Core Files**:
-  - `manifest.json`: Versioning and script mapping.
-  - `background.js`: Sync engine, retry logic, and API communication.
-  - `utils.js`: UI components, storage management, and price/date parsing.
-  - `content-scripts/amazon.js`: Precision-hardened Amazon scraper.
-  - `src/app/api/v1/external-orders/sync/route.ts`: Hardened matching logic.
+  - `src/lib/auth.ts`: Session encryption, security toggles, and self-healing user provisioning.
+  - `src/middleware.ts`: JWT-based session protection and protocol normalization.
+  - `src/app/api/v1/data/export/route.ts`: Comprehensive v1.1 backup generator.
+  - `src/lib/services/budgetService.ts`: Categorization and tally logic (now with universal visibility).
