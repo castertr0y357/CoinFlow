@@ -33,10 +33,14 @@ export async function login(password: string) {
     const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     const session = await encrypt({ user: "admin", expires });
 
+    const isProduction = process.env.NODE_ENV === "production";
+    const secureOverride = process.env.SECURE_COOKIES;
+    const secure = secureOverride === "true" ? true : (secureOverride === "false" ? false : isProduction);
+
     (await cookies()).set("session", session, { 
       expires, 
       httpOnly: true, 
-      secure: false, // Changed from process.env.NODE_ENV === "production" to support local Docker/HTTP
+      secure, 
       sameSite: "lax",
       path: "/",
     });
@@ -64,12 +68,16 @@ export async function updateSession(request: NextRequest) {
 
   parsed.expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   const res = NextResponse.next();
+  const isProduction = process.env.NODE_ENV === "production";
+  const secureOverride = process.env.SECURE_COOKIES;
+  const secure = secureOverride === "true" ? true : (secureOverride === "false" ? false : isProduction);
+
   res.cookies.set({
     name: "session",
     value: await encrypt(parsed),
     httpOnly: true,
     expires: parsed.expires,
-    secure: false, // Changed from process.env.NODE_ENV === "production"
+    secure,
     sameSite: "lax",
     path: "/",
   });

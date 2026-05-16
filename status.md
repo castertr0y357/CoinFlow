@@ -11,6 +11,7 @@
 - [x] **Hardened Matching (v2.0)**: Broadened transaction matching window to 13 days (-3/+10) with boundary normalization.
 - [x] **Scraper Precision (v2.2)**: Fixed Amazon `items` scope leak and implemented multi-layer deduplication.
 - [x] **Automated Migrations**: Integrated `prisma migrate deploy` into the container entrypoint for seamless deployment.
+- [x] **Auth Security**: Implemented environment-based `Secure` cookie toggle to resolve login issues on HTTPS/Nginx.
 
 ## Recent Fixes (v2.2)
 - **Amazon Item Duplication**: Resolved a critical bug where `items` was leaked as a global variable, causing item accumulation.
@@ -21,6 +22,7 @@
 - **Database Maintenance**: Ran reconciliation scripts to merge duplicate order records and restore broken transaction links.
 - **Preserved Logs**: Removed automatic page reload after sync to enable easier debugging.
 - **Deployment Infrastructure**: Added `entrypoint.sh` to handle automated database migrations on startup.
+- **Auth Hardening**: Switched to `secure: true` by default in production with `.env` override (`SECURE_COOKIES`).
 
 ## Pending Verification
 - [ ] Verify Amazon Deep Sync precision on complex multi-item orders.
