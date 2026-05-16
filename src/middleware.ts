@@ -6,6 +6,8 @@ export async function middleware(request: NextRequest) {
   const protocol = request.headers.get("x-forwarded-proto") || "http";
   const host = request.headers.get("host") || "unknown";
 
+  console.log(`[MIDDLEWARE] Request: ${request.method} ${pathname} | Protocol: ${protocol} | Host: ${host}`);
+
   // 1. Always allow preflight requests with CORS headers
   if (request.method === "OPTIONS") {
     return new NextResponse(null, {
