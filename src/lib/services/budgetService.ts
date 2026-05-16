@@ -26,11 +26,6 @@ export async function getMonthlyTally(year?: number) {
   // 2. Sum up ALL transaction splits for this year
   // ONLY include categories that have a config for this specific year
   const categories = await prisma.category.findMany({
-    where: {
-      configs: {
-        some: { yearId: budgetYear.id }
-      }
-    },
     orderBy: [
       { displayOrder: 'asc' },
       { name: 'asc' }

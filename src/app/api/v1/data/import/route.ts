@@ -7,7 +7,8 @@ export async function POST(req: NextRequest) {
     try {
       const backup = await req.json();
       
-      if (!backup.data || backup.version !== "1.0") {
+      const isLegacy = backup.version === "1.0";
+      if (!backup.data || (!isLegacy && backup.version !== "1.1")) {
         return NextResponse.json({ error: "Invalid backup format" }, { status: 400 });
       }
 
@@ -33,6 +34,27 @@ export async function POST(req: NextRequest) {
               where: { id: acc.id },
               update: acc,
               create: acc
+            });
+          }
+        }
+
+        // 2.1 Restore Budget Years & Yearly Configs (New in v1.1)
+        if (data.budgetYears) {
+          for (const by of data.budgetYears) {
+            await tx.budgetYear.upsert({
+              where: { id: by.id },
+              update: by,
+              create: by
+            });
+          }
+        }
+
+        if (data.yearlyCategories) {
+          for (const yc of data.yearlyCategories) {
+            await tx.yearlyCategory.upsert({
+              where: { yearId_categoryId: { yearId: yc.yearId, categoryId: yc.categoryId } },
+              update: yc,
+              create: yc
             });
           }
         }

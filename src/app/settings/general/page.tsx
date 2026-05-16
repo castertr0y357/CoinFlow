@@ -9,13 +9,6 @@ export default async function GeneralSettingsPage() {
   const currentYear = new Date().getFullYear();
   
   const categories = await prisma.category.findMany({
-    where: {
-      configs: {
-        some: { 
-          year: { year: currentYear }
-        }
-      }
-    },
     orderBy: [
       { displayOrder: 'asc' },
       { name: 'asc' }
