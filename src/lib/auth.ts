@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import prisma from "./prisma";
 
 const SECRET = new TextEncoder().encode(
   process.env.APP_PASSWORD || "change-this-default-password-12345"
@@ -44,6 +45,16 @@ export async function login(password: string) {
   console.log(`[AUTH] Login attempt. Password provided: "${password}", Expected: "${expectedPassword}"`);
   
   if (password === expectedPassword) {
+    // Ensure the admin user exists in the DB for API calls to work
+    await prisma.user.upsert({
+      where: { email: 'admin@webbudget.local' },
+      update: {},
+      create: {
+        email: 'admin@webbudget.local',
+        name: 'Admin User',
+      },
+    });
+
     const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
     const session = await encrypt({ user: "admin", expiresAt });
     return { session, expiresAt };
