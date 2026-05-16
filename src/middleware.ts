@@ -3,6 +3,8 @@ import { decrypt, updateSession } from "@/lib/auth";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const protocol = request.headers.get("x-forwarded-proto") || "http";
+  const host = request.headers.get("host") || "unknown";
 
   // 1. Always allow preflight requests with CORS headers
   if (request.method === "OPTIONS") {
@@ -34,10 +36,11 @@ export async function middleware(request: NextRequest) {
   }
 
   // 3. Check session
+  const allCookies = request.cookies.getAll();
   const session = request.cookies.get("session")?.value;
 
   if (!session) {
-    console.log(`[MIDDLEWARE] No session cookie found for ${pathname}.`);
+    console.log(`[MIDDLEWARE] Redirect to /login. Reason: No session cookie. Path: ${pathname}. Protocol: ${protocol}, Host: ${host}. Cookies found: ${allCookies.map(c => c.name).join(", ")}`);
     if (pathname.startsWith("/api/")) {
       const response = NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       response.headers.set("Access-Control-Allow-Origin", "*");
@@ -48,7 +51,7 @@ export async function middleware(request: NextRequest) {
 
   const parsed = await decrypt(session);
   if (!parsed) {
-    console.log(`[MIDDLEWARE] Invalid session for ${pathname}. Redirecting to /login`);
+    console.log(`[MIDDLEWARE] Redirect to /login. Reason: Invalid session. Path: ${pathname}`);
     return NextResponse.redirect(new URL("/login", request.url));
   }
 

@@ -20,7 +20,8 @@ export async function decrypt(input: string): Promise<any> {
       algorithms: ["HS256"],
     });
     return payload;
-  } catch (e) {
+  } catch (e: any) {
+    console.error(`[AUTH] Decrypt failed: ${e.message}`);
     return null;
   }
 }
@@ -30,8 +31,9 @@ export async function login(password: string) {
   console.log(`[AUTH] Login attempt. Password provided: "${password}", Expected: "${expectedPassword}"`);
   
   if (password === expectedPassword) {
-    const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    const session = await encrypt({ user: "admin", expires });
+    const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
+    const expires = new Date(expiresAt);
+    const session = await encrypt({ user: "admin", expiresAt });
 
     const isProduction = process.env.NODE_ENV === "production";
     const secureOverride = process.env.SECURE_COOKIES;
@@ -66,7 +68,8 @@ export async function updateSession(request: NextRequest) {
   const parsed = await decrypt(session);
   if (!parsed) return;
 
-  parsed.expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
+  parsed.expiresAt = expiresAt;
   const res = NextResponse.next();
   const isProduction = process.env.NODE_ENV === "production";
   const secureOverride = process.env.SECURE_COOKIES;
@@ -76,7 +79,7 @@ export async function updateSession(request: NextRequest) {
     name: "session",
     value: await encrypt(parsed),
     httpOnly: true,
-    expires: parsed.expires,
+    expires: new Date(parsed.expiresAt || expiresAt),
     secure,
     sameSite: "lax",
     path: "/",
