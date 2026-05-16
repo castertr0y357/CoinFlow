@@ -23,8 +23,7 @@ export default function LoginForm() {
       });
 
       if (res.ok) {
-        router.push("/");
-        router.refresh();
+        window.location.href = "/";
       } else {
         setError("Invalid master password. Please try again.");
       }

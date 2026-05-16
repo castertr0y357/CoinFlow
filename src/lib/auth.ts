@@ -26,33 +26,33 @@ export async function decrypt(input: string): Promise<any> {
   }
 }
 
+export function getCookieOptions() {
+  const isProduction = process.env.NODE_ENV === "production";
+  const secureOverride = process.env.SECURE_COOKIES;
+  const secure = secureOverride === "true" ? true : (secureOverride === "false" ? false : isProduction);
+
+  return {
+    httpOnly: true,
+    secure,
+    sameSite: "lax" as const,
+    path: "/",
+  };
+}
+
 export async function login(password: string) {
   const expectedPassword = process.env.APP_PASSWORD || "admin";
   console.log(`[AUTH] Login attempt. Password provided: "${password}", Expected: "${expectedPassword}"`);
   
   if (password === expectedPassword) {
     const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
-    const expires = new Date(expiresAt);
     const session = await encrypt({ user: "admin", expiresAt });
-
-    const isProduction = process.env.NODE_ENV === "production";
-    const secureOverride = process.env.SECURE_COOKIES;
-    const secure = secureOverride === "true" ? true : (secureOverride === "false" ? false : isProduction);
-
-    (await cookies()).set("session", session, { 
-      expires, 
-      httpOnly: true, 
-      secure, 
-      sameSite: "lax",
-      path: "/",
-    });
-    return true;
+    return { session, expiresAt };
   }
-  return false;
+  return null;
 }
 
 export async function logout() {
-  (await cookies()).set("session", "", { expires: new Date(0) });
+  (await cookies()).set("session", "", { ...getCookieOptions(), expires: new Date(0) });
 }
 
 export async function getSession() {
@@ -71,18 +71,12 @@ export async function updateSession(request: NextRequest) {
   const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
   parsed.expiresAt = expiresAt;
   const res = NextResponse.next();
-  const isProduction = process.env.NODE_ENV === "production";
-  const secureOverride = process.env.SECURE_COOKIES;
-  const secure = secureOverride === "true" ? true : (secureOverride === "false" ? false : isProduction);
 
   res.cookies.set({
     name: "session",
     value: await encrypt(parsed),
-    httpOnly: true,
-    expires: new Date(parsed.expiresAt || expiresAt),
-    secure,
-    sameSite: "lax",
-    path: "/",
+    ...getCookieOptions(),
+    expires: new Date(expiresAt),
   });
   return res;
 }
