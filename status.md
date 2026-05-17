@@ -1,4 +1,4 @@
-# Project Status: CoinFlow Browser Extension (v2.5)
+# Project Status: CoinFlow Browser Extension (v2.8.0)
 
 ## Current Progress
 - [x] **Unified Scraper Framework**: Standardized Amazon, Walmart, and Lowe's scrapers using `CoinFlowUtils`.
@@ -21,32 +21,24 @@
 - [x] **Amazon Button Cleanup (v2.7)**: Completely removed the non-functional "Amazon CSV" button and its underlying handlers from the sidebar navigation pane to keep the interface clean.
 - [x] **Extension Version Page Update (v2.7.1)**: Updated the browser extension settings page to show the actual Chrome extension version '1.9' matching its manifest.
 - [x] **Database Migration Alignment (v2.7.2)**: Created missing SQL migration for `backupRetentionDays` to resolve drift between local development (`db push`) and production (`migrate deploy`).
+- [x] **Agent Rules & Skills Hardening (v2.8.0)**: Fully decoupled and hardened database, visual, and audit pipelines to eliminate runtime regressions and registry dependency bottlenecks.
 
-## Recent Fixes (v2.7.2)
-- **Backup Retention Days Migration**: Added a manual Postgres migration file to define the `backupRetentionDays` field on the `Settings` table, preventing the production server from crashing with `P2022` column missing error.
-- **Extension Version Page Label (v2.7.1)**: Changed the hardcoded 'v1.0.0' label to the actual 'v1.9' version to align the webapp settings dashboard with the Chrome manifest.
-- **Amazon CSV Button Removal (v2.7.1)**: Deleted the obsolete and non-functional Amazon CSV file upload button, hidden input ref, isUploading state, and handleAmazonClick/handleFileChange handlers to clean up the frontend code.
-- **Styled-JSX Scope Isolation Bug**: Fixed a styled-jsx compiler scoping issue under nested dynamic map blocks where Turbopack was unable to inject scoping classes onto inner items, causing unstyled toggles and plain text balances. Resolved by migrating sidebar items and buttons styling rules into the main global stylesheet `globals.css`.
-- **Negative Balance Color Warning**: Standardized all negative balances in the sidebar using the main theme's `--danger` color combined with `!important` to override default container values.
-- **Database Backup Permission Fix**: Resolved container `EACCES` file write errors by updating the `Dockerfile` to create `/app/backups` and dynamically chown permissions to the non-root `nextjs` user.
-- **Import Transaction Timeout**: Extended the Prisma transaction timeout to 60 seconds (up from 5s) to guarantee large imports complete successfully without query expiration.
-- **Improved Backup UI flow**: Replaced the cluttered layout with an elegant kebab dropdown menu next to each snapshot providing instant Server Restore or Download.
-- **Type-safe Next.js 15+ Dynamic Params**: Fixed dynamic API parameters within `[filename]` route handler to comply with Next.js 15+ `Promise` standard.
+## Recent Fixes (v2.8.0)
+- **Zero-Network Global Prisma Container Execution**: Fixed a severe container startup issue where `npx prisma` was unable to resolve the package locally within Next.js standalone container files, causing NPM to try and fetch `prisma@7.8.0` online on startup (failing offline and causing version mismatch bugs). Resolved by baking `npm install -g prisma@6.19.3` directly into the multi-stage `Dockerfile` and calling `prisma migrate deploy` directly, rendering the build 100% network-independent and offline-ready.
+- **Dual-Path Client Hydration Safeguard**: Optimized `browser_verify` with an automated dual-path execution rule: backend or config changes use fast `curl` commands, while frontend/UI changes (CSS, TSX) spin up `browser_subagent` checks to catch silent client-side hydration mismatch and style scope regressions before task handoff.
+- **Prisma Schema Safeguard**: Hardened `AGENTS.md` and `docker_autofix.md` to force generating migration SQL files via `migrate dev` for all database schema adjustments, completely preventing schema drift between development containers and production containers.
+- **Production Focused Audits**: Configured `security_sentinel` to run `npm audit --omit=dev`, eliminating false positive vulnerabilities in development tools like ESLint or typescript compilation packages that never touch production.
 
 ## Pending Verification
 - [ ] Monitor Nginx logs for any remaining session cookie rejection under high-load/multiple tabs.
 
 ## Technical Details
-- **Version**: 2.7.2
+- **Version**: 2.8.0
 - **Core Files**:
-  - `prisma/migrations/20260517182500_add_backup_retention_days/migration.sql`: Migration script ensuring schema alignment on production databases.
-  - `src/app/settings/extension/page.tsx`: Configuration and installation guide dashboard for manual Chrome Developer extension setup.
-  - `src/app/globals.css`: Holds global theme values, layout variables, and the newly migrated sidebar item and account toggle styles.
-  - `src/components/Sidebar.tsx`: Navigation sidebar rendering logic, dynamic partitions, and self-cleaning local style declarations.
-  - `src/lib/auth.ts`: Session encryption, security toggles, and self-healing user provisioning.
-  - `src/middleware.ts`: JWT-based session protection and protocol normalization.
-  - `src/lib/services/backupService.ts`: Central snapshot creator, pre-import safety mechanism, and automatic retention-based rotation.
-  - `src/app/api/v1/data/backups/route.ts`: API handler for listing and manually creating server snapshots.
-  - `src/app/api/v1/data/backups/[filename]/route.ts`: Endpoint for fast secure downloads of snapshots from server volume.
-  - `src/app/api/v1/data/backups/restore/route.ts`: Endpoint executing high-performance clean restorations on the server side.
-  - `src/app/settings/BackupManager.tsx`: Glassmorphism-style list and actions layout supporting automatic refresh.
+  - `AGENTS.md`: Defines Prisma Schema Safeguards and continuous status.md session-end context logging.
+  - `.agents/skills/docker_autofix.md`: Utilizes local `prisma` container executables and mandates migration compliance.
+  - `.agents/skills/browser_verify.md`: Dual-path logic enabling automated visual and JS console hydration checking for UI files.
+  - `.agents/skills/security_sentinel.md`: Limits security auditing to production runtime files to prevent agent noise.
+  - `Dockerfile`: Implements Docker-cached global `prisma@6.19.3` installation for zero-network boot-ups.
+  - `entrypoint.sh`: Invokes global cached `prisma migrate deploy` natively.
+

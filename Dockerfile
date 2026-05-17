@@ -61,6 +61,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/entrypoint.sh ./entrypoint.sh
 RUN chmod +x entrypoint.sh
 
+RUN npm install -g prisma@6.19.3
+
 USER nextjs
 
 EXPOSE 3000
