@@ -32,7 +32,11 @@ export async function getTransactions(options: {
     where,
     orderBy: { date: 'desc' },
     include: { 
-      splits: true, 
+      splits: {
+        orderBy: {
+          createdAt: 'asc'
+        }
+      }, 
       externalOrder: {
         include: {
           items: true
@@ -62,7 +66,13 @@ export async function categorizeSplit(splitId: string, categoryId: string | null
 export async function addSplit(transactionId: string, amount: number, categoryId: string | null) {
   const tx = await prisma.transaction.findUnique({
     where: { id: transactionId },
-    include: { splits: true }
+    include: {
+      splits: {
+        orderBy: {
+          createdAt: 'asc'
+        }
+      }
+    }
   });
 
   if (!tx) throw new Error("Transaction not found");
@@ -140,6 +150,65 @@ export async function bulkCategorize(transactionIds: string[], categoryId: strin
     }
   });
 }
+
+export async function deleteSplit(splitId: string) {
+  const splitToDelete = await prisma.transactionSplit.findUnique({
+    where: { id: splitId },
+    include: {
+      transaction: {
+        include: {
+          splits: {
+            orderBy: {
+              createdAt: 'asc'
+            }
+          }
+        }
+      }
+    }
+  });
+
+  if (!splitToDelete) throw new Error("Split not found");
+
+  const tx = splitToDelete.transaction;
+  if (tx.splits.length <= 1) {
+    throw new Error("Cannot delete the only split of a transaction");
+  }
+
+  // Find the oldest uncategorized split (excluding the one we are deleting)
+  const uncategorizedSplit = tx.splits.find(
+    s => s.categoryId === null && s.id !== splitToDelete.id
+  );
+
+  const amountToRestore = Number(splitToDelete.amount);
+
+  if (uncategorizedSplit) {
+    const newAmount = Number(uncategorizedSplit.amount) + amountToRestore;
+    return prisma.$transaction([
+      prisma.transactionSplit.update({
+        where: { id: uncategorizedSplit.id },
+        data: { amount: newAmount }
+      }),
+      prisma.transactionSplit.delete({
+        where: { id: splitId }
+      })
+    ]);
+  } else {
+    // Recreate an uncategorized split with the restored amount
+    return prisma.$transaction([
+      prisma.transactionSplit.create({
+        data: {
+          transactionId: tx.id,
+          categoryId: null,
+          amount: amountToRestore
+        }
+      }),
+      prisma.transactionSplit.delete({
+        where: { id: splitId }
+      })
+    ]);
+  }
+}
+
 
 
 

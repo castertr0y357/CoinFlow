@@ -427,3 +427,32 @@
   font-size: 0.75rem;
   opacity: 1;
 }
+
+.delete-split-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  opacity: 0.2;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-split-btn:hover {
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.tx-split:hover .delete-split-btn {
+  opacity: 0.8;
+}
+
+.delete-split-btn:hover {
+  opacity: 1 !important;
+}
+

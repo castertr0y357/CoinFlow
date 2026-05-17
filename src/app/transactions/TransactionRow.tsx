@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { categorizeSplit, applyTransactionSplits, hideTransaction, addSplit } from "./actions";
+import { categorizeSplit, applyTransactionSplits, hideTransaction, addSplit, deleteTransactionSplit } from "./actions";
 import Button from "@/components/ui/Button";
 import { Category, Transaction } from "@/types";
 
@@ -88,7 +88,26 @@ export default function TransactionRow({
     if (onCategorized) onCategorized();
   };
 
+  const handleDeleteSplit = async (splitId: string) => {
+    setIsPending(true);
+    try {
+      await deleteTransactionSplit(splitId);
+      if (onCategorized) onCategorized();
+    } catch (error) {
+      console.error("Failed to delete split:", error);
+    } finally {
+      setIsPending(false);
+    }
+  };
+
   const suggestedCategory = categories.find(c => c.id === suggestion);
+
+  const sortedSplits = [...tx.splits].sort((a, b) => {
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (timeA !== timeB) return timeA - timeB;
+    return a.id.localeCompare(b.id);
+  });
 
   return (
     <div className={`tx-row ${isPending ? 'pending' : ''} ${suggestion ? 'has-suggestion' : ''} ${isSelected ? 'selected' : ''}`}>
@@ -156,7 +175,7 @@ export default function TransactionRow({
       
       <div className="tx-splits">
         <div className="splits-container">
-          {tx.splits.map(split => (
+          {sortedSplits.map(split => (
             <div key={split.id} className="tx-split">
               <span className="split-amount" title={split.memo || undefined}>
                 ${Math.abs(Number(split.amount)).toFixed(2)}
@@ -175,6 +194,16 @@ export default function TransactionRow({
                   </option>
                 ))}
               </select>
+              {tx.splits.length > 1 && (
+                <button 
+                  className="delete-split-btn" 
+                  onClick={() => handleDeleteSplit(split.id)}
+                  disabled={isPending}
+                  title="Delete Split"
+                >
+                  ✖
+                </button>
+              )}
             </div>
           ))}
           <button 

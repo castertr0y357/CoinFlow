@@ -27,7 +27,13 @@ export async function addSplit(transactionId: string, amount: number, categoryId
   // Or just find a split that has enough amount to be split further
   const tx = await prisma.transaction.findUnique({
     where: { id: transactionId },
-    include: { splits: true }
+    include: {
+      splits: {
+        orderBy: {
+          createdAt: 'asc'
+        }
+      }
+    }
   });
 
   if (!tx) throw new Error("Transaction not found");
@@ -82,3 +88,11 @@ export async function bulkCategorizeTransactions(transactionIds: string[], categ
   revalidatePath("/transactions");
   revalidatePath("/");
 }
+
+export async function deleteTransactionSplit(splitId: string) {
+  const { deleteSplit } = await import("@/lib/services/transactionService");
+  await deleteSplit(splitId);
+  revalidatePath("/transactions");
+  revalidatePath("/");
+}
+

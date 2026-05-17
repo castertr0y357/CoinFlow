@@ -8,6 +8,7 @@ export interface Split {
   amount: any;
   categoryId: string | null;
   memo: string | null;
+  createdAt: string;
 }
 
 export type Transaction = {

@@ -1,4 +1,4 @@
-# Project Status: CoinFlow Browser Extension (v2.8.0)
+# Project Status: CoinFlow Browser Extension (v2.9.0)
 
 ## Current Progress
 - [x] **Unified Scraper Framework**: Standardized Amazon, Walmart, and Lowe's scrapers using `CoinFlowUtils`.
@@ -22,8 +22,12 @@
 - [x] **Extension Version Page Update (v2.7.1)**: Updated the browser extension settings page to show the actual Chrome extension version '1.9' matching its manifest.
 - [x] **Database Migration Alignment (v2.7.2)**: Created missing SQL migration for `backupRetentionDays` to resolve drift between local development (`db push`) and production (`migrate deploy`).
 - [x] **Agent Rules & Skills Hardening (v2.8.0)**: Fully decoupled and hardened database, visual, and audit pipelines to eliminate runtime regressions and registry dependency bottlenecks.
+- [x] **Chronological Split Ordering (v2.8.1)**: Enforced strict chronological sorting of splits in backend queries and frontend rendering to completely resolve split math and display misalignment errors.
+- [x] **Split Deletion Capabilities (v2.9.0)**: Built full database and interface systems allowing users to delete transaction splits, automatically merging unallocated amounts back into the main uncategorized remainder pool while honoring single-split safety guards.
 
-## Recent Fixes (v2.8.0)
+## Recent Fixes & Features (v2.9.0)
+- **Delete Splits & Balance Restoration**: Added full visual and database support for deleting splits. Deleting a split merges its balance back into the oldest uncategorized remainder split (or creates a new uncategorized split for the balance if none exists), maintaining the transaction's overall math. Leveraged custom responsive CSS classes for micro-interactions (red glow hover effect) and implemented single-split safety rules (hiding the delete button once only one split remains).
+- **Chronological Transaction Splitting & Stable Render**: Resolved a severe transaction splitting bug where sequential splits resulted in incorrect calculations (e.g. `$0` splits) and misaligned layouts. Fixed by enforcing a strict `createdAt: 'asc'` sort order inside all backend Prisma query includes (ensuring the server correctly targets the oldest remainder split for calculations) and on the client side (guaranteeing stable, clean, alphabetical-fallback chronological rendering).
 - **Zero-Network Global Prisma Container Execution**: Fixed a severe container startup issue where `npx prisma` was unable to resolve the package locally within Next.js standalone container files, causing NPM to try and fetch `prisma@7.8.0` online on startup (failing offline and causing version mismatch bugs). Resolved by baking `npm install -g prisma@6.19.3` directly into the multi-stage `Dockerfile` and calling `prisma migrate deploy` directly, rendering the build 100% network-independent and offline-ready.
 - **Dual-Path Client Hydration Safeguard**: Optimized `browser_verify` with an automated dual-path execution rule: backend or config changes use fast `curl` commands, while frontend/UI changes (CSS, TSX) spin up `browser_subagent` checks to catch silent client-side hydration mismatch and style scope regressions before task handoff.
 - **Prisma Schema Safeguard**: Hardened `AGENTS.md` and `docker_autofix.md` to force generating migration SQL files via `migrate dev` for all database schema adjustments, completely preventing schema drift between development containers and production containers.
@@ -33,7 +37,7 @@
 - [ ] Monitor Nginx logs for any remaining session cookie rejection under high-load/multiple tabs.
 
 ## Technical Details
-- **Version**: 2.8.0
+- **Version**: 2.9.0
 - **Core Files**:
   - `AGENTS.md`: Defines Prisma Schema Safeguards and continuous status.md session-end context logging.
   - `.agents/skills/docker_autofix.md`: Utilizes local `prisma` container executables and mandates migration compliance.
