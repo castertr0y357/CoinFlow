@@ -178,6 +178,7 @@ model Settings {
   lastSync              DateTime?
   savingsCategoryId     String?
   monthlyIncome         Decimal   @default(5000.00)
+  backupRetentionDays   Int       @default(30)
 }
 
 model Commitment {

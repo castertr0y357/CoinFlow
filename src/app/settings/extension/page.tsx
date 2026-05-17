@@ -17,7 +17,7 @@ export default function ExtensionSettingsPage() {
             <div className="flex items-center gap-6 mb-6">
               <div className="text-5xl bg-primary/10 w-16 h-16 flex items-center justify-center rounded-2xl">🧩</div>
               <div>
-                <h3 className="text-2xl font-bold text-main">Extension v1.0.0</h3>
+                <h3 className="text-2xl font-bold text-main">Extension v1.9</h3>
                 <p className="text-sm text-primary font-semibold uppercase tracking-wider">Status: Ready for Manual Installation</p>
               </div>
             </div>

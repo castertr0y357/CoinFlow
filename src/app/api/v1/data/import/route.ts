@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/api-utils";
-import prisma from "@/lib/prisma";
+import { createBackupSnapshot, restoreBackupData } from "@/lib/services/backupService";
 
 export async function POST(req: NextRequest) {
   return withAuth(req, async () => {
     try {
+      // 0. Take a safety snapshot before we do anything
+      await createBackupSnapshot("pre-import");
+
       const backup = await req.json();
       
       const isLegacy = backup.version === "1.0";
@@ -12,119 +15,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Invalid backup format" }, { status: 400 });
       }
 
-      const { data } = backup;
-
-      // We use a transaction to ensure atomic restore
-      await prisma.$transaction(async (tx) => {
-        // 0. Clean up existing data to prevent unique constraint conflicts (in order of dependencies)
-        await tx.transactionSplit.deleteMany();
-        await tx.transaction.deleteMany();
-        await tx.commitment.deleteMany();
-        await tx.yearlyCategory.deleteMany();
-        await tx.homeValueProvider.deleteMany();
-        await tx.mortgageDetail.deleteMany();
-        await tx.category.deleteMany();
-        await tx.account.deleteMany();
-        await tx.externalOrderItem.deleteMany();
-        await tx.externalOrder.deleteMany();
-        await tx.budgetYear.deleteMany();
-
-        // 1. Restore Accounts FIRST (Categories may depend on them)
-        if (data.accounts) {
-          for (const acc of data.accounts) {
-            await tx.account.upsert({
-              where: { id: acc.id },
-              update: acc,
-              create: acc
-            });
-          }
-        }
-
-        // 2. Restore Categories
-        if (data.categories) {
-          for (const cat of data.categories) {
-            await tx.category.upsert({
-              where: { id: cat.id },
-              update: cat,
-              create: cat
-            });
-          }
-        }
-
-        // 2.1 Restore Budget Years & Yearly Configs (New in v1.1)
-        if (data.budgetYears) {
-          for (const by of data.budgetYears) {
-            await tx.budgetYear.upsert({
-              where: { id: by.id },
-              update: by,
-              create: by
-            });
-          }
-        }
-
-        if (data.yearlyCategories) {
-          for (const yc of data.yearlyCategories) {
-            await tx.yearlyCategory.upsert({
-              where: { yearId_categoryId: { yearId: yc.yearId, categoryId: yc.categoryId } },
-              update: yc,
-              create: yc
-            });
-          }
-        }
-
-        // 3. Restore Transactions & Splits
-        if (data.transactions) {
-          // Clear current transactions to avoid split conflicts if doing a full restore
-          // Alternatively, we can upsert
-          for (const t of data.transactions) {
-            const { splits, ...txData } = t;
-            await tx.transaction.upsert({
-              where: { id: t.id },
-              update: txData,
-              create: txData
-            });
-
-            if (splits) {
-              for (const s of splits) {
-                await tx.transactionSplit.upsert({
-                  where: { id: s.id },
-                  update: s,
-                  create: s
-                });
-              }
-            }
-          }
-        }
-
-        // 4. Mortgage & Valuations
-        if (data.mortgageDetails) {
-          await tx.mortgageDetail.upsert({
-            where: { accountId: data.mortgageDetails.accountId },
-            update: data.mortgageDetails,
-            create: data.mortgageDetails
-          });
-        }
-
-        if (data.valuationProviders) {
-          for (const p of data.valuationProviders) {
-            await tx.homeValueProvider.upsert({
-              where: { id: p.id },
-              update: p,
-              create: p
-            });
-          }
-        }
-
-        if (data.settings) {
-          await tx.settings.upsert({
-            where: { id: 'global' },
-            update: data.settings,
-            create: data.settings
-          });
-        }
-      }, {
-        timeout: 60000 // 60 seconds
-      });
+      await restoreBackupData(backup.data);
 
       return NextResponse.json({ success: true });
     } catch (error: any) {

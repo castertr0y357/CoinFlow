@@ -21,6 +21,7 @@ export default async function GeneralSettingsPage() {
     
     const target = parseFloat(formData.get("savingsTarget") as string);
     const income = parseFloat(formData.get("expectedMonthlyIncome") as string);
+    const retention = parseInt(formData.get("backupRetentionDays") as string);
     const savingsCategoryId = formData.get("savingsCategoryId") as string;
     let token = formData.get("simpleFinToken") as string;
 
@@ -53,6 +54,7 @@ export default async function GeneralSettingsPage() {
       update: {
         savingsTarget: isNaN(target) ? 0 : target,
         monthlyIncome: isNaN(income) ? 5000 : income,
+        backupRetentionDays: isNaN(retention) ? 30 : retention,
         savingsCategoryId: savingsCategoryId || null,
         simpleFinToken: token || null,
       },
@@ -60,6 +62,7 @@ export default async function GeneralSettingsPage() {
         id: 'global',
         savingsTarget: isNaN(target) ? 0 : target,
         monthlyIncome: isNaN(income) ? 5000 : income,
+        backupRetentionDays: isNaN(retention) ? 30 : retention,
         savingsCategoryId: savingsCategoryId || null,
         simpleFinToken: token || null,
       }
@@ -110,6 +113,16 @@ export default async function GeneralSettingsPage() {
               step="0.01" 
               defaultValue={settings?.monthlyIncome ? Number(settings.monthlyIncome) : 5000.00} 
               helpText="Used for forecasting your month-end cash balance."
+              required 
+            />
+
+            <Input 
+              label="Backup Retention (Days)"
+              type="number" 
+              id="backupRetentionDays" 
+              name="backupRetentionDays" 
+              defaultValue={settings?.backupRetentionDays || 30} 
+              helpText="How many days of automated and pre-import backups to keep on the server."
               required 
             />
           </div>

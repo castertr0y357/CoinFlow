@@ -238,3 +238,80 @@ select:focus {
     grid-template-columns: 1fr;
   }
 }
+
+/* Sidebar Restructuring and Account Toggle Buttons */
+.account-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.account-subgroup {
+  display: flex;
+  flex-direction: column;
+}
+.subgroup-label {
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+  opacity: 0.65;
+  font-weight: 700;
+  padding-left: 0.15rem;
+}
+.sidebar-account-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+.account-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.mini-toggle {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid var(--glass-border);
+  font-size: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-fast);
+  cursor: pointer;
+}
+.mini-toggle.on {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: white !important;
+}
+.mini-toggle.off {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: var(--glass-border) !important;
+  color: var(--text-muted) !important;
+}
+.mini-toggle.debt-toggle {
+  margin-left: -2px;
+  border-left: none !important;
+  border-radius: 0 3px 3px 0;
+}
+.mini-toggle.on:not(.debt-toggle) {
+  border-radius: 3px 0 0 3px;
+}
+.mini-toggle.debt-toggle.is-debt {
+  background: var(--warning) !important;
+  border-color: var(--warning) !important;
+  color: black !important;
+  font-weight: 800 !important;
+}
+.account-balance {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+.account-balance.neg {
+  color: var(--danger) !important;
+}

@@ -20,6 +20,8 @@ services:
     restart: always
     ports:
       - '3000:3000'
+    volumes:
+      - 'backups:/app/backups'
     environment:
       DATABASE_URL: postgresql://budgetuser:budgetpassword@db:5432/webbudget
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-supersecret}
@@ -30,3 +32,4 @@ services:
 
 volumes:
   postgres_data:
+  backups:

@@ -24,8 +24,6 @@ export default function Sidebar({ accounts }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleToggleExclusion = async (id: string, current: boolean) => {
     await updateAccountExclusion(id, !current);
@@ -56,35 +54,7 @@ export default function Sidebar({ accounts }: SidebarProps) {
     }
   };
 
-  const handleAmazonClick = () => {
-    fileInputRef.current?.click();
-  };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const res = await fetch('/api/v1/sync/amazon', {
-        method: 'POST',
-        headers: { 'X-API-KEY': process.env.NEXT_PUBLIC_INTERNAL_API_KEY || '' },
-        body: formData
-      });
-      const data = await res.json();
-      alert(`Amazon sync completed. Imported ${data.count} transactions.`);
-      router.refresh();
-      mutate('/api/v1/budget/tally');
-    } catch (error) {
-      console.error("Amazon Sync Error:", error);
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
 
   const groupedAccounts = accounts.reduce((acc, a) => {
     const group = a.excludeFromSurplus ? 'Off Budget' : 'On Budget';
@@ -134,59 +104,88 @@ export default function Sidebar({ accounts }: SidebarProps) {
             <span className="icon">🏦</span>
             <span className="label">{isSyncing ? "Syncing..." : "Sync Banks"}</span>
           </button>
-          
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            style={{ display: 'none' }} 
-            accept=".csv"
-            onChange={handleFileChange}
-          />
-          <button 
-            className="sidebar-action-btn" 
-            onClick={handleAmazonClick}
-            disabled={isUploading}
-          >
-            <span className="icon">📦</span>
-            <span className="label">{isUploading ? "Uploading..." : "Amazon CSV"}</span>
-          </button>
+
         </div>
       </nav>
 
       <div className="sidebar-accounts">
-        {['On Budget', 'Off Budget'].map(group => (
-          groupedAccounts[group]?.length > 0 && (
+        {['On Budget', 'Off Budget'].map(group => {
+          const accountsInGroup = groupedAccounts[group] || [];
+          if (accountsInGroup.length === 0) return null;
+
+          const assets = accountsInGroup.filter(a => !a.isDebt);
+          const debts = accountsInGroup.filter(a => a.isDebt);
+
+          return (
             <div key={group} className="account-section">
               <h4 className="section-label">{group}</h4>
-              <div className="account-links">
-                {groupedAccounts[group].map(acc => (
-                  <div key={acc.id} className="sidebar-account-item">
-                    <div className="account-info">
-                      <button 
-                        className={`mini-toggle ${acc.excludeFromSurplus ? 'off' : 'on'}`}
-                        onClick={() => handleToggleExclusion(acc.id, acc.excludeFromSurplus)}
-                        title={acc.excludeFromSurplus ? "Include in Budget" : "Exclude from Budget"}
-                      >
-                        {acc.excludeFromSurplus ? '✕' : '✓'}
-                      </button>
-                      <button 
-                        className={`mini-toggle debt-toggle ${acc.isDebt ? 'is-debt' : ''}`}
-                        onClick={() => handleToggleDebt(acc.id, acc.isDebt)}
-                        title={acc.isDebt ? "Mark as Cash" : "Mark as Debt"}
-                      >
-                        D
-                      </button>
-                      <span className="account-name">{acc.name}</span>
-                    </div>
-                    <span className={`account-balance ${acc.balance < 0 ? 'neg' : ''}`}>
-                      ${acc.balance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                    </span>
+              
+              {assets.length > 0 && (
+                <div className="account-subgroup">
+                  <div className="subgroup-label">Assets</div>
+                  <div className="account-links">
+                    {assets.map(acc => (
+                      <div key={acc.id} className="sidebar-account-item">
+                        <div className="account-info">
+                          <button 
+                            className={`mini-toggle ${acc.excludeFromSurplus ? 'off' : 'on'}`}
+                            onClick={() => handleToggleExclusion(acc.id, acc.excludeFromSurplus)}
+                            title={acc.excludeFromSurplus ? "Include in Budget" : "Exclude from Budget"}
+                          >
+                            {acc.excludeFromSurplus ? '✕' : '✓'}
+                          </button>
+                          <button 
+                            className={`mini-toggle debt-toggle ${acc.isDebt ? 'is-debt' : ''}`}
+                            onClick={() => handleToggleDebt(acc.id, acc.isDebt)}
+                            title={acc.isDebt ? "Mark as Cash" : "Mark as Debt"}
+                          >
+                            D
+                          </button>
+                          <span className="account-name">{acc.name}</span>
+                        </div>
+                        <span className={`account-balance ${acc.balance < 0 ? 'neg' : ''}`}>
+                          ${acc.balance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
+
+              {debts.length > 0 && (
+                <div className="account-subgroup" style={{ marginTop: assets.length > 0 ? '1rem' : '0' }}>
+                  <div className="subgroup-label">Debts</div>
+                  <div className="account-links">
+                    {debts.map(acc => (
+                      <div key={acc.id} className="sidebar-account-item">
+                        <div className="account-info">
+                          <button 
+                            className={`mini-toggle ${acc.excludeFromSurplus ? 'off' : 'on'}`}
+                            onClick={() => handleToggleExclusion(acc.id, acc.excludeFromSurplus)}
+                            title={acc.excludeFromSurplus ? "Include in Budget" : "Exclude from Budget"}
+                          >
+                            {acc.excludeFromSurplus ? '✕' : '✓'}
+                          </button>
+                          <button 
+                            className={`mini-toggle debt-toggle ${acc.isDebt ? 'is-debt' : ''}`}
+                            onClick={() => handleToggleDebt(acc.id, acc.isDebt)}
+                            title={acc.isDebt ? "Mark as Cash" : "Mark as Debt"}
+                          >
+                            D
+                          </button>
+                          <span className="account-name">{acc.name}</span>
+                        </div>
+                        <span className={`account-balance ${acc.balance < 0 ? 'neg' : ''}`}>
+                          ${acc.balance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          )
-        ))}
+          );
+        })}
       </div>
 
       <div className="sidebar-footer">
@@ -300,66 +299,7 @@ export default function Sidebar({ accounts }: SidebarProps) {
           color: var(--text-muted);
           margin-bottom: 0.75rem;
         }
-        .account-links {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-        .sidebar-account-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          font-size: 0.85rem;
-          color: var(--text-dim);
-        }
-        .account-info {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-        .mini-toggle {
-          width: 14px;
-          height: 14px;
-          border-radius: 3px;
-          border: 1px solid var(--glass-border);
-          font-size: 8px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: var(--transition-fast);
-          cursor: pointer;
-        }
-        .mini-toggle.on {
-          background: var(--accent);
-          border-color: var(--accent);
-          color: white;
-        }
-        .mini-toggle.off {
-          background: rgba(255, 255, 255, 0.05);
-          color: var(--text-muted);
-        }
-        .mini-toggle.debt-toggle {
-          margin-left: -2px;
-          border-left: none;
-          border-radius: 0 3px 3px 0;
-        }
-        .mini-toggle.on:not(.debt-toggle) {
-          border-radius: 3px 0 0 3px;
-        }
-        .mini-toggle.debt-toggle.is-debt {
-          background: var(--warning);
-          border-color: var(--warning);
-          color: black;
-          font-weight: 800;
-        }
-        .account-balance {
-          font-family: 'JetBrains Mono', monospace;
-          font-weight: 600;
-          font-size: 0.8rem;
-        }
-        .account-balance.neg {
-          color: var(--danger);
-        }
+
         .sidebar-footer {
           padding: 1rem 1.5rem;
           border-top: 1px solid var(--glass-border);
