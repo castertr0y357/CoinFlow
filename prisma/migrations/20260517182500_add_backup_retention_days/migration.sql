@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Settings" ADD COLUMN IF NOT EXISTS "backupRetentionDays" INTEGER NOT NULL DEFAULT 30;
