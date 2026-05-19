@@ -174,36 +174,47 @@ export default function CommitmentsClient({ initialCommitments, categories }: Co
                     <div key={item.id} className={`commitment-item glass ${editingId === item.id ? 'editing' : ''}`}>
                       {editingId === item.id ? (
                         <div className="edit-commitment-inline" style={{ width: '100%' }}>
-                          <div className="form-grid" style={{ marginBottom: '0.5rem' }}>
-                            <input 
-                              type="text" 
-                              value={editFormData.name} 
-                              onChange={e => setEditFormData({...editFormData, name: e.target.value})} 
-                              className="edit-input name-input"
-                              style={{ padding: '0.5rem', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '4px' }}
-                            />
-                            <input 
-                              type="number" 
-                              step="0.01" 
-                              value={editFormData.amount} 
-                              onChange={e => setEditFormData({...editFormData, amount: e.target.value})} 
-                              className="edit-input amount-input"
-                              style={{ padding: '0.5rem', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '4px' }}
-                            />
-                          </div>
-                          <div className="form-grid" style={{ alignItems: 'center' }}>
-                            <select 
-                              value={editFormData.frequency} 
-                              onChange={e => setEditFormData({...editFormData, frequency: e.target.value})}
-                              className="edit-select"
-                              style={{ padding: '0.5rem', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '4px' }}
-                            >
-                              <option value="MONTHLY">Monthly</option>
-                              <option value="QUARTERLY">Quarterly</option>
-                              <option value="SEMI_ANNUAL">Semi-Annual</option>
-                              <option value="YEARLY">Yearly</option>
-                            </select>
-                            <div className="edit-actions" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: '0.5rem' }}>
+                              <input 
+                                type="text" 
+                                value={editFormData.name} 
+                                onChange={e => setEditFormData({...editFormData, name: e.target.value})} 
+                                className="edit-input name-input"
+                                style={{ padding: '0.5rem', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '4px', width: '100%' }}
+                              />
+                              <input 
+                                type="number" 
+                                step="0.01" 
+                                value={editFormData.amount} 
+                                onChange={e => setEditFormData({...editFormData, amount: Number(e.target.value)})} 
+                                className="edit-input amount-input"
+                                style={{ padding: '0.5rem', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '4px', width: '100%' }}
+                              />
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                              <select 
+                                value={editFormData.frequency} 
+                                onChange={e => setEditFormData({...editFormData, frequency: e.target.value})}
+                                className="edit-select"
+                                style={{ padding: '0.5rem', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '4px', width: '100%', cursor: 'pointer' }}
+                              >
+                                <option value="MONTHLY">Monthly</option>
+                                <option value="QUARTERLY">Quarterly</option>
+                                <option value="SEMI_ANNUAL">Semi-Annual</option>
+                                <option value="YEARLY">Yearly</option>
+                              </select>
+                              <select 
+                                value={editFormData.categoryId} 
+                                onChange={e => setEditFormData({...editFormData, categoryId: e.target.value})}
+                                className="edit-select"
+                                style={{ padding: '0.5rem', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '4px', width: '100%', cursor: 'pointer' }}
+                              >
+                                <option value="">No Category</option>
+                                {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                              </select>
+                            </div>
+                            <div className="edit-actions" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
                               <Button variant="primary" onClick={handleUpdate}>Save</Button>
                               <Button variant="ghost" onClick={() => setEditingId(null)}>Cancel</Button>
                             </div>

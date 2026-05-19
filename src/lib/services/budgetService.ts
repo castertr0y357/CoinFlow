@@ -39,6 +39,7 @@ export async function getMonthlyTally(year?: number) {
           excludeFromSurplus: true
         }
       },
+      commitments: true,
       splits: {
         where: {
           transaction: {
@@ -57,6 +58,15 @@ export async function getMonthlyTally(year?: number) {
     const rollover = safeNumber(config?.rollover);
     const monthlyBudget = safeNumber(config?.monthlyBudget);
     
+    // Calculate monthly equivalent commitments for this category
+    const categoryCommitments = c.commitments?.reduce((acc, comm) => {
+      let monthly = safeNumber(comm.amount);
+      if (comm.frequency === "YEARLY") monthly = monthly / 12;
+      else if (comm.frequency === "SEMI_ANNUAL") monthly = monthly / 6;
+      else if (comm.frequency === "QUARTERLY") monthly = monthly / 3;
+      return acc + monthly;
+    }, 0) || 0;
+    
     // Provisions are positive amounts (deposits/allocations)
     // Spending are negative amounts (purchases)
     const provisions = c.splits
@@ -69,17 +79,27 @@ export async function getMonthlyTally(year?: number) {
 
     const remaining = rollover + provisions - spending;
 
+    const today = new Date();
+    let monthsCount = 12;
+    if (currentYear === today.getFullYear()) {
+      monthsCount = today.getMonth() + 1; // 1-based current month
+    } else if (currentYear > today.getFullYear()) {
+      monthsCount = 1;
+    }
+    const averageSpent = monthsCount > 0 ? (spending / monthsCount) : 0;
+
     return {
       id: c.id,
       name: c.name,
       budget: monthlyBudget,
       provisions: safeNumber(provisions),
       rollover: rollover,
-      spent: safeNumber(spending),
+      spent: parseFloat(averageSpent.toFixed(2)),
       remaining: safeNumber(remaining),
       tiedAccountId: c.tiedAccountId,
       isOffBudget: !!c.tiedAccount?.excludeFromSurplus,
-      isPaused: c.isPaused
+      isPaused: c.isPaused,
+      commitments: safeNumber(categoryCommitments)
     };
   });
 
@@ -160,7 +180,8 @@ export async function getMonthlyTally(year?: number) {
   const nextMonthAllocations = safeNumber(totalBudgeted);
   const expectedIncome = safeNumber(settings?.monthlyIncome || 5000);
   const defaultMonthEndBuffer = finalSurplus + expectedIncome;
-  const defaultNextMonthSurplus = defaultMonthEndBuffer - nextMonthAllocations - nextMonthCommitments;
+  // We no longer subtract nextMonthCommitments from the next month surplus!
+  const defaultNextMonthSurplus = defaultMonthEndBuffer - nextMonthAllocations;
 
   let forecast: any = {
     expectedIncome,
@@ -236,7 +257,8 @@ export async function getMonthlyTally(year?: number) {
       }
       
       const monthEndBuffer = finalSurplus + totalRemainingIncome;
-      const nextMonthSurplus = monthEndBuffer - nextMonthAllocations - nextMonthCommitments;
+      // We no longer subtract nextMonthCommitments from the next month surplus!
+      const nextMonthSurplus = monthEndBuffer - nextMonthAllocations;
 
       forecast = {
         expectedIncome: totalExpectedIncome,

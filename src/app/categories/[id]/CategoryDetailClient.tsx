@@ -139,6 +139,26 @@ export default function CategoryDetailClient({ category, transactions, otherCate
           <Card className="config-card glass">
             <h3>Budget Settings</h3>
             <div className="config-form">
+              {category.commitmentsMonthly > 0 && budget < category.commitmentsMonthly && (
+                <div style={{ 
+                  background: 'rgba(239, 68, 68, 0.1)', 
+                  border: '1px solid rgba(239, 68, 68, 0.3)', 
+                  borderRadius: '8px', 
+                  padding: '0.75rem', 
+                  marginBottom: '1rem', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '0.25rem' 
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#ef4444', fontWeight: 700, fontSize: '0.85rem' }}>
+                    <span>⚠️ Underfunded Alert</span>
+                  </div>
+                  <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', lineHeight: 1.4 }}>
+                    Your monthly budget of <strong>${budget.toLocaleString()}</strong> is less than the <strong>${category.commitmentsMonthly.toLocaleString(undefined, { maximumFractionDigits: 2 })}/mo</strong> needed to cover this category's recurring obligations.
+                  </span>
+                </div>
+              )}
+
               <div className="config-group">
                 <label>Monthly Provision Amount</label>
                 <div className="input-with-symbol">
@@ -184,6 +204,45 @@ export default function CategoryDetailClient({ category, transactions, otherCate
               </Button>
             </div>
           </Card>
+
+          {category.commitments && category.commitments.length > 0 && (
+            <Card className="commitments-summary-card glass mt-4">
+              <h3>Tied Commitments</h3>
+              <p className="text-muted text-xs mb-3">Recurring obligations funded by this category.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {category.commitments.map((comm: any) => {
+                  let monthly = comm.amount;
+                  if (comm.frequency === "YEARLY") monthly = comm.amount / 12;
+                  else if (comm.frequency === "SEMI_ANNUAL") monthly = comm.amount / 6;
+                  else if (comm.frequency === "QUARTERLY") monthly = comm.amount / 3;
+
+                  return (
+                    <div key={comm.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--glass-border)', padding: '0.6rem 0.75rem', borderRadius: '8px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                        <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'white' }}>{comm.name}</span>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                          {comm.frequency.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.15rem' }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-main)' }}>
+                          ${comm.amount.toLocaleString()}
+                        </span>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--accent)', fontWeight: 600 }}>
+                          ${monthly.toLocaleString(undefined, { maximumFractionDigits: 2 })}/mo
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="math-divider" style={{ margin: '0.5rem 0 0.25rem 0' }}></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: '0.9rem', color: 'var(--accent)' }}>
+                  <span>Total Obligations</span>
+                  <span>${category.commitmentsMonthly.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo</span>
+                </div>
+              </div>
+            </Card>
+          )}
 
           <Card className="summary-card glass mt-4">
              <h3>Ledger Summary</h3>

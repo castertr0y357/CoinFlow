@@ -94,10 +94,6 @@ export default function ForecastCard({
           <span className="label">Next Month Budgets</span>
           <span className="value">-${nextMonthAllocations.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
         </div>
-        <div className="math-row">
-          <span className="label">Next Month Fixed Costs</span>
-          <span className="value">-${nextMonthCommitments.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
-        </div>
         <div className="math-row total">
           <span className="label">Projected Next-Month</span>
           <span className="value">
@@ -108,7 +104,7 @@ export default function ForecastCard({
       
       <p className="forecast-hint text-xs text-muted mt-3">
         {isHealthy 
-          ? "Your rolled-over buffer successfully funds next month's planned categories and fixed costs."
+          ? "Your rolled-over buffer successfully funds next month's planned budget categories."
           : "Warning: Your next-month obligations exceed your rolled-over buffer fund."}
       </p>
 

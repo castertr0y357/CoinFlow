@@ -17,6 +17,7 @@ interface Category {
   tiedAccountId?: string | null;
   isOffBudget: boolean;
   isPaused: boolean;
+  commitments?: number;
 }
 
 interface CategorySpreadsheetProps {
@@ -85,13 +86,14 @@ export default function CategorySpreadsheet({ categories, integrityWarnings = []
           {isEditingOrder ? "💾 Done Ordering" : "🔃 Edit Order"}
         </Button>
       </div>
-       <div className="spreadsheet-container">
+      <div className="spreadsheet-container">
         <table className="spreadsheet-table">
           <thead>
             <tr>
               {isEditingOrder && <th className="order-th">Order</th>}
               <th className="sticky-col">Category</th>
               <th className="text-right">Budgeted</th>
+              <th className="text-right">Commitments</th>
               <th className="text-right">Spent</th>
               <th className="text-right">Balance</th>
             </tr>
@@ -126,7 +128,17 @@ export default function CategorySpreadsheet({ categories, integrityWarnings = []
                     </Link>
                   </td>
                   <td className="text-right budgeted-cell">
-                    ${cat.budget.toLocaleString()}
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'flex-end', width: '100%' }}>
+                      {cat.commitments && cat.commitments > 0 && cat.budget < cat.commitments && (
+                        <span className="underfunded-badge" title={`Underfunded! Obligations require $${cat.commitments.toLocaleString()}/mo, but you only budgeted $${cat.budget.toLocaleString()}/mo.`}>
+                          ⚠️
+                        </span>
+                      )}
+                      <span>${cat.budget.toLocaleString()}</span>
+                    </div>
+                  </td>
+                  <td className="text-right commitments-cell">
+                    {cat.commitments && cat.commitments > 0 ? `$${cat.commitments.toLocaleString()}/mo` : '—'}
                   </td>
                   <td className="text-right spent-cell">
                     ${cat.spent.toLocaleString()}
@@ -219,6 +231,17 @@ export default function CategorySpreadsheet({ categories, integrityWarnings = []
         }
         .text-right { text-align: right; }
         .budgeted-cell { color: var(--text-dim); }
+        .commitments-cell { color: var(--accent); font-weight: 500; font-family: 'JetBrains Mono', monospace; }
+        .underfunded-badge {
+          cursor: help;
+          font-size: 0.8rem;
+          animation: warningPulse 2s infinite ease-in-out;
+        }
+        @keyframes warningPulse {
+          0% { opacity: 0.6; transform: scale(0.95); }
+          50% { opacity: 1; transform: scale(1.05); }
+          100% { opacity: 0.6; transform: scale(0.95); }
+        }
         .spent-cell { color: var(--text-muted); }
         .balance-cell { font-weight: 700; }
         .balance-cell.pos { color: #10b981; }
