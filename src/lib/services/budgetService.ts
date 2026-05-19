@@ -148,12 +148,109 @@ export async function getMonthlyTally(year?: number) {
   }
 
   // 5. Forecast
+  const commitments = await prisma.commitment.findMany();
+  const nextMonthCommitments = commitments.reduce((acc, c) => {
+    let monthly = safeNumber(c.amount);
+    if (c.frequency === "YEARLY") monthly = monthly / 12;
+    else if (c.frequency === "SEMI_ANNUAL") monthly = monthly / 6;
+    else if (c.frequency === "QUARTERLY") monthly = monthly / 3;
+    return acc + monthly;
+  }, 0);
+
+  const nextMonthAllocations = safeNumber(totalBudgeted);
   const expectedIncome = safeNumber(settings?.monthlyIncome || 5000);
-  const forecast = {
+  const defaultMonthEndBuffer = finalSurplus + expectedIncome;
+  const defaultNextMonthSurplus = defaultMonthEndBuffer - nextMonthAllocations - nextMonthCommitments;
+
+  let forecast: any = {
     expectedIncome,
-    projectedMonthEnd: finalSurplus + expectedIncome,
-    isHealthy: (finalSurplus + expectedIncome) > 0
+    projectedMonthEnd: defaultMonthEndBuffer,
+    isHealthy: defaultNextMonthSurplus >= 0,
+    paycheckEnabled: false,
+    paychecks: [],
+    remainingIncome: expectedIncome,
+    nextMonthAllocations,
+    nextMonthCommitments,
+    nextMonthSurplus: defaultNextMonthSurplus
   };
+
+  if (settings?.paycheckEnabled && settings?.paycheckNextDate) {
+    const paycheckAmount = safeNumber(settings.paycheckAmount);
+    const frequency = settings.paycheckFrequency || "BI_WEEKLY";
+    const refDate = new Date(settings.paycheckNextDate);
+    
+    const today = new Date();
+    const isCurrentYear = currentYear === today.getFullYear();
+    const todayMonth = today.getMonth();
+    
+    if (isCurrentYear) {
+      // 1. Generate all paycheck dates for the current month
+      const paycheckDates = getPaycheckDatesInMonth(currentYear, todayMonth, frequency, refDate);
+      
+      // 2. Fetch all positive transactions in the current month to match against
+      const startOfMonth = new Date(currentYear, todayMonth, 1);
+      const endOfMonth = new Date(currentYear, todayMonth + 1, 0, 23, 59, 59, 999);
+      
+      const monthInflows = await prisma.transaction.findMany({
+        where: {
+          date: {
+            gte: startOfMonth,
+            lte: endOfMonth
+          },
+          amount: {
+            gt: 0
+          }
+        }
+      });
+      
+      // 3. Evaluate each scheduled paycheck
+      const paycheckList: { date: string; amount: number; status: "received" | "pending" }[] = [];
+      let totalRemainingIncome = 0;
+      let totalExpectedIncome = 0;
+      
+      const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+      
+      for (const pDate of paycheckDates) {
+        const pTime = pDate.getTime();
+        const isMatched = await hasReceivedPaycheck(paycheckAmount, pDate, monthInflows);
+        let status: "received" | "pending" = "pending";
+        
+        if (isMatched) {
+          status = "received";
+        } else if (pTime < todayMidnight) {
+          status = "received";
+        } else {
+          status = "pending";
+        }
+        
+        paycheckList.push({
+          date: pDate.toISOString().split('T')[0],
+          amount: paycheckAmount,
+          status
+        });
+        
+        totalExpectedIncome += paycheckAmount;
+        if (status === "pending") {
+          totalRemainingIncome += paycheckAmount;
+        }
+      }
+      
+      const monthEndBuffer = finalSurplus + totalRemainingIncome;
+      const nextMonthSurplus = monthEndBuffer - nextMonthAllocations - nextMonthCommitments;
+
+      forecast = {
+        expectedIncome: totalExpectedIncome,
+        projectedMonthEnd: monthEndBuffer,
+        isHealthy: nextMonthSurplus >= 0,
+        paycheckEnabled: true,
+        paychecks: paycheckList,
+        remainingIncome: totalRemainingIncome,
+        nextMonthAllocations,
+        nextMonthCommitments,
+        nextMonthSurplus
+      };
+    }
+  }
 
   return {
     year: currentYear,
@@ -237,4 +334,92 @@ export async function getSidebarData() {
     excludeFromSurplus: a.excludeFromSurplus,
     isDebt: a.isDebt
   }));
+}
+
+export function getPaycheckDatesInMonth(
+  year: number,
+  month: number, // 0-indexed (0 = Jan, 11 = Dec)
+  frequency: string,
+  referenceDate: Date
+): Date[] {
+  const dates: Date[] = [];
+  
+  // Normalize referenceDate to midnight local
+  const ref = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+  
+  const targetStart = new Date(year, month, 1);
+  const targetEnd = new Date(year, month + 1, 0); // Last day of target month
+
+  if (frequency === "MONTHLY") {
+    const day = ref.getDate();
+    const maxDays = targetEnd.getDate();
+    const paycheckDay = Math.min(day, maxDays);
+    dates.push(new Date(year, month, paycheckDay));
+  } else if (frequency === "SEMI_MONTHLY") {
+    const day = ref.getDate();
+    if (day <= 15) {
+      dates.push(new Date(year, month, day));
+      const secondDay = day + 15;
+      dates.push(new Date(year, month, secondDay));
+    } else {
+      const firstDay = day - 15;
+      dates.push(new Date(year, month, firstDay));
+      const maxDays = targetEnd.getDate();
+      const secondDay = Math.min(day, maxDays);
+      dates.push(new Date(year, month, secondDay));
+    }
+  } else if (frequency === "WEEKLY" || frequency === "BI_WEEKLY") {
+    const intervalDays = frequency === "WEEKLY" ? 7 : 14;
+    const intervalMs = intervalDays * 24 * 60 * 60 * 1000;
+    
+    // Add reference date if it falls in the target month
+    if (ref >= targetStart && ref <= targetEnd) {
+      dates.push(new Date(ref));
+    }
+    
+    // Step backward
+    let current = new Date(ref.getTime() - intervalMs);
+    while (current >= targetStart) {
+      if (current <= targetEnd) {
+        dates.push(new Date(current));
+      }
+      current = new Date(current.getTime() - intervalMs);
+    }
+    
+    // Step forward
+    current = new Date(ref.getTime() + intervalMs);
+    while (current <= targetEnd) {
+      if (current >= targetStart) {
+        dates.push(new Date(current));
+      }
+      current = new Date(current.getTime() + intervalMs);
+    }
+  }
+  
+  // Sort dates ascending
+  return dates.sort((a, b) => a.getTime() - b.getTime());
+}
+
+async function hasReceivedPaycheck(
+  amount: number,
+  date: Date,
+  monthTransactions: any[]
+): Promise<boolean> {
+  const paycheckTime = date.getTime();
+  const oneDayMs = 24 * 60 * 60 * 1000;
+  
+  return monthTransactions.some(t => {
+    const txDate = new Date(t.date);
+    const txTime = new Date(txDate.getFullYear(), txDate.getMonth(), txDate.getDate()).getTime();
+    
+    // Date is within ±1 day
+    const dateDiff = Math.abs(txTime - paycheckTime);
+    const isWithinWindow = dateDiff <= oneDayMs;
+    
+    // Positive inflow amount close to paycheck amount (within 10% range)
+    const tAmt = Number(t.amount);
+    const isMatchingAmount = tAmt >= amount * 0.9 && tAmt <= amount * 1.1;
+    
+    return isWithinWindow && isMatchingAmount;
+  });
 }

@@ -25,6 +25,12 @@ export default async function GeneralSettingsPage() {
     const savingsCategoryId = formData.get("savingsCategoryId") as string;
     let token = formData.get("simpleFinToken") as string;
 
+    const paycheckEnabled = formData.get("paycheckEnabled") === "on";
+    const paycheckFrequency = formData.get("paycheckFrequency") as string;
+    const paycheckAmount = parseFloat(formData.get("paycheckAmount") as string);
+    const paycheckNextDateStr = formData.get("paycheckNextDate") as string;
+    const paycheckNextDate = paycheckNextDateStr ? new Date(paycheckNextDateStr + "T00:00:00") : null;
+
     if (token && !token.startsWith('https://user:')) { 
       let claimUrl = token;
       if (!token.startsWith('https://')) {
@@ -57,6 +63,10 @@ export default async function GeneralSettingsPage() {
         backupRetentionDays: isNaN(retention) ? 30 : retention,
         savingsCategoryId: savingsCategoryId || null,
         simpleFinToken: token || null,
+        paycheckEnabled,
+        paycheckFrequency: paycheckFrequency || "BI_WEEKLY",
+        paycheckAmount: isNaN(paycheckAmount) ? 0 : paycheckAmount,
+        paycheckNextDate,
       },
       create: {
         id: 'global',
@@ -65,6 +75,10 @@ export default async function GeneralSettingsPage() {
         backupRetentionDays: isNaN(retention) ? 30 : retention,
         savingsCategoryId: savingsCategoryId || null,
         simpleFinToken: token || null,
+        paycheckEnabled,
+        paycheckFrequency: paycheckFrequency || "BI_WEEKLY",
+        paycheckAmount: isNaN(paycheckAmount) ? 0 : paycheckAmount,
+        paycheckNextDate,
       }
     });
 
@@ -125,6 +139,74 @@ export default async function GeneralSettingsPage() {
               helpText="How many days of automated and pre-import backups to keep on the server."
               required 
             />
+
+            {/* Paycheck Forecasting Section */}
+            <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid var(--glass-border)' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-main)' }}>Paycheck-Based Forecasting</h3>
+              <p className="help-text" style={{ marginBottom: '1.25rem' }}>
+                Track your exact payroll schedule to generate high-precision cash flow projections, rather than assuming a flat monthly income amount.
+              </p>
+              
+              <div className="form-group checkbox-group" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  id="paycheckEnabled" 
+                  name="paycheckEnabled" 
+                  defaultChecked={settings?.paycheckEnabled || false}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--accent)' }}
+                />
+                <label htmlFor="paycheckEnabled" style={{ cursor: 'pointer', margin: 0, fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-main)' }}>
+                  Enable Paycheck Forecasting
+                </label>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Paycheck Frequency</label>
+                <select 
+                  name="paycheckFrequency" 
+                  defaultValue={settings?.paycheckFrequency || "BI_WEEKLY"}
+                  className="settings-select"
+                >
+                  <option value="WEEKLY">Weekly (Every 7 days)</option>
+                  <option value="BI_WEEKLY">Bi-Weekly (Every 14 days)</option>
+                  <option value="SEMI_MONTHLY">Semi-Monthly (Twice a month, e.g. 1st & 15th)</option>
+                  <option value="MONTHLY">Monthly (Once a month)</option>
+                </select>
+                <p className="help-text" style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Select how often you receive your paycheck.</p>
+              </div>
+
+              <Input 
+                label="Paycheck Net Amount ($)"
+                type="number" 
+                id="paycheckAmount" 
+                name="paycheckAmount" 
+                step="0.01" 
+                defaultValue={settings?.paycheckAmount ? Number(settings.paycheckAmount) : 2500.00} 
+                helpText="The net amount of each individual paycheck."
+              />
+
+              <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Reference Paycheck Date</label>
+                <input 
+                  type="date" 
+                  id="paycheckNextDate" 
+                  name="paycheckNextDate" 
+                  defaultValue={settings?.paycheckNextDate ? new Date(settings.paycheckNextDate).toISOString().split('T')[0] : ""} 
+                  className="settings-input"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    borderRadius: '8px',
+                    border: '1px solid var(--glass-border)',
+                    background: 'var(--glass-bg)',
+                    color: 'var(--text-main)',
+                    outline: 'none',
+                    fontFamily: 'inherit'
+                  }}
+                />
+                <p className="help-text" style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Any past or upcoming paycheck date. Used as an anchor to calculate your pay cycle schedule.</p>
+              </div>
+            </div>
           </div>
 
           <div className="form-section">

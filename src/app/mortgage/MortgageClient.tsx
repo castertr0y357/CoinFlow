@@ -216,16 +216,28 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
             <h3>Home Valuation Sources</h3>
             <div className="providers-list">
               {initialData.providers?.length === 0 ? (
-                <p className="text-muted py-4">No live sources linked. Add Zillow or Redfin to track live value.</p>
+                <p className="text-muted py-4">No live sources linked. Add Zillow, Redfin, or Realtor to track live value.</p>
               ) : (
                 initialData.providers?.map((p: Provider) => (
                   <div key={p.id} className="provider-item">
-                    <div className="provider-info">
+                    <div className="provider-header">
                       <span className="provider-name">{p.name}</span>
-                      <span className="provider-value">${(p.lastValue || 0).toLocaleString()}</span>
-                      <button onClick={() => handleRemoveProvider(p.id)} className="text-danger ml-2" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
+                      <button 
+                        onClick={() => handleRemoveProvider(p.id)} 
+                        className="delete-provider-btn"
+                        title="Delete source"
+                      >
+                        ✕
+                      </button>
                     </div>
-                    <span className="provider-sync">Last synced: {p.lastSync ? new Date(p.lastSync).toLocaleDateString(undefined, { timeZone: 'UTC' }) : 'Never'}</span>
+                    <div className="provider-body">
+                      <span className="provider-value">
+                        {p.lastValue !== null ? `$${Number(p.lastValue).toLocaleString()}` : "—"}
+                      </span>
+                      <span className="provider-sync">
+                        Last synced: {p.lastSync ? new Date(p.lastSync).toLocaleDateString(undefined, { timeZone: 'UTC' }) : 'Never'}
+                      </span>
+                    </div>
                   </div>
                 ))
               )}
@@ -236,6 +248,7 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
                 <select value={newProvider.name} onChange={e => setNewProvider({...newProvider, name: e.target.value})}>
                   <option>Zillow</option>
                   <option>Redfin</option>
+                  <option>Realtor</option>
                 </select>
                 <input 
                   type="text" 

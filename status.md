@@ -1,6 +1,8 @@
-# Project Status: CoinFlow Browser Extension (v2.12.0)
+# Project Status: CoinFlow Browser Extension (v2.14.0)
 
 ## Current Progress
+- [x] **Next-Month Funding Forecast Engine (v2.14.0)**: Built buffer-based next-month forecasting combining current paycheck inflows with next-month budget limits and monthly-scaled fixed commitments.
+- [x] **Paycheck-Based Month-End Forecasting (v2.13.0)**: Built full paycheck schedule evaluation, transaction-level deposit matching (with ±1 day tolerance), visual timeline tracking, and client-side mount guards.
 - [x] **Savings Goals & Timelines Tracker (v2.12.0)**: Built full CRUD, visual chronological roadmap tracks, recommended monthly saving rates, and category auto-provisioning.
 - [x] **Unified Scraper Framework**: Standardized Amazon, Walmart, and Lowe's scrapers using `CoinFlowUtils`.
 - [x] **Deep Sync Engine**: Implemented cross-site order detail fetching for high-precision itemized data.
@@ -30,7 +32,19 @@
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
 
+## Recent Fixes & Features (v2.14.0)
+- **Buffer-Based Next-Month Calculations**: Added a next-month forecasting model that computes rolled-over month-end buffer funds and matches them against next-month category limits and scaling-adjusted commitments.
+- **Commitments Frequency Scaling**: Wrote robust frequency-scaling helpers in `budgetService.ts` to convert yearly, semi-annual, quarterly, and monthly commitments to monthly-equivalents automatically.
+- **Glassmorphic Card UI Redesign**: Updated `ForecastCard.tsx` layout to title "Next-Month Funding", render premium status badges ("FUNDED" vs "DEFICIT"), display detailed next-month obligations breakdown, and prevent hydration mismatch warnings.
+
+## Recent Fixes & Features (v2.13.0)
+- **Paycheck-Based Forecasting Engine**: Replaced flat monthly assumptions with a dynamic scheduled paycheck calculator that anchor-references past or upcoming payroll cycles.
+- **Transaction Deposit Matching**: Created a high-efficiency scanning algorithm that checks inflow transactions within a ±1 day window to automatically detect early and matched paycheck deposits.
+- **Visual Paycheck Timeline**: Designed a glassmorphic chronological timeline on the main dashboard showing Received vs Pending paychecks with custom glowing status indicators.
+- **General Settings Form UI**: Expanded general settings with intuitive toggle switches, frequency selections, net amounts, and reference date fields.
+
 ## Recent Fixes & Features (v2.12.0)
+- **Realtor.com Scraper & Premium Source Deletion**: Designed a dual-action Realtor.com scraper using DOM selectors and Next.js `__NEXT_DATA__` JSON parsing fallbacks, restructured home valuation provider elements into a clean header-body card system, and integrated Realtor into the select dashboard dropdown.
 - **Savings Goals Workspace & Milestones**: Implemented a chronological horizontal roadmap track, dynamic progress meters with responsive HSL-colored bottom glow styles, and manual funding positive/negative adjuster inputs.
 - **Auto-Provisioned Budget Mappings**: Enabled dynamic, on-the-fly budget category creation and seeding during savings goal setups, allowing automatic progress tracking linked to dynamic category balances.
 - **Dashboard Savings Summary Widget**: Integrated a beautiful, real-time savings summary card in a new responsive 3-column layout on the main dashboard homepage.
@@ -54,6 +68,7 @@
 
 ## Pending Verification
 - [ ] Monitor Nginx logs for any remaining session cookie rejection under high-load/multiple tabs.
+- [ ] Test the newly added Realtor.com scraper with a live active-listing URL.
 
 ## Technical Details
 - **Version**: 2.12.0

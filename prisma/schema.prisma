@@ -180,6 +180,10 @@ model Settings {
   savingsCategoryId     String?
   monthlyIncome         Decimal   @default(5000.00)
   backupRetentionDays   Int       @default(30)
+  paycheckEnabled       Boolean   @default(false)
+  paycheckAmount        Decimal   @default(0.00)
+  paycheckFrequency     String    @default("BI_WEEKLY")
+  paycheckNextDate      DateTime?
 }
 
 model Commitment {

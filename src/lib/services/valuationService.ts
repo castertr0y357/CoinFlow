@@ -70,6 +70,53 @@ export async function scrapeHomeValue(url: string, provider: string): Promise<nu
           }
         }
       }
+    } else if (url.includes('realtor.com')) {
+      // 1. Try DOM selectors
+      const selectors = [
+        '[data-testid="price-value"]',
+        '.PropertyPrice',
+        '.price-value',
+        '[data-label="property-price"]',
+        '.price',
+        'span:contains("Estimate") + span',
+        'div:contains("Estimate") span'
+      ];
+      
+      for (const s of selectors) {
+        const el = $(s).first();
+        if (el.length) {
+          const val = el.text().replace(/[^0-9]/g, '');
+          if (val && val.length > 3) {
+            value = parseInt(val);
+            break;
+          }
+        }
+      }
+
+      // 2. Try __NEXT_DATA__ fallback
+      if (value === 0) {
+        const nextDataScript = $('#__NEXT_DATA__');
+        if (nextDataScript.length) {
+          try {
+            const nextData = JSON.parse(nextDataScript.html() || '{}');
+            // Try to extract price or estimate from different possible locations in Next.js pageProps
+            const property = nextData.props?.pageProps?.propertyData || nextData.props?.pageProps?.initialProperties;
+            if (property) {
+              const val = property.price || property.home_value || property.estimate || property.listPrice;
+              if (val) value = parseInt(String(val).replace(/[^0-9]/g, ''));
+            }
+            
+            if (value === 0) {
+              const state = nextData.props?.pageProps?.initialReduxState || nextData.props?.pageProps?.initialState;
+              const propDetails = state?.propertyDetails || state?.property;
+              if (propDetails) {
+                const val = propDetails.price || propDetails.value || propDetails.estimatePrice;
+                if (val) value = parseInt(String(val).replace(/[^0-9]/g, ''));
+              }
+            }
+          } catch (e) {}
+        }
+      }
     }
 
     return value > 0 ? value : null;
