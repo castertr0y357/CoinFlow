@@ -93,7 +93,6 @@ export default function CategorySpreadsheet({ categories, integrityWarnings = []
               {isEditingOrder && <th className="order-th">Order</th>}
               <th className="sticky-col">Category</th>
               <th className="text-right">Budgeted</th>
-              <th className="text-right">Commitments</th>
               <th className="text-right">Spent</th>
               <th className="text-right">Balance</th>
             </tr>
@@ -129,16 +128,13 @@ export default function CategorySpreadsheet({ categories, integrityWarnings = []
                   </td>
                   <td className="text-right budgeted-cell">
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'flex-end', width: '100%' }}>
-                      {cat.commitments && cat.commitments > 0 && cat.budget < cat.commitments && (
-                        <span className="underfunded-badge" title={`Underfunded! Obligations require $${cat.commitments.toLocaleString()}/mo, but you only budgeted $${cat.budget.toLocaleString()}/mo.`}>
+                      {((cat.commitments ?? 0) > 0 && cat.budget < (cat.commitments ?? 0)) ? (
+                        <span className="underfunded-badge" title={`Underfunded! Obligations require $${cat.commitments!.toLocaleString()}/mo, but you only budgeted $${cat.budget.toLocaleString()}/mo.`}>
                           ⚠️
                         </span>
-                      )}
+                      ) : null}
                       <span>${cat.budget.toLocaleString()}</span>
                     </div>
-                  </td>
-                  <td className="text-right commitments-cell">
-                    {cat.commitments && cat.commitments > 0 ? `$${cat.commitments.toLocaleString()}/mo` : '—'}
                   </td>
                   <td className="text-right spent-cell">
                     ${cat.spent.toLocaleString()}
