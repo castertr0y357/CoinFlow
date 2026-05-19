@@ -63,6 +63,7 @@ model Category {
   splits        TransactionSplit[]
   isPaused      Boolean            @default(false)
   configs       YearlyCategory[]
+  savingsGoals  SavingsGoal[]
 
   @@index([name])
 }
@@ -192,6 +193,21 @@ model Commitment {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   category    Category? @relation(fields: [categoryId], references: [id])
+
+  @@index([categoryId])
+}
+
+model SavingsGoal {
+  id            String    @id @default(cuid())
+  name          String
+  targetAmount  Decimal
+  currentAmount Decimal   @default(0)
+  targetDate    DateTime?
+  categoryId    String?   // Optional link to budget Category
+  isCompleted   Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   @@index([categoryId])
 }

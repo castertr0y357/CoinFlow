@@ -6,6 +6,7 @@ import CashHealth from "./CashHealth";
 import CategorySpreadsheet from "./CategorySpreadsheet";
 
 import ForecastCard from "./ForecastCard";
+import GoalsSummaryCard from "./GoalsSummaryCard";
 
 import { formatDistanceToNow } from 'date-fns';
 
@@ -46,6 +47,7 @@ export default function DashboardClient({ year }: { year?: number }) {
           projectedMonthEnd={tally.forecast?.projectedMonthEnd || 0}
           isHealthy={tally.forecast?.isHealthy || false}
         />
+        <GoalsSummaryCard />
       </div>
 
       <div className="dashboard-spreadsheet-section mt-8">
@@ -58,8 +60,13 @@ export default function DashboardClient({ year }: { year?: number }) {
       <style jsx>{`
         .budget-status-header {
           display: grid;
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: 1fr 1fr 1fr;
           gap: 1.5rem;
+        }
+        @media (max-width: 1100px) {
+          .budget-status-header {
+            grid-template-columns: 1fr;
+          }
         }
         .dashboard-spreadsheet-section {
           margin-bottom: 2rem;

@@ -7,6 +7,15 @@ const openai = new OpenAI({
 
 const MODEL = process.env.AI_MODEL || "gemma4:e4b";
 
+function cleanJsonContent(content: string): string {
+  let cleaned = content.trim();
+  if (cleaned.startsWith("```")) {
+    cleaned = cleaned.replace(/^```[a-zA-Z]*\s*/, "");
+    cleaned = cleaned.replace(/\s*```$/, "");
+  }
+  return cleaned.trim();
+}
+
 /**
  * Normalizes retail product titles into clean, concise names.
  */
@@ -38,7 +47,7 @@ Format the response as valid JSON only.
     if (!content) return {};
 
     try {
-      const normalizedMap = JSON.parse(content);
+      const normalizedMap = JSON.parse(cleanJsonContent(content));
       const result: Record<string, string> = {};
       for (const title of titles) {
         result[title] = normalizedMap[title] || title;
@@ -60,7 +69,7 @@ Format the response as valid JSON only.
 export async function detectSubscriptions(transactions: any[]): Promise<any[]> {
   const prompt = `
 Analyze the following financial transactions and identify potential recurring subscriptions.
-Return a JSON array of objects, each with 'name', 'amount', 'frequency' (e.g., MONTHLY, YEARLY), and 'confidence'.
+Return a JSON array of objects, each with 'name', 'monthlyCost', 'confidence', and 'reason'.
 
 Transactions:
 ${transactions.map(tx => `- ${tx.date}: ${tx.payee} ($${tx.amount})`).join("\n")}
@@ -77,7 +86,8 @@ Format the response as valid JSON only.
       ],
       response_format: { type: "json_object" }
     });
-    const data = JSON.parse(response.choices[0].message.content || "{\"subscriptions\": []}");
+    const content = response.choices[0].message.content || "{\"subscriptions\": []}";
+    const data = JSON.parse(cleanJsonContent(content));
     return data.subscriptions || [];
   } catch (error) {
     console.error("CoinFlow [AI]: detectSubscriptions failed:", error);
@@ -113,7 +123,8 @@ Format the response as valid JSON only.
       ],
       response_format: { type: "json_object" }
     });
-    return JSON.parse(response.choices[0].message.content || "{}");
+    const content = response.choices[0].message.content || "{}";
+    return JSON.parse(cleanJsonContent(content));
   } catch (error) {
     console.error("CoinFlow [AI]: getCategorySuggestions failed:", error);
     return {};
@@ -145,7 +156,8 @@ Format the response as valid JSON only.
       ],
       response_format: { type: "json_object" }
     });
-    const data = JSON.parse(response.choices[0].message.content || "{\"cleanName\": \"\"}");
+    const content = response.choices[0].message.content || "{\"cleanName\": \"\"}";
+    const data = JSON.parse(cleanJsonContent(content));
     return data.cleanName || rawPayee;
   } catch (error) {
     console.error("CoinFlow [AI]: getCleanMerchantName failed:", error);
@@ -179,7 +191,8 @@ Format the response as valid JSON only.
       ],
       response_format: { type: "json_object" }
     });
-    return JSON.parse(response.choices[0].message.content || "{\"splits\": []}");
+    const content = response.choices[0].message.content || "{\"splits\": []}";
+    return JSON.parse(cleanJsonContent(content));
   } catch (error) {
     console.error("CoinFlow [AI]: getSplitSuggestions failed:", error);
     return { splits: [] };
@@ -211,7 +224,8 @@ Format the response as valid JSON only.
       ],
       response_format: { type: "json_object" }
     });
-    return JSON.parse(response.choices[0].message.content || "{\"mappings\": []}");
+    const content = response.choices[0].message.content || "{\"mappings\": []}";
+    return JSON.parse(cleanJsonContent(content));
   } catch (error) {
     console.error("CoinFlow [AI]: suggestHistoricalMapping failed:", error);
     return { mappings: [] };

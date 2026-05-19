@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
       });
 
       const subscriptions = await detectSubscriptions(transactions);
-      return NextResponse.json(subscriptions);
+      return NextResponse.json({ subscriptions });
     } catch (error: any) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }

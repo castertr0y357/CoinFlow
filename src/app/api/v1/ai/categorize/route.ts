@@ -43,7 +43,21 @@ export async function POST(req: NextRequest) {
       // 3. Get suggestions with memory
       const suggestions = await getCategorySuggestions(targetTransactions, categories, examples);
       
-      return NextResponse.json({ suggestions });
+      const nameToIdMap: Record<string, string> = {};
+      categories.forEach(cat => {
+        nameToIdMap[cat.name.toLowerCase().trim()] = cat.id;
+      });
+
+      const mappedSuggestions: Record<string, string> = {};
+      for (const [txId, catName] of Object.entries(suggestions)) {
+        const normalizedName = String(catName).toLowerCase().trim();
+        const categoryId = nameToIdMap[normalizedName];
+        if (categoryId) {
+          mappedSuggestions[txId] = categoryId;
+        }
+      }
+
+      return NextResponse.json({ suggestions: mappedSuggestions });
     } catch (error: any) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }

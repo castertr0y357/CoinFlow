@@ -66,6 +66,7 @@ export default function Sidebar({ accounts }: SidebarProps) {
   const navLinks = [
     { label: "Dashboard", href: "/", icon: "📊" },
     { label: "Transactions", href: "/transactions", icon: "💸" },
+    { label: "Goals", href: "/goals", icon: "🎯" },
     { label: "Mortgage", href: "/mortgage", icon: "🏠" },
     { label: "Reports", href: "/reports", icon: "📈" },
     { label: "Commitments", href: "/commitments", icon: "📜" },
