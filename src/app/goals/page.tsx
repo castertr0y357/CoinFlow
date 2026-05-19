@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { getGoals } from "@/lib/services/goalService";
+import { getMonthlyTally } from "@/lib/services/budgetService";
 import GoalsClient from "./GoalsClient";
 
 export const metadata = {
@@ -13,6 +14,7 @@ export default async function GoalsPage() {
   const categories = await prisma.category.findMany({
     orderBy: { name: "asc" },
   });
+  const tally = await getMonthlyTally();
 
   return (
     <div className="goals-page container animate-fade-in">
@@ -24,6 +26,8 @@ export default async function GoalsPage() {
       <GoalsClient 
         initialGoals={goals} 
         categories={categories.map(c => ({ id: c.id, name: c.name }))} 
+        unassignedSurplus={tally.finalSurplus}
+        totalCategoryBalances={tally.totalObligations}
       />
     </div>
   );

@@ -15,9 +15,16 @@ import "./Goals.css";
 interface GoalsClientProps {
   initialGoals: GoalPayload[];
   categories: { id: string; name: string }[];
+  unassignedSurplus?: number;
+  totalCategoryBalances?: number;
 }
 
-export default function GoalsClient({ initialGoals, categories }: GoalsClientProps) {
+export default function GoalsClient({ 
+  initialGoals, 
+  categories,
+  unassignedSurplus = 0,
+  totalCategoryBalances = 0
+}: GoalsClientProps) {
   const [goals, setGoals] = useState<GoalPayload[]>(initialGoals);
   const [filter, setFilter] = useState<"all" | "active" | "completed">("active");
   const [isAdding, setIsAdding] = useState(false);
@@ -240,6 +247,22 @@ export default function GoalsClient({ initialGoals, categories }: GoalsClientPro
         </Card>
 
         <Card className="stat-card glass" animate={true} delay="0.2s">
+          <span className="stat-label">Total Category Balances</span>
+          <div className="stat-value" style={{ color: "var(--primary)" }}>
+            ${totalCategoryBalances.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+          </div>
+          <p className="text-muted text-sm mt-2">Combined balance across all your budget categories.</p>
+        </Card>
+
+        <Card className="stat-card glass" animate={true} delay="0.3s">
+          <span className="stat-label">Available to Fund</span>
+          <div className={`stat-value ${unassignedSurplus > 0 ? 'accent' : ''}`}>
+            ${unassignedSurplus.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+          </div>
+          <p className="text-muted text-sm mt-2">Unassigned money ready to be allocated to your goals.</p>
+        </Card>
+
+        <Card className="stat-card glass" animate={true} delay="0.4s">
           <span className="stat-label">Milestone Tracking</span>
           <div className="stat-value">{activeGoalsList.length} / {goals.length}</div>
           <p className="text-muted text-sm mt-2">{completedGoalsList.length} goal(s) reached and archived.</p>

@@ -39,6 +39,7 @@
 - **Pulsing Underfunded Warning Badges**: Added a pulsing amber/red `⚠️` warning next to budgeted amounts in `CategorySpreadsheet.tsx` and a detailed alert banner in `CategoryDetailClient.tsx` if the monthly provision budget is less than its linked committed obligations.
 - **Double-Counting Surplus Resolution**: Removed "Next Month Fixed Costs" subtraction and rows from both `budgetService.ts` and `ForecastCard.tsx` to prevent double-counting.
 - **Category Details Sidebar Obligations**: Added a beautiful "Tied Commitments" card under the category sidebar details showing linked obligations, their individual scaled monthly-equivalents, and the collective total obligations.
+- **Goals Page Financial Stats**: Added "Total Category Balances" and "Available to Fund" stat cards to the top of the goals dashboard, comparing total obligations and global unassigned surplus so users can easily identify available money to assign towards new goals.
 
 ## Recent Fixes & Features (v2.14.0)
 - **Buffer-Based Next-Month Calculations**: Added a next-month forecasting model that computes rolled-over month-end buffer funds and matches them against next-month category limits and scaling-adjusted commitments.
