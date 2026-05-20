@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { mutate } from "swr";
 import { updateAccountExclusion, toggleAccountDebt } from "@/app/categories/actions";
-import Button from "@/components/ui/Button";
 
 interface Account {
   id: string;

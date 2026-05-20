@@ -105,7 +105,7 @@ export default async function GeneralSettingsPage() {
                   <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
               </select>
-              <p className="help-text">If selected, your savings target will automatically match this category's monthly provision.</p>
+              <p className="help-text">If selected, your savings target will automatically match this category&apos;s monthly provision.</p>
             </div>
 
             <Input 
@@ -226,7 +226,7 @@ export default async function GeneralSettingsPage() {
                <ol className="help-steps">
                   <li>Go to <a href="https://simplefin.org/" target="_blank" rel="noopener noreferrer">SimpleFIN.org</a> and sign up for a <strong>Bridge</strong> account.</li>
                   <li>Connect your bank accounts via their secure portal.</li>
-                  <li>Look for the <strong>"Setup an App"</strong> or <strong>"Claim URL"</strong> button.</li>
+                  <li>Look for the &quot;Setup an App&quot; or &quot;Claim URL&quot; button.</li>
                   <li>Copy the long URL and paste it here.</li>
                </ol>
             </div>

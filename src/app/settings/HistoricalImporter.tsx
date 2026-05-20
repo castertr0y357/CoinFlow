@@ -20,7 +20,7 @@ export default function HistoricalImporter() {
   const [step, setStep] = useState(1); // 1: Upload, 2: Mapping, 3: Success
   const [isProcessing, setIsProcessing] = useState(false);
   const [mappings, setMappings] = useState<Mapping[]>([]);
-  const [results, setResults] = useState<any>(null);
+  const [results, setResults] = useState<{ transactionsCreated: number; categoriesCreated: number } | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) setFile(e.target.files[0]);
@@ -78,9 +78,9 @@ export default function HistoricalImporter() {
     }
   };
 
-  const updateMapping = (index: number, field: keyof Mapping, value: any) => {
+  const updateMapping = (index: number, field: keyof Mapping, value: string | boolean) => {
     const newMappings = [...mappings];
-    newMappings[index] = { ...newMappings[index], [field]: value };
+    newMappings[index] = { ...newMappings[index], [field]: value } as Mapping;
     setMappings(newMappings);
   };
 
@@ -120,7 +120,7 @@ export default function HistoricalImporter() {
       {step === 2 && (
         <div className="step-mapping animate-fade-in">
           <h3>Confirm AI Mappings for {year}</h3>
-          <p className="text-muted text-sm mb-4">We've guessed the categories based on your sheets. Adjust as needed.</p>
+          <p className="text-muted text-sm mb-4">We&apos;ve guessed the categories based on your sheets. Adjust as needed.</p>
           
           <div className="mapping-list space-y-4">
             {mappings.map((m, i) => (

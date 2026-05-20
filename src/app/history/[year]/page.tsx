@@ -20,7 +20,7 @@ export default async function HistoryPage({ params }: { params: Promise<{ year: 
     return (
       <div className="container p-12 text-center">
         <h1 className="text-4xl mb-4">Year Not Found</h1>
-        <p className="text-muted mb-8">We don't have any budget records for the year {year}.</p>
+        <p className="text-muted mb-8">We don&apos;t have any budget records for the year {year}.</p>
         <Link href="/settings" className="btn btn-primary">Go to Importer</Link>
       </div>
     );

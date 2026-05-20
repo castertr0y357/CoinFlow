@@ -63,7 +63,7 @@ export default function ApiKeyManager({ initialKeys }: { initialKeys: ApiKey[] }
 
       {revealedKey && (
         <div className="revealed-key glass animate-fade-in">
-          <p><strong>Success!</strong> Copy this key now. You won't be able to see it again.</p>
+          <p><strong>Success!</strong> Copy this key now. You won&apos;t be able to see it again.</p>
           <code className="key-code">{revealedKey}</code>
           <Button variant="ghost" size="sm" onClick={() => setRevealedKey(null)}>Close</Button>
         </div>

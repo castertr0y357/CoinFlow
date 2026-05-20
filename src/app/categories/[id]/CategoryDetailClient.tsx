@@ -302,89 +302,93 @@ export default function CategoryDetailClient({ category, transactions, otherCate
                 {sortedTransactions.length === 0 ? (
                   <div className="empty-state">No transactions in this category yet.</div>
                 ) : (
-                  sortedTransactions.map(tx => (
-                    <div key={tx.id} className={`detail-tx-row ${editingTxId === tx.id ? 'editing' : ''}`}>
-                      {editingTxId === tx.id ? (
-                        <div className="tx-edit-form">
-                          <div className="edit-fields">
-                            <Input type="date" value={editFormData.date} onChange={e => setEditFormData({...editFormData, date: e.target.value})} />
-                            <Input value={editFormData.payee} onChange={e => setEditFormData({...editFormData, payee: e.target.value})} />
-                            <Input type="number" step="0.01" value={editFormData.amount} onChange={e => setEditFormData({...editFormData, amount: Number(e.target.value)})} />
-                            <div className="edit-fields-full">
-                              <Input placeholder="Note / Memo" value={editFormData.memo} onChange={e => setEditFormData({...editFormData, memo: e.target.value})} />
-                            </div>
-                          </div>
-                          <div className="edit-btns">
-                            <Button size="sm" onClick={saveEdit}>Save</Button>
-                            <Button size="sm" variant="ghost" onClick={() => setEditingTxId(null)}>Cancel</Button>
-                            <Button size="sm" variant="ghost" onClick={() => handleDeleteTx(tx.id)}>🗑️</Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="tx-info" onClick={() => startEditing(tx)}>
-                            <span className="tx-date">{new Date(tx.date).toLocaleDateString(undefined, { timeZone: 'UTC' })}</span>
-                            <div className="tx-payee-memo">
-                              <span className="tx-payee">{tx.payee}</span>
-                              <span className="tx-memo text-dim">{tx.memo}</span>
-                            </div>
-                          </div>
-                          <div className="tx-actions">
-                            <span className={`tx-amount ${tx.amount > 0 ? 'text-success' : ''}`}>
-                              ${tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                            </span>
-                            <div className="tx-row-actions">
-                              <select 
-                                className="reclassify-select"
-                                onChange={(e) => handleReclassify(tx.id, e.target.value)}
-                                value={category.id}
-                              >
-                                <option value={category.id}>Move...</option>
-                                <option value="">Floating (Uncategorized)</option>
-                                {otherCategories.map(c => (
-                                  <option key={c.id} value={c.id}>{c.name}</option>
-                                ))}
-                              </select>
-                              <Button size="sm" variant="ghost" onClick={() => setSplittingTxId(tx.id)}>✂️ Split</Button>
-                            </div>
-                          </div>
-                          {splittingTxId === tx.id && (
-                            <div className="inline-split-form glass animate-slide-up">
-                              <div className="split-form-row">
-                                <div className="split-input-group">
-                                  <label>Amount to move</label>
-                                  <Input 
-                                    type="number" 
-                                    step="0.01" 
-                                    value={splitData.amount === 0 ? "" : splitData.amount} 
-                                    onChange={e => setSplitData({...splitData, amount: Number(e.target.value)})} 
-                                    placeholder="0.00"
-                                  />
-                                </div>
-                                <div className="split-input-group">
-                                  <label>Target Category</label>
-                                  <select 
-                                    value={splitData.targetCategoryId} 
-                                    onChange={e => setSplitData({...splitData, targetCategoryId: e.target.value})}
-                                    className="category-select-sm"
-                                  >
-                                    <option value="">Floating (Uncategorized)</option>
-                                    {otherCategories.map(c => (
-                                      <option key={c.id} value={c.id}>{c.name}</option>
-                                    ))}
-                                  </select>
-                                </div>
-                              </div>
-                              <div className="split-form-actions">
-                                <Button size="sm" onClick={() => handleSplit(tx.id)} disabled={isSaving}>Apply Split</Button>
-                                <Button size="sm" variant="ghost" onClick={() => setSplittingTxId(null)}>Cancel</Button>
-                              </div>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  ))
+                  sortedTransactions.map(tx => {
+                     const isEditing = editingTxId === tx.id;
+                     const data = editFormData;
+                     return (
+                       <div key={tx.id} className={`detail-tx-row ${isEditing ? 'editing' : ''}`}>
+                         {isEditing && data ? (
+                           <div className="tx-edit-form">
+                             <div className="edit-fields">
+                               <Input type="date" value={data.date} onChange={e => setEditFormData({...data, date: e.target.value})} />
+                               <Input value={data.payee} onChange={e => setEditFormData({...data, payee: e.target.value})} />
+                               <Input type="number" step="0.01" value={data.amount} onChange={e => setEditFormData({...data, amount: Number(e.target.value)})} />
+                               <div className="edit-fields-full">
+                                 <Input placeholder="Note / Memo" value={data.memo} onChange={e => setEditFormData({...data, memo: e.target.value})} />
+                               </div>
+                             </div>
+                             <div className="edit-btns">
+                               <Button size="sm" onClick={saveEdit}>Save</Button>
+                               <Button size="sm" variant="ghost" onClick={() => setEditingTxId(null)}>Cancel</Button>
+                               <Button size="sm" variant="ghost" onClick={() => handleDeleteTx(tx.id)}>🗑️</Button>
+                             </div>
+                           </div>
+                         ) : (
+                           <>
+                             <div className="tx-info" onClick={() => startEditing(tx)}>
+                               <span className="tx-date">{new Date(tx.date).toLocaleDateString(undefined, { timeZone: 'UTC' })}</span>
+                               <div className="tx-payee-memo">
+                                 <span className="tx-payee">{tx.payee}</span>
+                                 <span className="tx-memo text-dim">{tx.memo}</span>
+                               </div>
+                             </div>
+                             <div className="tx-actions">
+                               <span className={`tx-amount ${tx.amount > 0 ? 'text-success' : ''}`}>
+                                 ${tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                               </span>
+                               <div className="tx-row-actions">
+                                 <select 
+                                   className="reclassify-select"
+                                   onChange={(e) => handleReclassify(tx.id, e.target.value)}
+                                   value={category.id}
+                                 >
+                                   <option value={category.id}>Move...</option>
+                                   <option value="">Floating (Uncategorized)</option>
+                                   {otherCategories.map(c => (
+                                     <option key={c.id} value={c.id}>{c.name}</option>
+                                   ))}
+                                 </select>
+                                 <Button size="sm" variant="ghost" onClick={() => setSplittingTxId(tx.id)}>✂️ Split</Button>
+                               </div>
+                             </div>
+                             {splittingTxId === tx.id && (
+                               <div className="inline-split-form glass animate-slide-up">
+                                 <div className="split-form-row">
+                                   <div className="split-input-group">
+                                     <label>Amount to move</label>
+                                     <Input 
+                                       type="number" 
+                                       step="0.01" 
+                                       value={splitData.amount === 0 ? "" : splitData.amount} 
+                                       onChange={e => setSplitData({...splitData, amount: Number(e.target.value)})} 
+                                       placeholder="0.00"
+                                     />
+                                   </div>
+                                   <div className="split-input-group">
+                                     <label>Target Category</label>
+                                     <select 
+                                       value={splitData.targetCategoryId} 
+                                       onChange={e => setSplitData({...splitData, targetCategoryId: e.target.value})}
+                                       className="category-select-sm"
+                                     >
+                                       <option value="">Floating (Uncategorized)</option>
+                                       {otherCategories.map(c => (
+                                         <option key={c.id} value={c.id}>{c.name}</option>
+                                       ))}
+                                     </select>
+                                   </div>
+                                 </div>
+                                 <div className="split-form-actions">
+                                   <Button size="sm" onClick={() => handleSplit(tx.id)} disabled={isSaving}>Apply Split</Button>
+                                   <Button size="sm" variant="ghost" onClick={() => setSplittingTxId(null)}>Cancel</Button>
+                                 </div>
+                               </div>
+                             )}
+                           </>
+                         )}
+                       </div>
+                     );
+                   })
                 )}
              </div>
           </Card>

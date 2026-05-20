@@ -15,6 +15,11 @@ interface TransactionListProps {
   onSort?: (field: 'date' | 'amount' | 'payee') => void;
 }
 
+function SortIcon({ field, sortBy, sortOrder }: { field: 'date' | 'amount' | 'payee'; sortBy?: 'date' | 'amount' | 'payee'; sortOrder?: 'asc' | 'desc' }) {
+  if (sortBy !== field) return <span className="sort-icon-placeholder">↕️</span>;
+  return <span className="sort-icon active">{sortOrder === 'asc' ? '🔼' : '🔽'}</span>;
+}
+
 export default function TransactionList({ 
   transactions, 
   categories, 
@@ -28,11 +33,6 @@ export default function TransactionList({
   onSort
 }: TransactionListProps) {
   const allSelected = transactions.length > 0 && transactions.every(tx => selectedIds.has(tx.id));
-
-  const SortIcon = ({ field }: { field: 'date' | 'amount' | 'payee' }) => {
-    if (sortBy !== field) return <span className="sort-icon-placeholder">↕️</span>;
-    return <span className="sort-icon active">{sortOrder === 'asc' ? '🔼' : '🔽'}</span>;
-  };
 
   return (
     <Card className="transactions-list animate-fade-in" delay="0.2s">
@@ -51,21 +51,21 @@ export default function TransactionList({
             style={{ flex: 1, cursor: 'pointer' }}
             onClick={() => onSort?.('date')}
           >
-            Date <SortIcon field="date" />
+            Date <SortIcon field="date" sortBy={sortBy} sortOrder={sortOrder} />
           </span>
           <span 
             className={`sortable-header ${sortBy === 'payee' ? 'active' : ''}`} 
             style={{ flex: 2, cursor: 'pointer' }}
             onClick={() => onSort?.('payee')}
           >
-            Payee <SortIcon field="payee" />
+            Payee <SortIcon field="payee" sortBy={sortBy} sortOrder={sortOrder} />
           </span>
           <span 
             className={`sortable-header ${sortBy === 'amount' ? 'active' : ''}`} 
             style={{ flex: 1, textAlign: 'right', cursor: 'pointer' }}
             onClick={() => onSort?.('amount')}
           >
-            Amount <SortIcon field="amount" />
+            Amount <SortIcon field="amount" sortBy={sortBy} sortOrder={sortOrder} />
           </span>
         </div>
         <div className="tx-header-splits">

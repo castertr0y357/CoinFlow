@@ -5,10 +5,29 @@ export interface Category {
 
 export interface Split {
   id: string;
-  amount: any;
+  amount: number | string;
   categoryId: string | null;
   memo: string | null;
   createdAt: string;
+}
+
+export interface ExternalOrderItem {
+  id: string;
+  externalOrderId: string;
+  title: string;
+  rawTitle: string | null;
+  price: number | string;
+  quantity: number;
+  categoryHint: string | null;
+}
+
+export interface ExternalOrder {
+  id: string;
+  orderId: string;
+  source: string;
+  date: Date | string;
+  totalAmount: number | string;
+  items?: ExternalOrderItem[];
 }
 
 export type Transaction = {
@@ -16,16 +35,16 @@ export type Transaction = {
   date: Date;
   payee: string;
   rawPayee: string | null;
-  amount: any;
+  amount: number | string;
   splits: Split[];
   externalOrderId: string | null;
-  externalOrder?: any;
+  externalOrder?: ExternalOrder | null;
   isHidden: boolean;
 }
 
 export interface Settings {
   id: string;
-  savingsTarget: any;
+  savingsTarget: number;
   simpleFinToken: string | null;
   lastSync: Date | null;
 }

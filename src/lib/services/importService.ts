@@ -1,19 +1,27 @@
-import * as XLSX from 'xlsx';
 import prisma from "@/lib/prisma";
 import { suggestHistoricalMapping } from "./aiService";
-import { Category } from "@/types";
+
+interface HistoricalMapping {
+  isTransactionSheet: boolean;
+  sheetName: string;
+  suggestedCategory: string;
+  dateColumn: string;
+  payeeColumn: string;
+  amountColumn: string;
+}
 
 export async function analyzeXlsx(buffer: Buffer) {
+  const XLSX = await import('xlsx');
   const workbook = XLSX.read(buffer, { type: 'buffer' });
   const sheetInfo = workbook.SheetNames.map(name => {
     const sheet = workbook.Sheets[name];
-    const data = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
-    const headers = data[0] || [];
+    const data = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as unknown[][];
+    const headers = (data[0] || []).map(h => String(h));
     const samples = data.slice(1, 4); // Take 3 sample rows
     
     // Map samples back to header keys for the LLM
     const mappedSamples = samples.map(row => {
-      const obj: any = {};
+      const obj: Record<string, unknown> = {};
       headers.forEach((h: string, i: number) => {
         obj[h] = row[i];
       });
@@ -24,7 +32,7 @@ export async function analyzeXlsx(buffer: Buffer) {
   });
 
   const categories = await prisma.category.findMany();
-  const suggestions = await suggestHistoricalMapping(sheetInfo, categories as any);
+  const suggestions = await suggestHistoricalMapping(sheetInfo, categories);
 
   return {
     sheetInfo,
@@ -35,8 +43,9 @@ export async function analyzeXlsx(buffer: Buffer) {
 export async function executeHistoricalImport(
   buffer: Buffer, 
   year: number, 
-  mappings: any[]
+  mappings: HistoricalMapping[]
 ) {
+  const XLSX = await import('xlsx');
   const workbook = XLSX.read(buffer, { type: 'buffer' });
   
   // 1. Ensure the Year exists
@@ -56,7 +65,7 @@ export async function executeHistoricalImport(
     if (!mapping.isTransactionSheet) continue;
 
     const sheet = workbook.Sheets[mapping.sheetName];
-    const data = XLSX.utils.sheet_to_json(sheet) as any[];
+    const data = XLSX.utils.sheet_to_json(sheet) as Record<string, unknown>[];
 
     // Find or create the category
     let category = await prisma.category.findUnique({
@@ -100,8 +109,8 @@ export async function executeHistoricalImport(
     });
 
     for (const row of data) {
-      const date = new Date(row[mapping.dateColumn]);
-      const payee = row[mapping.payeeColumn];
+      const date = new Date(row[mapping.dateColumn] as string | number | Date);
+      const payee = row[mapping.payeeColumn] as string;
       const amount = Number(row[mapping.amountColumn]);
 
       if (isNaN(date.getTime()) || !payee || isNaN(amount)) {

@@ -4,10 +4,10 @@ import { validateApiKey } from "./services/auth";
 import { cookies } from "next/headers";
 import { decrypt } from "./auth";
 import prisma from "./prisma";
+import { User } from "@prisma/client";
 
-export async function withAuth(req: NextRequest, handler: (user: any) => Promise<NextResponse>) {
+export async function withAuth(req: NextRequest, handler: (user: User) => Promise<NextResponse>) {
   try {
-    // 1. Check for API Key (External/Background access)
     // 1. Check for API Key (External/Background access)
     const apiKey = req.headers.get("X-API-KEY");
     if (apiKey) {
@@ -35,10 +35,11 @@ export async function withAuth(req: NextRequest, handler: (user: any) => Promise
     }
 
     return addCorsHeaders(NextResponse.json({ error: "Unauthorized" }, { status: 401 }));
-  } catch (error: any) {
-    console.error(`API Error [${req.nextUrl.pathname}]:`, error);
+  } catch (error) {
+    const err = error as Error;
+    console.error(`API Error [${req.nextUrl.pathname}]:`, err);
     return addCorsHeaders(NextResponse.json(
-      { error: "Internal server error", details: error.message }, 
+      { error: "Internal server error", details: err.message }, 
       { status: 500 }
     ));
   }

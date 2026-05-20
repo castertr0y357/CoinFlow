@@ -298,29 +298,7 @@ export async function getMonthlyTally(year?: number) {
   };
 }
 
-async function initializeYear(year: number) {
-  const budgetYear = await prisma.budgetYear.create({
-    data: { year }
-  });
 
-  const categories = await prisma.category.findMany();
-  
-  for (const cat of categories) {
-    await prisma.yearlyCategory.create({
-      data: {
-        yearId: budgetYear.id,
-        categoryId: cat.id,
-        monthlyBudget: 0,
-        rollover: 0
-      }
-    });
-  }
-
-  return prisma.budgetYear.findUniqueOrThrow({
-    where: { id: budgetYear.id },
-    include: { configs: true }
-  });
-}
 
 export async function getBudgetSettings() {
   return prisma.settings.findUnique({ where: { id: 'global' } });

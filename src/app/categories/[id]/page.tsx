@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
-import Card from "@/components/ui/Card";
 import CategoryDetailClient from "./CategoryDetailClient";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 
 export default async function CategoryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -51,7 +51,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
     <div className="category-detail-page container animate-fade-in">
       <header className="page-header">
          <div className="breadcrumb">
-            <a href="/">Dashboard</a> / Categories
+            <Link href="/">Dashboard</Link> / Categories
          </div>
          <h1>{category.name}</h1>
          <p className="text-muted">Manage allocations and re-classify transactions.</p>

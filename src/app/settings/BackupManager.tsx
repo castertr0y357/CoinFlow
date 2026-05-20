@@ -15,14 +15,6 @@ export default function BackupManager() {
   const [serverBackups, setServerBackups] = useState<ServerBackup[]>([]);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchServerBackups();
-    
-    const handleClickOutside = () => setOpenMenu(null);
-    window.addEventListener("click", handleClickOutside);
-    return () => window.removeEventListener("click", handleClickOutside);
-  }, []);
-
   const fetchServerBackups = async () => {
     try {
       const res = await fetch("/api/v1/data/backups");
@@ -30,8 +22,16 @@ export default function BackupManager() {
         const data = await res.json();
         setServerBackups(data.backups || []);
       }
-    } catch (err) {}
+    } catch {}
   };
+
+  useEffect(() => {
+    fetchServerBackups();
+    
+    const handleClickOutside = () => setOpenMenu(null);
+    window.addEventListener("click", handleClickOutside);
+    return () => window.removeEventListener("click", handleClickOutside);
+  }, []);
 
   const handleDownloadServerBackup = (filename: string) => {
     window.location.href = `/api/v1/data/backups/${filename}`;
@@ -48,7 +48,7 @@ export default function BackupManager() {
       } else {
         setStatus("Failed to create snapshot.");
       }
-    } catch (err) {
+    } catch {
       setStatus("Error creating snapshot.");
     } finally {
       setIsSyncing(false);
@@ -82,7 +82,7 @@ export default function BackupManager() {
         const err = await res.json();
         setStatus(`Error: ${err.error}`);
       }
-    } catch (err) {
+    } catch {
       setStatus("Error: Invalid JSON file.");
     } finally {
       setIsSyncing(false);
@@ -109,7 +109,7 @@ export default function BackupManager() {
         const err = await res.json();
         setStatus(`Error: ${err.error}`);
       }
-    } catch (err) {
+    } catch {
       setStatus("Error restoring server snapshot.");
     } finally {
       setIsSyncing(false);

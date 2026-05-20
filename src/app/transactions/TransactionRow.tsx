@@ -145,13 +145,13 @@ export default function TransactionRow({
                 >
                   {isAiSplitting ? "✨ Analyzing..." : "✨ Smart Split"}
                 </Button>
-                {tx.externalOrder && (
+                {!!tx.externalOrder && (
                   <div className="order-details-popover glass">
                     <div className="order-header">
                       <strong>{tx.externalOrder.source} Order #{tx.externalOrder.orderId}</strong>
                     </div>
                     <ul className="order-items">
-                      {tx.externalOrder.items?.map((item: any) => (
+                      {tx.externalOrder.items?.map((item) => (
                         <li key={item.id} className="order-item">
                           <span className="item-qty">{item.quantity}x</span>
                           <span className="item-title">{item.title}</span>

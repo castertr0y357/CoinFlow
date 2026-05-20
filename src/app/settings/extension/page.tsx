@@ -10,7 +10,7 @@ export default function ExtensionSettingsPage() {
         <div className="form-section">
           <h2>CoinFlow Purchase Sync</h2>
           <p className="text-muted">
-            The CoinFlow browser extension allows you to automatically sync your purchase history from Amazon, Walmart, and Lowe's directly into your budget.
+            The CoinFlow browser extension allows you to automatically sync your purchase history from Amazon, Walmart, and Lowe&apos;s directly into your budget.
           </p>
 
           <div className="extension-status-card glass p-8 rounded-2xl border border-primary/20 mt-4">
@@ -24,7 +24,7 @@ export default function ExtensionSettingsPage() {
             
             <div className="flex flex-col gap-4">
               <p className="text-dim leading-relaxed">
-                Since browsers do not allow automatic installation of extensions from websites for security reasons, you must load the extension manually using Chrome's Developer Mode.
+                Since browsers do not allow automatic installation of extensions from websites for security reasons, you must load the extension manually using Chrome&apos;s Developer Mode.
               </p>
               <div className="flex flex-wrap gap-4 mt-2">
                 <Button variant="primary" onClick={() => window.location.href = '/coinflow-extension.zip'}>Download Extension Zip</Button>

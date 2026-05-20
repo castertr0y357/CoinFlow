@@ -1,6 +1,3 @@
-"use client";
-
-import { useState, useEffect } from "react";
 import Card from "@/components/ui/Card";
 
 interface PaycheckItem {
@@ -10,33 +7,28 @@ interface PaycheckItem {
 }
 
 interface ForecastProps {
-  expectedIncome: number;
   projectedMonthEnd: number;
   isHealthy: boolean;
   paycheckEnabled?: boolean;
   paychecks?: PaycheckItem[];
-  remainingIncome?: number;
   nextMonthAllocations?: number;
-  nextMonthCommitments?: number;
   nextMonthSurplus?: number;
+  expectedIncome?: number;
+  remainingIncome?: number;
+  nextMonthCommitments?: number;
 }
 
 export default function ForecastCard({ 
-  expectedIncome, 
   projectedMonthEnd, 
   isHealthy,
   paycheckEnabled = false,
   paychecks = [],
-  remainingIncome = 0,
   nextMonthAllocations = 0,
-  nextMonthCommitments = 0,
-  nextMonthSurplus = 0
+  nextMonthSurplus = 0,
+  expectedIncome = 0,
+  remainingIncome = 0,
+  nextMonthCommitments = 0
 }: ForecastProps) {
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
   const formatDate = (dateStr: string) => {
     const parts = dateStr.split('-');
@@ -71,7 +63,7 @@ export default function ForecastCard({
                 </div>
                 <div className="paycheck-details">
                   <div className="paycheck-info">
-                    <span className="paycheck-date">{isMounted ? formatDate(p.date) : p.date}</span>
+                    <span className="paycheck-date" suppressHydrationWarning>{formatDate(p.date)}</span>
                     <span className={`paycheck-status-badge ${p.status}`}>
                       {p.status === "received" ? "Received" : "Pending"}
                     </span>
