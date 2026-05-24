@@ -1,11 +1,42 @@
 import OpenAI from "openai";
 
+let baseURL = process.env.OPENAI_BASE_URL || "http://localhost:11434/v1";
+
+// Auto-upgrade remote non-localhost endpoints to HTTPS to avoid HTTP-to-HTTPS redirects breaking POST requests
+if (baseURL.startsWith("http://") && 
+    !baseURL.includes("localhost") && 
+    !baseURL.includes("127.0.0.1") && 
+    !baseURL.includes("192.168.") && 
+    !baseURL.includes("10.") && 
+    !baseURL.includes("::1")) {
+  const hostname = baseURL.replace("http://", "").split("/")[0].split(":")[0];
+  if (hostname.includes(".")) {
+    baseURL = baseURL.replace("http://", "https://");
+  }
+}
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || "sk-placeholder",
-  baseURL: process.env.OPENAI_BASE_URL || "http://localhost:11434/v1",
+  baseURL,
 });
 
 const MODEL = process.env.AI_MODEL || "gemma4:e4b";
+
+const CHAT_ID = process.env.OPENAI_CHAT_ID || process.env.AI_CHAT_ID || (
+  (baseURL.includes("webui") || baseURL.includes("ollama")) ? "webbudget-session-id" : undefined
+);
+
+/**
+ * Helper to call openai.chat.completions.create with centralized chat_id and model configuration.
+ */
+async function createChatCompletion(messages: any[], jsonMode = true) {
+  return openai.chat.completions.create({
+    model: MODEL,
+    messages,
+    ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
+    ...(CHAT_ID ? { extra_body: { chat_id: CHAT_ID } } : {}),
+  });
+}
 
 function cleanJsonContent(content: string): string {
   let cleaned = content.trim();
@@ -34,14 +65,10 @@ Format the response as valid JSON only.
 `;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: MODEL,
-      messages: [
-        { role: "system", content: "You are a helpful assistant that normalizes retail product titles into clean, concise names." },
-        { role: "user", content: prompt }
-      ],
-      response_format: { type: "json_object" }
-    });
+    const response = await createChatCompletion([
+      { role: "system", content: "You are a helpful assistant that normalizes retail product titles into clean, concise names." },
+      { role: "user", content: prompt }
+    ]);
 
     const content = response.choices[0].message.content;
     if (!content) return {};
@@ -78,14 +105,10 @@ Format the response as valid JSON only.
 `;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: MODEL,
-      messages: [
-        { role: "system", content: "You are a financial analyst identifying subscriptions." },
-        { role: "user", content: prompt }
-      ],
-      response_format: { type: "json_object" }
-    });
+    const response = await createChatCompletion([
+      { role: "system", content: "You are a financial analyst identifying subscriptions." },
+      { role: "user", content: prompt }
+    ]);
     const content = response.choices[0].message.content || "{\"subscriptions\": []}";
     const data = JSON.parse(cleanJsonContent(content));
     return data.subscriptions || [];
@@ -115,14 +138,10 @@ Format the response as valid JSON only.
 `;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: MODEL,
-      messages: [
-        { role: "system", content: "You are a budgeting assistant." },
-        { role: "user", content: prompt }
-      ],
-      response_format: { type: "json_object" }
-    });
+    const response = await createChatCompletion([
+      { role: "system", content: "You are a budgeting assistant." },
+      { role: "user", content: prompt }
+    ]);
     const content = response.choices[0].message.content || "{}";
     return JSON.parse(cleanJsonContent(content));
   } catch (error) {
@@ -148,14 +167,10 @@ Format the response as valid JSON only.
 `;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: MODEL,
-      messages: [
-        { role: "system", content: "You are a data cleaner for bank transactions." },
-        { role: "user", content: prompt }
-      ],
-      response_format: { type: "json_object" }
-    });
+    const response = await createChatCompletion([
+      { role: "system", content: "You are a data cleaner for bank transactions." },
+      { role: "user", content: prompt }
+    ]);
     const content = response.choices[0].message.content || "{\"cleanName\": \"\"}";
     const data = JSON.parse(cleanJsonContent(content));
     return data.cleanName || rawPayee;
@@ -183,14 +198,10 @@ Format the response as valid JSON only.
 `;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: MODEL,
-      messages: [
-        { role: "system", content: "You are a budgeting expert splitting transactions." },
-        { role: "user", content: prompt }
-      ],
-      response_format: { type: "json_object" }
-    });
+    const response = await createChatCompletion([
+      { role: "system", content: "You are a budgeting expert splitting transactions." },
+      { role: "user", content: prompt }
+    ]);
     const content = response.choices[0].message.content || "{\"splits\": []}";
     return JSON.parse(cleanJsonContent(content));
   } catch (error) {
@@ -216,14 +227,10 @@ Format the response as valid JSON only.
 `;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: MODEL,
-      messages: [
-        { role: "system", content: "You are an expert at data mapping and spreadsheet analysis." },
-        { role: "user", content: prompt }
-      ],
-      response_format: { type: "json_object" }
-    });
+    const response = await createChatCompletion([
+      { role: "system", content: "You are an expert at data mapping and spreadsheet analysis." },
+      { role: "user", content: prompt }
+    ]);
     const content = response.choices[0].message.content || "{\"mappings\": []}";
     return JSON.parse(cleanJsonContent(content));
   } catch (error) {
