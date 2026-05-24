@@ -105,3 +105,18 @@ export async function updateSplitMemo(splitId: string, memo: string | null) {
   revalidatePath("/");
 }
 
+export async function updateTransactionMemo(transactionId: string, memo: string | null) {
+  await prisma.$transaction([
+    prisma.transaction.update({
+      where: { id: transactionId },
+      data: { memo: memo || null }
+    }),
+    prisma.transactionSplit.updateMany({
+      where: { transactionId },
+      data: { memo: memo || null }
+    })
+  ]);
+  revalidatePath("/transactions");
+  revalidatePath("/");
+}
+

@@ -36,7 +36,8 @@
 ## Recent Fixes & Features (v2.16.0)
 - **Total Assets & Debts Navigation Widget**: Calculated and displayed global total assets and total debts in a clean, glassmorphic layout card on the left navigation panel, regardless of whether accounts are on or off budget.
 - **Precision Payee Scraper Matching**: Standardized external sync transaction matching by comparing transaction payee names against the source platform. Restricted matching for Amazon (contains "amazon" or "amzn"), Walmart (contains "walmart", "wal-mart", "wm supercenter", "wm.com", or starts with "wm "), and Lowe's (contains "lowes" or "lowe's") to prevent incorrect matches.
-- **Inline Transaction Comment Editing**: Added the ability to view, add, and edit split comments/memos directly in transaction lists on the transaction page. Features custom styles and automatic database saves on blur or pressing Enter.
+- **Click-to-Show Note Section**: Added click-activated transaction-level note editing directly under the payee on the transactions page, matching the category page behavior. Upgraded the note field to a larger, dedicated stacked textarea form entry field that supports keyboard navigation (Enter to save, Shift+Enter for newlines, Escape to cancel) and glassmorphic styling.
+- **Conditional Split Amount Display**: Omitted rendering split amounts for transactions that are not split (i.e. only have one split) to eliminate visual noise and duplication of the total transaction amount.
 
 ## Recent Fixes & Features (v2.15.0)
 - **Commitment Categories Linking**: Modified the inline commitments editor in `CommitmentsClient.tsx` with a dual-row responsive grid incorporating a Category selector, enabling users to link recurring obligations directly to dynamic budget categories.
@@ -65,5 +66,6 @@
   - `src/components/Sidebar.tsx`: Rendered total assets and debts cards with custom styles on the left navigation bar.
   - `src/lib/external-orders.ts`: Implemented `getPayeeFilterForSource` and updated Amazon CSV processing to check for payee match.
   - `src/app/api/v1/external-orders/sync/route.ts`: Integrated payee checking during transaction sync matching.
-  - `src/app/transactions/TransactionRow.tsx` & `actions.ts`: Added SplitItem component, styling, and updateSplitMemo action for inline transaction comments.
-  - `src/app/transactions/Transactions.css`: Added styles for split memo input, text display, and responsive container layout.
+  - `src/app/transactions/TransactionRow.tsx` & `actions.ts`: Added click-to-show transaction-level memo form and `updateTransactionMemo` action.
+  - `src/app/transactions/Transactions.css`: Styled payee-text click areas and memo form elements.
+  - `src/types/index.ts`: Added missing `memo` property to `Transaction` interface for type safety.

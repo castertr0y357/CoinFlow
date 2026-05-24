@@ -40,6 +40,7 @@ export type Transaction = {
   externalOrderId: string | null;
   externalOrder?: ExternalOrder | null;
   isHidden: boolean;
+  memo: string | null;
 }
 
 export interface Settings {

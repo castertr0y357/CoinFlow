@@ -37,25 +37,36 @@
   flex-direction: column;
 }
 
-.tx-row {
+.tx-row-container {
   display: flex;
-  align-items: center;
-  padding: 1rem 1.5rem;
+  flex-direction: column;
   border-bottom: 1px solid var(--glass-border);
   transition: var(--transition-fast);
 }
 
-.tx-row:last-child {
+.tx-row-container:last-child {
   border-bottom: none;
 }
 
-.tx-row:hover {
-  background: var(--surface-hover);
+.tx-row-container:hover {
+  background: rgba(255, 255, 255, 0.01);
 }
 
-.tx-row.pending {
+.tx-row-container.pending {
   opacity: 0.5;
   pointer-events: none;
+}
+
+.tx-row-main-content {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  transition: var(--transition-fast);
+  width: 100%;
+}
+
+.tx-row-main-content:hover {
+  background: var(--surface-hover);
 }
 
 .tx-main {
@@ -177,7 +188,7 @@
   font-size: 1rem;
 }
 
-.tx-row:hover .row-action-btn {
+.tx-row-main-content:hover .row-action-btn {
   opacity: 1;
 }
 
@@ -196,7 +207,7 @@
   font-size: 0.8rem;
 }
 
-.tx-row:hover .add-split-btn {
+.tx-row-main-content:hover .add-split-btn {
   opacity: 1;
 }
 
@@ -394,7 +405,7 @@
 }
 
 /* Adjust row to accommodate checkbox */
-.tx-list-header, .tx-row {
+.tx-list-header, .tx-row-main-content {
   padding-left: 1rem;
 }
 /* Sorting */
@@ -456,42 +467,6 @@
   opacity: 1 !important;
 }
 
-.split-memo-container {
-  width: 140px;
-  min-width: 140px;
-  display: flex;
-  align-items: center;
-}
-
-.split-memo-text {
-  font-size: 0.8rem;
-  color: var(--text-dim);
-  cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding: 4px 8px;
-  border-radius: 6px;
-  transition: var(--transition-fast);
-  border: 1px solid transparent;
-  width: 100%;
-}
-
-.split-memo-text:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: var(--glass-border);
-  color: var(--text-main);
-}
-
-.split-memo-text.placeholder {
-  color: var(--text-muted);
-  opacity: 0.6;
-}
-
-.split-memo-text.placeholder:hover {
-  opacity: 1;
-}
-
 .split-memo-input {
   font-size: 0.8rem;
   padding: 4px 8px;
@@ -507,4 +482,71 @@
 .split-memo-input:focus {
   outline: none;
 }
+
+.tx-memo {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  color: var(--text-dim);
+}
+
+.tx-memo.placeholder {
+  opacity: 0.4;
+}
+
+/* Stacked Note Editor Row */
+.tx-note-edit-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem 2.5rem 1.5rem 7.5rem;
+  background: rgba(99, 102, 241, 0.02);
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  animation: slideDown 0.2s ease-out;
+  backdrop-filter: blur(10px);
+}
+
+.tx-note-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.note-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tx-note-input {
+  font-size: 0.95rem;
+  padding: 0.85rem 1.15rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.4) !important;
+  border: 1px solid var(--glass-border) !important;
+  color: var(--text-main) !important;
+  font-family: inherit;
+  width: 100%;
+  min-height: 90px;
+  resize: vertical;
+  transition: var(--transition-fast);
+  line-height: 1.6;
+}
+
+.tx-note-input:focus {
+  outline: none;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 10px var(--primary-glow);
+}
+
+.tx-note-edit-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 0.25rem;
+}
+
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { categorizeSplit, applyTransactionSplits, hideTransaction, addSplit, deleteTransactionSplit, updateSplitMemo } from "./actions";
+import { useState, useEffect } from "react";
+import { categorizeSplit, applyTransactionSplits, hideTransaction, addSplit, deleteTransactionSplit, updateSplitMemo, updateTransactionMemo } from "./actions";
 import Button from "@/components/ui/Button";
 import { Category, Transaction } from "@/types";
 
@@ -100,13 +100,21 @@ export default function TransactionRow({
     }
   };
 
-  const handleUpdateSplitMemo = async (splitId: string, memo: string) => {
+  const [isEditingNote, setIsEditingNote] = useState(false);
+  const [noteDraft, setNoteDraft] = useState(tx.memo || "");
+
+  useEffect(() => {
+    setNoteDraft(tx.memo || "");
+  }, [tx.memo]);
+
+  const handleSaveNote = async () => {
     setIsPending(true);
     try {
-      await updateSplitMemo(splitId, memo);
+      await updateTransactionMemo(tx.id, noteDraft);
+      setIsEditingNote(false);
       if (onCategorized) onCategorized();
     } catch (error) {
-      console.error("Failed to update split memo:", error);
+      console.error("Failed to update transaction memo:", error);
     } finally {
       setIsPending(false);
     }
@@ -122,102 +130,151 @@ export default function TransactionRow({
   });
 
   return (
-    <div className={`tx-row ${isPending ? 'pending' : ''} ${suggestion ? 'has-suggestion' : ''} ${isSelected ? 'selected' : ''}`}>
-      <div className="tx-checkbox-cell">
-        <input 
-          type="checkbox" 
-          className="tx-checkbox" 
-          checked={isSelected} 
-          onChange={(e) => onSelectionToggle?.(tx.id, e.target.checked)}
-        />
-      </div>
-      <div className="tx-main">
-        <div className="tx-date">
-          {new Date(tx.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
+    <div className={`tx-row-container ${isPending ? 'pending' : ''} ${suggestion ? 'has-suggestion' : ''} ${isSelected ? 'selected' : ''}`}>
+      <div className="tx-row-main-content">
+        <div className="tx-checkbox-cell">
+          <input 
+            type="checkbox" 
+            className="tx-checkbox" 
+            checked={isSelected} 
+            onChange={(e) => onSelectionToggle?.(tx.id, e.target.checked)}
+          />
         </div>
-        <div className="tx-payee">
-          <div className="payee-text" onClick={() => setShowRaw(!showRaw)} style={{ cursor: 'pointer' }}>
-            {showRaw ? (
-               <span className="raw-payee">{tx.rawPayee || tx.payee} 🏦</span>
-            ) : (
-               <span className="clean-payee">{tx.payee}</span>
-            )}
-            
-            {tx.externalOrderId && (
-              <div className="external-order-info">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="smart-split-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleSmartSplit();
-                  }}
-                  disabled={isAiSplitting || isPending}
-                >
-                  {isAiSplitting ? "✨ Analyzing..." : "✨ Smart Split"}
-                </Button>
-                {!!tx.externalOrder && (
-                  <div className="order-details-popover glass">
-                    <div className="order-header">
-                      <strong>{tx.externalOrder.source} Order #{tx.externalOrder.orderId}</strong>
+        <div className="tx-main">
+          <div className="tx-date">
+            {new Date(tx.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
+          </div>
+          <div className="tx-payee">
+            <div className="payee-text-click-area" onClick={() => setIsEditingNote(!isEditingNote)} style={{ cursor: 'pointer' }}>
+              <div className="payee-text">
+                <span onClick={(e) => {
+                  e.stopPropagation();
+                  setShowRaw(!showRaw);
+                }}>
+                  {showRaw ? (
+                     <span className="raw-payee">{tx.rawPayee || tx.payee} 🏦</span>
+                  ) : (
+                     <span className="clean-payee">{tx.payee}</span>
+                  )}
+                </span>
+                
+                {tx.externalOrderId && (
+                  <div onClick={(e) => e.stopPropagation()} style={{ display: 'inline-block' }}>
+                    <div className="external-order-info">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="smart-split-btn"
+                        onClick={() => handleSmartSplit()}
+                        disabled={isAiSplitting || isPending}
+                      >
+                        {isAiSplitting ? "✨ Analyzing..." : "✨ Smart Split"}
+                      </Button>
+                      {!!tx.externalOrder && (
+                        <div className="order-details-popover glass">
+                          <div className="order-header">
+                            <strong>{tx.externalOrder.source} Order #{tx.externalOrder.orderId}</strong>
+                          </div>
+                          <ul className="order-items">
+                            {tx.externalOrder.items?.map((item) => (
+                              <li key={item.id} className="order-item">
+                                <span className="item-qty">{item.quantity}x</span>
+                                <span className="item-title">{item.title}</span>
+                                <span className="item-price">${Number(item.price).toFixed(2)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
-                    <ul className="order-items">
-                      {tx.externalOrder.items?.map((item) => (
-                        <li key={item.id} className="order-item">
-                          <span className="item-qty">{item.quantity}x</span>
-                          <span className="item-title">{item.title}</span>
-                          <span className="item-price">${Number(item.price).toFixed(2)}</span>
-                        </li>
-                      ))}
-                    </ul>
                   </div>
                 )}
               </div>
+
+              {tx.memo && !isEditingNote && (
+                <span className="tx-memo text-dim" style={{ fontSize: '0.75rem', opacity: 0.7, display: 'block', marginTop: '0.25rem' }}>
+                  📝 {tx.memo}
+                </span>
+              )}
+              {!tx.memo && !isEditingNote && (
+                <span className="tx-memo text-dim placeholder" style={{ fontSize: '0.75rem', opacity: 0.4, display: 'block', marginTop: '0.25rem' }}>
+                  💬 Add note...
+                </span>
+              )}
+            </div>
+
+            {suggestion && !tx.splits.every(s => s.categoryId) && (
+              <span className="ai-badge animate-pulse" style={{ marginTop: '0.25rem' }}>✨ AI Suggested: {suggestedCategory?.name}</span>
             )}
           </div>
-          {suggestion && !tx.splits.every(s => s.categoryId) && (
-            <span className="ai-badge animate-pulse">✨ AI Suggested: {suggestedCategory?.name}</span>
-          )}
+          <div className={`tx-amount ${Number(tx.amount) < 0 ? 'danger' : 'accent'}`}>
+            {Number(tx.amount) < 0 ? '-' : '+'}${Math.abs(Number(tx.amount)).toFixed(2)}
+          </div>
         </div>
-        <div className={`tx-amount ${Number(tx.amount) < 0 ? 'danger' : 'accent'}`}>
-          {Number(tx.amount) < 0 ? '-' : '+'}${Math.abs(Number(tx.amount)).toFixed(2)}
-        </div>
-      </div>
-      
-      <div className="tx-splits">
-        <div className="splits-container">
-          {sortedSplits.map(split => (
-            <SplitItem
-              key={split.id}
-              split={split}
-              categories={categories}
-              suggestion={suggestion}
-              isPending={isPending}
-              onCategoryChange={(catId) => handleCategoryChange(split.id, catId)}
-              onDeleteSplit={() => handleDeleteSplit(split.id)}
-              onUpdateMemo={(memoText) => handleUpdateSplitMemo(split.id, memoText)}
-              showDelete={tx.splits.length > 1}
-            />
-          ))}
+        
+        <div className="tx-splits">
+          <div className="splits-container">
+            {sortedSplits.map(split => (
+              <SplitItem
+                key={split.id}
+                split={split}
+                categories={categories}
+                suggestion={suggestion}
+                isPending={isPending}
+                onCategoryChange={(catId) => handleCategoryChange(split.id, catId)}
+                onDeleteSplit={() => handleDeleteSplit(split.id)}
+                showDelete={tx.splits.length > 1}
+                showAmount={tx.splits.length > 1}
+              />
+            ))}
+            <button 
+              className="row-action-btn add-split-btn" 
+              onClick={handleAddSplit}
+              disabled={isPending}
+              title="Add Split"
+            >
+              ➕
+            </button>
+          </div>
           <button 
-            className="row-action-btn add-split-btn" 
-            onClick={handleAddSplit}
+            className="row-action-btn hide-btn" 
+            onClick={handleHide}
             disabled={isPending}
-            title="Add Split"
+            title={(tx as any).isHidden ? "Unhide Transaction" : "Hide Transaction"}
           >
-            ➕
+            {(tx as any).isHidden ? "👁️" : "✖"}
           </button>
         </div>
-        <button 
-          className="row-action-btn hide-btn" 
-          onClick={handleHide}
-          disabled={isPending}
-          title={(tx as any).isHidden ? "Unhide Transaction" : "Hide Transaction"}
-        >
-          {(tx as any).isHidden ? "👁️" : "✖"}
-        </button>
       </div>
+
+      {isEditingNote && (
+        <div className="tx-note-edit-row glass animate-fade-in" onClick={(e) => e.stopPropagation()}>
+          <div className="tx-note-edit-field">
+            <span className="note-label">Transaction Note</span>
+            <textarea
+              className="tx-note-input"
+              value={noteDraft}
+              onChange={(e) => setNoteDraft(e.target.value)}
+              placeholder="Add a note or comment for this transaction..."
+              autoFocus
+              rows={3}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSaveNote();
+                }
+                if (e.key === 'Escape') {
+                  setIsEditingNote(false);
+                }
+              }}
+            />
+          </div>
+          <div className="tx-note-edit-actions">
+            <Button size="sm" onClick={handleSaveNote} disabled={isPending}>Save Note</Button>
+            <Button size="sm" variant="ghost" onClick={() => setIsEditingNote(false)}>Cancel</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -229,8 +286,8 @@ interface SplitItemProps {
   isPending: boolean;
   onCategoryChange: (categoryId: string) => void;
   onDeleteSplit: () => void;
-  onUpdateMemo: (memo: string) => Promise<void>;
   showDelete: boolean;
+  showAmount: boolean;
 }
 
 function SplitItem({
@@ -240,30 +297,17 @@ function SplitItem({
   isPending,
   onCategoryChange,
   onDeleteSplit,
-  onUpdateMemo,
-  showDelete
+  showDelete,
+  showAmount
 }: SplitItemProps) {
-  const [memo, setMemo] = useState(split.memo || "");
-  const [isEditingMemo, setIsEditingMemo] = useState(false);
-
-  const handleBlur = async () => {
-    setIsEditingMemo(false);
-    if (memo !== (split.memo || "")) {
-      await onUpdateMemo(memo);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.currentTarget.blur();
-    }
-  };
-
   return (
     <div className="tx-split">
-      <span className="split-amount" title={split.memo || undefined}>
-        ${Math.abs(Number(split.amount)).toFixed(2)}
-      </span>
+      {showAmount && (
+        <span className="split-amount" title={split.memo || undefined}>
+          ${Math.abs(Number(split.amount)).toFixed(2)}
+          {split.memo && <span className="split-memo-icon" title={split.memo}>📝</span>}
+        </span>
+      )}
       
       <select 
         className={`split-category-select ${suggestion && !split.categoryId ? 'suggested' : ''}`}
@@ -278,30 +322,6 @@ function SplitItem({
           </option>
         ))}
       </select>
-
-      <div className="split-memo-container">
-        {isEditingMemo ? (
-          <input
-            type="text"
-            className="split-memo-input glass"
-            value={memo}
-            onChange={(e) => setMemo(e.target.value)}
-            onBlur={handleBlur}
-            onKeyDown={handleKeyDown}
-            placeholder="Add note..."
-            autoFocus
-            disabled={isPending}
-          />
-        ) : (
-          <span 
-            className={`split-memo-text ${!memo ? 'placeholder' : ''}`} 
-            onClick={() => setIsEditingMemo(true)}
-            title="Click to edit comment"
-          >
-            {memo ? `📝 ${memo}` : "💬 Add note..."}
-          </span>
-        )}
-      </div>
 
       {showDelete && (
         <button 
