@@ -8,18 +8,20 @@ datasource db {
 }
 
 model Account {
-  id                 String          @id @default(cuid())
-  remoteId           String          @unique
-  name               String
-  type               String?
-  balance            Decimal?
-  currency           String?         @default("USD")
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
+  id                          String          @id @default(cuid())
+  remoteId                    String          @unique
+  name                        String
+  displayName                 String?
+  type                        String?
+  balance                     Decimal?
+  currency                    String?         @default("USD")
+  createdAt                   DateTime        @default(now())
+  updatedAt                   DateTime        @updatedAt
   excludeFromSurplus          Boolean         @default(false)
   isDebt                      Boolean         @default(false)
   showInSidebar               Boolean         @default(true)
   excludeFromAssetCalculation Boolean         @default(false)
+  showTransactions            Boolean         @default(true)
   tiedCategories              Category[]
   mortgage                    MortgageDetail?
   transactions                Transaction[]

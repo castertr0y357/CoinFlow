@@ -291,12 +291,18 @@ export async function updateAccountSettings(
   accountId: string,
   data: {
     name?: string;
+    displayName?: string | null;
     showInSidebar?: boolean;
     excludeFromAssetCalculation?: boolean;
     excludeFromSurplus?: boolean;
     isDebt?: boolean;
+    showTransactions?: boolean;
   }
 ) {
+  if (data.showInSidebar === false) {
+    data.excludeFromSurplus = true;
+  }
+
   await prisma.account.update({
     where: { id: accountId },
     data
@@ -306,5 +312,6 @@ export async function updateAccountSettings(
   revalidatePath("/settings");
   revalidatePath("/net-worth");
   revalidatePath("/accounts");
+  revalidatePath("/transactions");
 }
 

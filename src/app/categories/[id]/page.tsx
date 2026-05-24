@@ -83,10 +83,10 @@ export default async function CategoryPage({ params }: { params: Promise<{ id: s
           amount: Number(s.amount),
           memo: s.memo,
           accountId: s.transaction.accountId,
-          accountName: s.transaction.account.name
+          accountName: s.transaction.account.displayName || s.transaction.account.name
         }))}
         otherCategories={otherCategories.map(c => ({ id: c.id, name: c.name }))}
-        accounts={accounts.map(a => ({ id: a.id, name: a.name }))}
+        accounts={accounts.map(a => ({ id: a.id, name: a.displayName || a.name }))}
       />
     </div>
   );

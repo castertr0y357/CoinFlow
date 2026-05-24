@@ -16,12 +16,14 @@ export default async function AccountsPage() {
   const mappedAccounts = accounts.map(a => ({
     id: a.id,
     name: a.name,
+    displayName: a.displayName,
     balance: Number(a.balance || 0),
     type: a.type || 'Other',
     excludeFromSurplus: a.excludeFromSurplus,
     isDebt: a.isDebt,
     showInSidebar: a.showInSidebar,
-    excludeFromAssetCalculation: a.excludeFromAssetCalculation
+    excludeFromAssetCalculation: a.excludeFromAssetCalculation,
+    showTransactions: a.showTransactions
   }));
 
   return (

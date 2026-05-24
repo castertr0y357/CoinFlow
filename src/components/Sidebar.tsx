@@ -8,12 +8,14 @@ import { mutate } from "swr";
 interface Account {
   id: string;
   name: string;
+  displayName?: string | null;
   balance: number;
   type: string;
   excludeFromSurplus: boolean;
   isDebt: boolean;
   showInSidebar: boolean;
   excludeFromAssetCalculation: boolean;
+  showTransactions?: boolean;
 }
 
 interface SidebarProps {
@@ -145,7 +147,7 @@ export default function Sidebar({ accounts }: SidebarProps) {
                     {assets.map(acc => (
                       <div key={acc.id} className="sidebar-account-item">
                         <div className="account-info">
-                          <span className="account-name">{acc.name}</span>
+                          <span className="account-name">{acc.displayName || acc.name}</span>
                         </div>
                         <span className={`account-balance ${acc.balance < 0 ? 'neg' : ''}`}>
                           ${acc.balance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
@@ -163,7 +165,7 @@ export default function Sidebar({ accounts }: SidebarProps) {
                     {debts.map(acc => (
                       <div key={acc.id} className="sidebar-account-item">
                         <div className="account-info">
-                          <span className="account-name">{acc.name}</span>
+                          <span className="account-name">{acc.displayName || acc.name}</span>
                         </div>
                         <span className={`account-balance ${acc.balance < 0 ? 'neg' : ''}`}>
                           ${acc.balance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}

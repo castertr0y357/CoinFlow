@@ -9,12 +9,14 @@ import { updateAccountSettings } from "@/app/categories/actions";
 interface Account {
   id: string;
   name: string;
+  displayName: string | null;
   balance: number;
   type: string;
   excludeFromSurplus: boolean;
   isDebt: boolean;
   showInSidebar: boolean;
   excludeFromAssetCalculation: boolean;
+  showTransactions: boolean;
 }
 
 interface AccountsClientProps {
@@ -37,12 +39,11 @@ export default function AccountsClient({ initialAccounts }: AccountsClientProps)
 
   const startEditing = (acc: Account) => {
     setEditingId(acc.id);
-    setEditName(acc.name);
+    setEditName(acc.displayName || acc.name);
   };
 
   const saveRename = (id: string) => {
-    if (!editName.trim()) return;
-    handleUpdate(id, { name: editName.trim() });
+    handleUpdate(id, { displayName: editName.trim() || null });
     setEditingId(null);
   };
 
@@ -64,7 +65,8 @@ export default function AccountsClient({ initialAccounts }: AccountsClientProps)
           <span className="col-balance">Balance</span>
           <span className="col-toggle">Show in Sidebar</span>
           <span className="col-toggle">Include in Net Worth</span>
-          <span className="col-toggle">Exclude from Surplus</span>
+          <span className="col-toggle">Show Transactions</span>
+          <span className="col-toggle">On Budget</span>
           <span className="col-toggle">Is Debt</span>
         </div>
 
@@ -92,11 +94,13 @@ export default function AccountsClient({ initialAccounts }: AccountsClientProps)
                     </div>
                   ) : (
                     <div className="display-name-group" onClick={() => startEditing(acc)} title="Click to rename account">
-                      <span className="account-display-name">{acc.name}</span>
+                      <span className="account-display-name">{acc.displayName || acc.name}</span>
                       <span className="edit-indicator">✏️</span>
                     </div>
                   )}
-                  <span className="account-sub-type">{acc.type}</span>
+                  <span className="account-sub-type">
+                    {acc.type}{acc.displayName ? ` (${acc.name})` : ""}
+                  </span>
                 </div>
 
                 <div className="col-balance font-mono text-success">
@@ -125,11 +129,22 @@ export default function AccountsClient({ initialAccounts }: AccountsClientProps)
 
                 <div className="col-toggle">
                   <button
-                    className={`toggle-switch ${acc.excludeFromSurplus ? "active" : ""}`}
-                    onClick={() => handleUpdate(acc.id, { excludeFromSurplus: !acc.excludeFromSurplus })}
-                    title={acc.excludeFromSurplus ? "Excluded from Surplus (Off Budget). Click to include." : "Included in Surplus (On Budget). Click to exclude."}
+                    className={`toggle-switch ${acc.showTransactions ? "active" : ""}`}
+                    onClick={() => handleUpdate(acc.id, { showTransactions: !acc.showTransactions })}
+                    title={acc.showTransactions ? "Transactions visible. Click to hide." : "Transactions hidden. Click to show."}
                   >
-                    {acc.excludeFromSurplus ? "✓" : "✕"}
+                    {acc.showTransactions ? "✓" : "✕"}
+                  </button>
+                </div>
+
+                <div className="col-toggle">
+                  <button
+                    className={`toggle-switch ${acc.showInSidebar && !acc.excludeFromSurplus ? "active" : ""}`}
+                    onClick={() => handleUpdate(acc.id, { excludeFromSurplus: !acc.excludeFromSurplus })}
+                    disabled={!acc.showInSidebar}
+                    title={!acc.showInSidebar ? "Must show in sidebar to include on budget." : (acc.showInSidebar && !acc.excludeFromSurplus ? "On Budget. Click to mark Off Budget." : "Off Budget. Click to mark On Budget.")}
+                  >
+                    {acc.showInSidebar && !acc.excludeFromSurplus ? "✓" : "✕"}
                   </button>
                 </div>
 
@@ -160,7 +175,8 @@ export default function AccountsClient({ initialAccounts }: AccountsClientProps)
           <span className="col-balance">Balance</span>
           <span className="col-toggle">Show in Sidebar</span>
           <span className="col-toggle">Include in Net Worth</span>
-          <span className="col-toggle">Exclude from Surplus</span>
+          <span className="col-toggle">Show Transactions</span>
+          <span className="col-toggle">On Budget</span>
           <span className="col-toggle">Is Debt</span>
         </div>
 
@@ -191,11 +207,13 @@ export default function AccountsClient({ initialAccounts }: AccountsClientProps)
                       </div>
                     ) : (
                       <div className="display-name-group" onClick={() => startEditing(acc)} title="Click to rename account">
-                        <span className="account-display-name">{acc.name}</span>
+                        <span className="account-display-name">{acc.displayName || acc.name}</span>
                         <span className="edit-indicator">✏️</span>
                       </div>
                     )}
-                    <span className="account-sub-type">{acc.type}</span>
+                    <span className="account-sub-type">
+                      {acc.type}{acc.displayName ? ` (${acc.name})` : ""}
+                    </span>
                   </div>
 
                   <div className="col-balance font-mono text-danger">
@@ -224,11 +242,22 @@ export default function AccountsClient({ initialAccounts }: AccountsClientProps)
 
                   <div className="col-toggle">
                     <button
-                      className={`toggle-switch ${acc.excludeFromSurplus ? "active" : ""}`}
-                      onClick={() => handleUpdate(acc.id, { excludeFromSurplus: !acc.excludeFromSurplus })}
-                      title={acc.excludeFromSurplus ? "Excluded from Surplus (Off Budget). Click to include." : "Included in Surplus (On Budget). Click to exclude."}
+                      className={`toggle-switch ${acc.showTransactions ? "active" : ""}`}
+                      onClick={() => handleUpdate(acc.id, { showTransactions: !acc.showTransactions })}
+                      title={acc.showTransactions ? "Transactions visible. Click to hide." : "Transactions hidden. Click to show."}
                     >
-                      {acc.excludeFromSurplus ? "✓" : "✕"}
+                      {acc.showTransactions ? "✓" : "✕"}
+                    </button>
+                  </div>
+
+                  <div className="col-toggle">
+                    <button
+                      className={`toggle-switch ${acc.showInSidebar && !acc.excludeFromSurplus ? "active" : ""}`}
+                      onClick={() => handleUpdate(acc.id, { excludeFromSurplus: !acc.excludeFromSurplus })}
+                      disabled={!acc.showInSidebar}
+                      title={!acc.showInSidebar ? "Must show in sidebar to include on budget." : (acc.showInSidebar && !acc.excludeFromSurplus ? "On Budget. Click to mark Off Budget." : "Off Budget. Click to mark On Budget.")}
+                    >
+                      {acc.showInSidebar && !acc.excludeFromSurplus ? "✓" : "✕"}
                     </button>
                   </div>
 

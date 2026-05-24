@@ -11,7 +11,8 @@ export async function getTransactions(options: {
 
   const where: any = {
     account: {
-      excludeFromSurplus: false
+      excludeFromSurplus: false,
+      showTransactions: true
     }
   };
 

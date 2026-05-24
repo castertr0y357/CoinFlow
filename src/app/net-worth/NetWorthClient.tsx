@@ -17,6 +17,7 @@ interface NetWorthClientProps {
     accounts: {
       id: string;
       name: string;
+      displayName?: string | null;
       balance: number;
       type: string;
       excludeFromSurplus: boolean;
@@ -205,7 +206,7 @@ export default function NetWorthClient({ initialData }: NetWorthClientProps) {
                     </button>
                   </div>
                   <div className="account-name-group">
-                    <span className="acc-name">{acc.name}</span>
+                    <span className="acc-name">{acc.displayName || acc.name}</span>
                     <span className="acc-type">{acc.type}</span>
                   </div>
                 </div>
@@ -265,7 +266,7 @@ export default function NetWorthClient({ initialData }: NetWorthClientProps) {
                       </button>
                     </div>
                     <div className="account-name-group">
-                      <span className="acc-name">{acc.name}</span>
+                      <span className="acc-name">{acc.displayName || acc.name}</span>
                       <span className="acc-type">{acc.type}</span>
                     </div>
                   </div>

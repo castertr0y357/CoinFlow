@@ -6,6 +6,7 @@ import { updateAccountExclusion } from "@/app/categories/actions";
 interface Account {
   id: string;
   name: string;
+  displayName?: string | null;
   balance: number;
   type: string;
   excludeFromSurplus: boolean;
@@ -65,7 +66,7 @@ export default function AccountBalances({ accounts }: AccountBalancesProps) {
                     >
                       {acc.excludeFromSurplus ? '⊘' : '○'}
                     </button>
-                    <span className="account-name">{acc.name}</span>
+                    <span className="account-name">{acc.displayName || acc.name}</span>
                   </div>
                   <span className={`account-balance ${acc.balance < 0 ? 'text-danger' : 'text-success'}`}>
                     ${acc.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

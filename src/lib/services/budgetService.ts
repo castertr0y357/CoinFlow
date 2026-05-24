@@ -290,12 +290,14 @@ export async function getMonthlyTally(year?: number) {
     accounts: accounts.map(a => ({ 
       id: a.id,
       name: a.name, 
+      displayName: a.displayName,
       balance: safeNumber(a.balance),
       type: a.type || 'Other',
       excludeFromSurplus: a.excludeFromSurplus,
       isDebt: a.isDebt,
       showInSidebar: a.showInSidebar,
-      excludeFromAssetCalculation: a.excludeFromAssetCalculation
+      excludeFromAssetCalculation: a.excludeFromAssetCalculation,
+      showTransactions: a.showTransactions
     }))
   };
 }
@@ -331,12 +333,14 @@ export async function getSidebarData() {
   return accounts.map(a => ({
     id: a.id,
     name: a.name,
+    displayName: a.displayName,
     balance: safeNumber(a.balance),
     type: a.type || 'Other',
     excludeFromSurplus: a.excludeFromSurplus,
     isDebt: a.isDebt,
     showInSidebar: a.showInSidebar,
-    excludeFromAssetCalculation: a.excludeFromAssetCalculation
+    excludeFromAssetCalculation: a.excludeFromAssetCalculation,
+    showTransactions: a.showTransactions
   }));
 }
 
