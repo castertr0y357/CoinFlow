@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { categorizeSplit, applyTransactionSplits, hideTransaction, addSplit, deleteTransactionSplit } from "./actions";
+import { categorizeSplit, applyTransactionSplits, hideTransaction, addSplit, deleteTransactionSplit, updateSplitMemo } from "./actions";
 import Button from "@/components/ui/Button";
 import { Category, Transaction } from "@/types";
 
@@ -100,6 +100,18 @@ export default function TransactionRow({
     }
   };
 
+  const handleUpdateSplitMemo = async (splitId: string, memo: string) => {
+    setIsPending(true);
+    try {
+      await updateSplitMemo(splitId, memo);
+      if (onCategorized) onCategorized();
+    } catch (error) {
+      console.error("Failed to update split memo:", error);
+    } finally {
+      setIsPending(false);
+    }
+  };
+
   const suggestedCategory = categories.find(c => c.id === suggestion);
 
   const sortedSplits = [...tx.splits].sort((a, b) => {
@@ -176,35 +188,17 @@ export default function TransactionRow({
       <div className="tx-splits">
         <div className="splits-container">
           {sortedSplits.map(split => (
-            <div key={split.id} className="tx-split">
-              <span className="split-amount" title={split.memo || undefined}>
-                ${Math.abs(Number(split.amount)).toFixed(2)}
-                {split.memo && <span className="split-memo-icon" title={split.memo}>📝</span>}
-              </span>
-              <select 
-                className={`split-category-select ${suggestion && !split.categoryId ? 'suggested' : ''}`}
-                value={split.categoryId || "floating"}
-                onChange={(e) => handleCategoryChange(split.id, e.target.value)}
-                disabled={isPending}
-              >
-                <option value="floating">🌊 Floating (Uncategorized)</option>
-                {categories.map(cat => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.id === suggestion ? `✨ ${cat.name}` : cat.name}
-                  </option>
-                ))}
-              </select>
-              {tx.splits.length > 1 && (
-                <button 
-                  className="delete-split-btn" 
-                  onClick={() => handleDeleteSplit(split.id)}
-                  disabled={isPending}
-                  title="Delete Split"
-                >
-                  ✖
-                </button>
-              )}
-            </div>
+            <SplitItem
+              key={split.id}
+              split={split}
+              categories={categories}
+              suggestion={suggestion}
+              isPending={isPending}
+              onCategoryChange={(catId) => handleCategoryChange(split.id, catId)}
+              onDeleteSplit={() => handleDeleteSplit(split.id)}
+              onUpdateMemo={(memoText) => handleUpdateSplitMemo(split.id, memoText)}
+              showDelete={tx.splits.length > 1}
+            />
           ))}
           <button 
             className="row-action-btn add-split-btn" 
@@ -224,6 +218,101 @@ export default function TransactionRow({
           {(tx as any).isHidden ? "👁️" : "✖"}
         </button>
       </div>
+    </div>
+  );
+}
+
+interface SplitItemProps {
+  split: any;
+  categories: Category[];
+  suggestion?: string;
+  isPending: boolean;
+  onCategoryChange: (categoryId: string) => void;
+  onDeleteSplit: () => void;
+  onUpdateMemo: (memo: string) => Promise<void>;
+  showDelete: boolean;
+}
+
+function SplitItem({
+  split,
+  categories,
+  suggestion,
+  isPending,
+  onCategoryChange,
+  onDeleteSplit,
+  onUpdateMemo,
+  showDelete
+}: SplitItemProps) {
+  const [memo, setMemo] = useState(split.memo || "");
+  const [isEditingMemo, setIsEditingMemo] = useState(false);
+
+  const handleBlur = async () => {
+    setIsEditingMemo(false);
+    if (memo !== (split.memo || "")) {
+      await onUpdateMemo(memo);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur();
+    }
+  };
+
+  return (
+    <div className="tx-split">
+      <span className="split-amount" title={split.memo || undefined}>
+        ${Math.abs(Number(split.amount)).toFixed(2)}
+      </span>
+      
+      <select 
+        className={`split-category-select ${suggestion && !split.categoryId ? 'suggested' : ''}`}
+        value={split.categoryId || "floating"}
+        onChange={(e) => onCategoryChange(e.target.value)}
+        disabled={isPending}
+      >
+        <option value="floating">🌊 Floating (Uncategorized)</option>
+        {categories.map(cat => (
+          <option key={cat.id} value={cat.id}>
+            {cat.id === suggestion ? `✨ ${cat.name}` : cat.name}
+          </option>
+        ))}
+      </select>
+
+      <div className="split-memo-container">
+        {isEditingMemo ? (
+          <input
+            type="text"
+            className="split-memo-input glass"
+            value={memo}
+            onChange={(e) => setMemo(e.target.value)}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            placeholder="Add note..."
+            autoFocus
+            disabled={isPending}
+          />
+        ) : (
+          <span 
+            className={`split-memo-text ${!memo ? 'placeholder' : ''}`} 
+            onClick={() => setIsEditingMemo(true)}
+            title="Click to edit comment"
+          >
+            {memo ? `📝 ${memo}` : "💬 Add note..."}
+          </span>
+        )}
+      </div>
+
+      {showDelete && (
+        <button 
+          className="delete-split-btn" 
+          onClick={onDeleteSplit}
+          disabled={isPending}
+          title="Delete Split"
+        >
+          ✖
+        </button>
+      )}
     </div>
   );
 }

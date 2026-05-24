@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/api-utils";
 import prisma from "@/lib/prisma";
 import { applySplits } from "@/lib/services/transactionService";
-import { calculateProportionalSplits } from "@/lib/external-orders";
+import { calculateProportionalSplits, getPayeeFilterForSource } from "@/lib/external-orders";
 import { normalizeItemNames } from "@/lib/services/aiService";
 
 export async function POST(req: NextRequest) {
@@ -121,6 +121,8 @@ export async function POST(req: NextRequest) {
 
           console.log(`CoinFlow [Sync]: Searching for transaction: Amount -${totalAmount}, Range ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
+          const payeeFilter = getPayeeFilterForSource(source);
+
           const foundTx = await prisma.transaction.findFirst({
             where: {
               amount: -totalAmount, 
@@ -128,7 +130,8 @@ export async function POST(req: NextRequest) {
                 gte: startDate,
                 lte: endDate
               },
-              externalOrderId: null 
+              externalOrderId: null,
+              ...payeeFilter
             },
             orderBy: { date: 'asc' } // Pick the one closest to the order date if multiple exist
           });

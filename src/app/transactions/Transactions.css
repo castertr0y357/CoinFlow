@@ -456,3 +456,55 @@
   opacity: 1 !important;
 }
 
+.split-memo-container {
+  width: 140px;
+  min-width: 140px;
+  display: flex;
+  align-items: center;
+}
+
+.split-memo-text {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: var(--transition-fast);
+  border: 1px solid transparent;
+  width: 100%;
+}
+
+.split-memo-text:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--glass-border);
+  color: var(--text-main);
+}
+
+.split-memo-text.placeholder {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.split-memo-text.placeholder:hover {
+  opacity: 1;
+}
+
+.split-memo-input {
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid var(--primary) !important;
+  color: var(--text-main) !important;
+  font-family: inherit;
+  width: 100%;
+  box-shadow: 0 0 8px var(--primary-glow);
+}
+
+.split-memo-input:focus {
+  outline: none;
+}
+

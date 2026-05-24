@@ -1,4 +1,4 @@
-# Project Status: CoinFlow Browser Extension (v2.15.0)
+# Project Status: CoinFlow Browser Extension (v2.16.0)
 
 ## Current Progress
 - [x] **Category Obligations & Commitments Audit (v2.15.0)**: Connected recurring commitments directly to budget categories, rendering monthly-equivalent obligation summaries, active underfunded warning flags, average monthly spend averages (YTD divided by elapsed months), and left-sidebar "Tied Commitments" detail cards while removing fixed costs from the month-end surplus math to prevent double-counting.
@@ -33,6 +33,11 @@
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
 
+## Recent Fixes & Features (v2.16.0)
+- **Total Assets & Debts Navigation Widget**: Calculated and displayed global total assets and total debts in a clean, glassmorphic layout card on the left navigation panel, regardless of whether accounts are on or off budget.
+- **Precision Payee Scraper Matching**: Standardized external sync transaction matching by comparing transaction payee names against the source platform. Restricted matching for Amazon (contains "amazon" or "amzn"), Walmart (contains "walmart", "wal-mart", "wm supercenter", "wm.com", or starts with "wm "), and Lowe's (contains "lowes" or "lowe's") to prevent incorrect matches.
+- **Inline Transaction Comment Editing**: Added the ability to view, add, and edit split comments/memos directly in transaction lists on the transaction page. Features custom styles and automatic database saves on blur or pressing Enter.
+
 ## Recent Fixes & Features (v2.15.0)
 - **Commitment Categories Linking**: Modified the inline commitments editor in `CommitmentsClient.tsx` with a dual-row responsive grid incorporating a Category selector, enabling users to link recurring obligations directly to dynamic budget categories.
 - **Spent Column Monthly Average**: Updated `budgetService.ts` to calculate an elapsed-months divisor based on the current calendar date (e.g. 5 for May 2026). Display the category's monthly average spend YTD in the dashboard spreadsheet rather than the cumulative sum.
@@ -55,10 +60,10 @@
 - [ ] Test the newly added Realtor.com scraper with a live active-listing URL.
 
 ## Technical Details
-- **Version**: 2.15.0
+- **Version**: 2.16.0
 - **Core Files**:
-  - `src/lib/services/budgetService.ts`: Standardized next-month surplus equations and calculated dynamic elapsed-month divisors for YTD spent averages.
-  - `src/components/dashboard/CategorySpreadsheet.tsx`: Main dashboard category table rendering commitments columns and underfunded warnings.
-  - `src/components/dashboard/ForecastCard.tsx`: Month-end funding forecast card using updated category allocations.
-  - `src/app/commitments/CommitmentsClient.tsx`: Inline obligations editor grid incorporating category linking select fields.
-  - `src/app/categories/[id]/page.tsx` & `CategoryDetailClient.tsx`: Renders left sidebar Tied Commitments list and underfunded alert banners.
+  - `src/components/Sidebar.tsx`: Rendered total assets and debts cards with custom styles on the left navigation bar.
+  - `src/lib/external-orders.ts`: Implemented `getPayeeFilterForSource` and updated Amazon CSV processing to check for payee match.
+  - `src/app/api/v1/external-orders/sync/route.ts`: Integrated payee checking during transaction sync matching.
+  - `src/app/transactions/TransactionRow.tsx` & `actions.ts`: Added SplitItem component, styling, and updateSplitMemo action for inline transaction comments.
+  - `src/app/transactions/Transactions.css`: Added styles for split memo input, text display, and responsive container layout.

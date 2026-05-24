@@ -1,5 +1,37 @@
 import { PrismaClient } from '@prisma/client';
 
+function getPayeeFilterForSource(source: string) {
+  const src = source.toUpperCase();
+  if (src === 'AMAZON') {
+    return {
+      OR: [
+        { payee: { contains: 'amazon', mode: 'insensitive' as const } },
+        { payee: { contains: 'amzn', mode: 'insensitive' as const } }
+      ]
+    };
+  }
+  if (src === 'WALMART') {
+    return {
+      OR: [
+        { payee: { contains: 'walmart', mode: 'insensitive' as const } },
+        { payee: { contains: 'wal-mart', mode: 'insensitive' as const } },
+        { payee: { contains: 'wm supercenter', mode: 'insensitive' as const } },
+        { payee: { contains: 'wm.com', mode: 'insensitive' as const } },
+        { payee: { startsWith: 'wm ', mode: 'insensitive' as const } }
+      ]
+    };
+  }
+  if (src === 'LOWES') {
+    return {
+      OR: [
+        { payee: { contains: 'lowes', mode: 'insensitive' as const } },
+        { payee: { contains: 'lowe\'s', mode: 'insensitive' as const } }
+      ]
+    };
+  }
+  return {};
+}
+
 const prisma = new PrismaClient();
 
 async function main() {
@@ -27,6 +59,8 @@ async function main() {
     endDate.setDate(endDate.getDate() + 10);
     endDate.setHours(23, 59, 59, 999);
 
+    const payeeFilter = getPayeeFilterForSource(order.source);
+
     const foundTx = await prisma.transaction.findFirst({
       where: {
         amount: -totalAmount,
@@ -34,7 +68,8 @@ async function main() {
           gte: startDate,
           lte: endDate
         },
-        externalOrderId: null
+        externalOrderId: null,
+        ...payeeFilter
       },
       orderBy: { date: 'asc' }
     });

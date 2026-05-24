@@ -55,6 +55,14 @@ export default function Sidebar({ accounts }: SidebarProps) {
 
 
 
+  const totalAssets = accounts
+    .filter(a => !a.isDebt)
+    .reduce((sum, a) => sum + a.balance, 0);
+
+  const totalDebts = accounts
+    .filter(a => a.isDebt)
+    .reduce((sum, a) => sum + Math.abs(a.balance), 0);
+
   const groupedAccounts = accounts.reduce((acc, a) => {
     const group = a.excludeFromSurplus ? 'Off Budget' : 'On Budget';
     if (!acc[group]) acc[group] = [];
@@ -109,6 +117,21 @@ export default function Sidebar({ accounts }: SidebarProps) {
       </nav>
 
       <div className="sidebar-accounts">
+        <div className="sidebar-totals glass">
+          <div className="totals-row">
+            <span className="totals-label">Total Assets</span>
+            <span className="totals-value assets-text">
+              ${totalAssets.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            </span>
+          </div>
+          <div className="totals-row">
+            <span className="totals-label">Total Debts</span>
+            <span className="totals-value debts-text">
+              ${totalDebts.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            </span>
+          </div>
+        </div>
+
         {['On Budget', 'Off Budget'].map(group => {
           const accountsInGroup = groupedAccounts[group] || [];
           if (accountsInGroup.length === 0) return null;
@@ -313,6 +336,37 @@ export default function Sidebar({ accounts }: SidebarProps) {
           width: 100%;
         }
         .logout-link:hover {
+          color: var(--danger);
+        }
+        .sidebar-totals {
+          padding: 0.75rem 1rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+          margin-bottom: 0.5rem;
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid var(--glass-border);
+        }
+        .totals-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .totals-label {
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: var(--text-dim);
+        }
+        .totals-value {
+          font-family: 'JetBrains Mono', monospace;
+          font-weight: 700;
+          font-size: 0.85rem;
+        }
+        .totals-value.assets-text {
+          color: var(--accent);
+        }
+        .totals-value.debts-text {
           color: var(--danger);
         }
       `}</style>

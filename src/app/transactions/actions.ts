@@ -96,3 +96,12 @@ export async function deleteTransactionSplit(splitId: string) {
   revalidatePath("/");
 }
 
+export async function updateSplitMemo(splitId: string, memo: string | null) {
+  await prisma.transactionSplit.update({
+    where: { id: splitId },
+    data: { memo: memo || null },
+  });
+  revalidatePath("/transactions");
+  revalidatePath("/");
+}
+

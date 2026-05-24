@@ -81,6 +81,8 @@ export async function processAmazonCsv(csvContent: string) {
     endDate.setDate(endDate.getDate() + 10);
     endDate.setHours(23, 59, 59, 999);
 
+    const payeeFilter = getPayeeFilterForSource('AMAZON');
+
     const transaction = await prisma.transaction.findFirst({
       where: {
         amount: -data.total, 
@@ -88,7 +90,8 @@ export async function processAmazonCsv(csvContent: string) {
           gte: startDate,
           lte: endDate
         },
-        externalOrderId: null 
+        externalOrderId: null,
+        ...payeeFilter
       },
       orderBy: { date: 'asc' }
     });
@@ -108,6 +111,38 @@ export async function processAmazonCsv(csvContent: string) {
   }
 
   return results;
+}
+
+export function getPayeeFilterForSource(source: string) {
+  const src = source.toUpperCase();
+  if (src === 'AMAZON') {
+    return {
+      OR: [
+        { payee: { contains: 'amazon', mode: 'insensitive' as const } },
+        { payee: { contains: 'amzn', mode: 'insensitive' as const } }
+      ]
+    };
+  }
+  if (src === 'WALMART') {
+    return {
+      OR: [
+        { payee: { contains: 'walmart', mode: 'insensitive' as const } },
+        { payee: { contains: 'wal-mart', mode: 'insensitive' as const } },
+        { payee: { contains: 'wm supercenter', mode: 'insensitive' as const } },
+        { payee: { contains: 'wm.com', mode: 'insensitive' as const } },
+        { payee: { startsWith: 'wm ', mode: 'insensitive' as const } }
+      ]
+    };
+  }
+  if (src === 'LOWES') {
+    return {
+      OR: [
+        { payee: { contains: 'lowes', mode: 'insensitive' as const } },
+        { payee: { contains: 'lowe\'s', mode: 'insensitive' as const } }
+      ]
+    };
+  }
+  return {};
 }
 
 export function calculateProportionalSplits(totalAmount: number, items: { title: string, price: number, quantity: number }[]) {
