@@ -1,0 +1,295 @@
+.net-worth-client-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  transition: opacity 0.3s ease;
+}
+
+.net-worth-client-content.pending {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Summary Grid */
+.net-worth-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 900px) {
+  .net-worth-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.wealth-card {
+  padding: 1.75rem 2rem;
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+}
+
+.wealth-card.highlight {
+  border: 1px solid var(--primary);
+  box-shadow: 0 8px 32px var(--primary-glow);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(99, 102, 241, 0.01) 100%);
+}
+
+.card-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.card-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  letter-spacing: 0.05em;
+}
+
+.card-value {
+  font-size: 1.85rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-family: 'JetBrains Mono', monospace;
+  margin: 0;
+  line-height: 1.2;
+}
+
+@media (min-width: 1200px) {
+  .card-value {
+    font-size: 2.25rem;
+  }
+}
+
+.card-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Y/X Labels and values */
+.text-success {
+  color: var(--accent) !important;
+}
+
+.text-danger {
+  color: var(--danger) !important;
+}
+
+/* SVG Chart Style */
+.chart-card {
+  padding: 2rem;
+}
+
+.chart-wrapper {
+  width: 100%;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 1.5rem 1rem 0.5rem 1rem;
+  border: 1px solid var(--glass-border);
+}
+
+.net-worth-svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.net-worth-svg .axis-label {
+  font-size: 0.75rem;
+  fill: var(--text-muted);
+  font-weight: 500;
+}
+
+.net-worth-svg .node-value {
+  font-size: 0.75rem;
+  fill: var(--text-main);
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  opacity: 0.1; /* Slightly visible normally, fully visible on hover */
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.chart-node:hover .node-value {
+  opacity: 1;
+}
+
+.chart-node circle {
+  transition: r 0.2s ease, fill 0.2s ease;
+  cursor: pointer;
+}
+
+.chart-node:hover circle {
+  r: 7;
+  fill: var(--text-main);
+}
+
+/* Breakdown Lists */
+.breakdown-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+@media (max-width: 900px) {
+  .breakdown-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.breakdown-card {
+  padding: 1.75rem 2rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.breakdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--glass-border);
+  padding-bottom: 0.75rem;
+}
+
+.badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+
+.assets-badge {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--accent);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.debts-badge {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.breakdown-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.breakdown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--glass-border);
+  transition: var(--transition-fast);
+}
+
+.breakdown-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.breakdown-item.property-item {
+  background: rgba(99, 102, 241, 0.03);
+  border-color: rgba(99, 102, 241, 0.1);
+}
+
+.account-details {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.account-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.control-btn {
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  color: var(--text-dim);
+  cursor: pointer;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  transition: var(--transition-fast);
+}
+
+.control-btn:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.control-btn.included {
+  color: var(--accent);
+  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.control-btn.excluded {
+  color: var(--danger);
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.debt-toggle-btn {
+  font-weight: 700;
+  font-family: inherit;
+}
+
+.debt-toggle-btn.active-debt {
+  color: var(--danger);
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.static-indicator {
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.account-name-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.acc-name {
+  font-weight: 600;
+  color: var(--text-main);
+  font-size: 0.9rem;
+}
+
+.acc-type {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.acc-balance {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 1rem;
+}

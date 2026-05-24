@@ -4,7 +4,6 @@ import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { mutate } from "swr";
-import { updateAccountExclusion, toggleAccountDebt } from "@/app/categories/actions";
 
 interface Account {
   id: string;
@@ -13,6 +12,8 @@ interface Account {
   type: string;
   excludeFromSurplus: boolean;
   isDebt: boolean;
+  showInSidebar: boolean;
+  excludeFromAssetCalculation: boolean;
 }
 
 interface SidebarProps {
@@ -24,17 +25,7 @@ export default function Sidebar({ accounts }: SidebarProps) {
   const router = useRouter();
   const [isSyncing, setIsSyncing] = useState(false);
 
-  const handleToggleExclusion = async (id: string, current: boolean) => {
-    await updateAccountExclusion(id, !current);
-    router.refresh();
-    mutate('/api/v1/budget/tally');
-  };
 
-  const handleToggleDebt = async (id: string, current: boolean) => {
-    await toggleAccountDebt(id, !current);
-    router.refresh();
-    mutate('/api/v1/budget/tally');
-  };
 
   const handleSync = async () => {
     setIsSyncing(true);
@@ -56,27 +47,31 @@ export default function Sidebar({ accounts }: SidebarProps) {
 
 
   const totalAssets = accounts
-    .filter(a => !a.isDebt)
+    .filter(a => !a.isDebt && a.showInSidebar && !a.excludeFromAssetCalculation)
     .reduce((sum, a) => sum + a.balance, 0);
 
   const totalDebts = accounts
-    .filter(a => a.isDebt)
+    .filter(a => a.isDebt && a.showInSidebar && !a.excludeFromAssetCalculation)
     .reduce((sum, a) => sum + Math.abs(a.balance), 0);
 
-  const groupedAccounts = accounts.reduce((acc, a) => {
-    const group = a.excludeFromSurplus ? 'Off Budget' : 'On Budget';
-    if (!acc[group]) acc[group] = [];
-    acc[group].push(a);
-    return acc;
-  }, {} as Record<string, Account[]>);
+  const groupedAccounts = accounts
+    .filter(a => a.showInSidebar)
+    .reduce((acc, a) => {
+      const group = a.excludeFromSurplus ? 'Off Budget' : 'On Budget';
+      if (!acc[group]) acc[group] = [];
+      acc[group].push(a);
+      return acc;
+    }, {} as Record<string, Account[]>);
 
   const navLinks = [
     { label: "Dashboard", href: "/", icon: "📊" },
     { label: "Transactions", href: "/transactions", icon: "💸" },
     { label: "Goals", href: "/goals", icon: "🎯" },
-    { label: "Mortgage", href: "/mortgage", icon: "🏠" },
-    { label: "Reports", href: "/reports", icon: "📈" },
     { label: "Commitments", href: "/commitments", icon: "📜" },
+    { label: "Accounts", href: "/accounts", icon: "💳" },
+    { label: "Mortgage", href: "/mortgage", icon: "🏠" },
+    { label: "Net Worth", href: "/net-worth", icon: "💼" },
+    { label: "Reports", href: "/reports", icon: "📈" },
     { label: "Settings", href: "/settings", icon: "⚙️" },
   ];
 
@@ -150,20 +145,6 @@ export default function Sidebar({ accounts }: SidebarProps) {
                     {assets.map(acc => (
                       <div key={acc.id} className="sidebar-account-item">
                         <div className="account-info">
-                          <button 
-                            className={`mini-toggle ${acc.excludeFromSurplus ? 'off' : 'on'}`}
-                            onClick={() => handleToggleExclusion(acc.id, acc.excludeFromSurplus)}
-                            title={acc.excludeFromSurplus ? "Include in Budget" : "Exclude from Budget"}
-                          >
-                            {acc.excludeFromSurplus ? '✕' : '✓'}
-                          </button>
-                          <button 
-                            className={`mini-toggle debt-toggle ${acc.isDebt ? 'is-debt' : ''}`}
-                            onClick={() => handleToggleDebt(acc.id, acc.isDebt)}
-                            title={acc.isDebt ? "Mark as Cash" : "Mark as Debt"}
-                          >
-                            D
-                          </button>
                           <span className="account-name">{acc.name}</span>
                         </div>
                         <span className={`account-balance ${acc.balance < 0 ? 'neg' : ''}`}>
@@ -182,20 +163,6 @@ export default function Sidebar({ accounts }: SidebarProps) {
                     {debts.map(acc => (
                       <div key={acc.id} className="sidebar-account-item">
                         <div className="account-info">
-                          <button 
-                            className={`mini-toggle ${acc.excludeFromSurplus ? 'off' : 'on'}`}
-                            onClick={() => handleToggleExclusion(acc.id, acc.excludeFromSurplus)}
-                            title={acc.excludeFromSurplus ? "Include in Budget" : "Exclude from Budget"}
-                          >
-                            {acc.excludeFromSurplus ? '✕' : '✓'}
-                          </button>
-                          <button 
-                            className={`mini-toggle debt-toggle ${acc.isDebt ? 'is-debt' : ''}`}
-                            onClick={() => handleToggleDebt(acc.id, acc.isDebt)}
-                            title={acc.isDebt ? "Mark as Cash" : "Mark as Debt"}
-                          >
-                            D
-                          </button>
                           <span className="account-name">{acc.name}</span>
                         </div>
                         <span className={`account-balance ${acc.balance < 0 ? 'neg' : ''}`}>

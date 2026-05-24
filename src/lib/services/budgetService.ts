@@ -293,7 +293,9 @@ export async function getMonthlyTally(year?: number) {
       balance: safeNumber(a.balance),
       type: a.type || 'Other',
       excludeFromSurplus: a.excludeFromSurplus,
-      isDebt: a.isDebt
+      isDebt: a.isDebt,
+      showInSidebar: a.showInSidebar,
+      excludeFromAssetCalculation: a.excludeFromAssetCalculation
     }))
   };
 }
@@ -332,7 +334,9 @@ export async function getSidebarData() {
     balance: safeNumber(a.balance),
     type: a.type || 'Other',
     excludeFromSurplus: a.excludeFromSurplus,
-    isDebt: a.isDebt
+    isDebt: a.isDebt,
+    showInSidebar: a.showInSidebar,
+    excludeFromAssetCalculation: a.excludeFromAssetCalculation
   }));
 }
 

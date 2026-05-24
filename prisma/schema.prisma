@@ -16,11 +16,13 @@ model Account {
   currency           String?         @default("USD")
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
-  excludeFromSurplus Boolean         @default(false)
-  isDebt             Boolean         @default(false)
-  tiedCategories     Category[]
-  mortgage           MortgageDetail?
-  transactions       Transaction[]
+  excludeFromSurplus          Boolean         @default(false)
+  isDebt                      Boolean         @default(false)
+  showInSidebar               Boolean         @default(true)
+  excludeFromAssetCalculation Boolean         @default(false)
+  tiedCategories              Category[]
+  mortgage                    MortgageDetail?
+  transactions                Transaction[]
 }
 
 model MortgageDetail {

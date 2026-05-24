@@ -20,9 +20,17 @@ export default function Navbar() {
             <span className="icon">💸</span>
             <span className="label">Inbox</span>
           </Link>
+          <Link href="/accounts" className={`nav-link ${pathname === '/accounts' ? 'active' : ''}`}>
+            <span className="icon">💳</span>
+            <span className="label">Accounts</span>
+          </Link>
           <Link href="/mortgage" className={`nav-link ${pathname === '/mortgage' ? 'active' : ''}`}>
             <span className="icon">🏠</span>
             <span className="label">Mortgage</span>
+          </Link>
+          <Link href="/net-worth" className={`nav-link ${pathname === '/net-worth' ? 'active' : ''}`}>
+            <span className="icon">💼</span>
+            <span className="label">Net Worth</span>
           </Link>
           <Link href="/reports" className={`nav-link ${pathname === '/reports' ? 'active' : ''}`}>
             <span className="icon">📈</span>

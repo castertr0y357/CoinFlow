@@ -252,6 +252,7 @@ export async function updateAccountExclusion(accountId: string, exclude: boolean
   
   revalidatePath("/");
   revalidatePath("/settings");
+  revalidatePath("/net-worth");
 }
 
 export async function updateCategoryTie(categoryId: string, accountId: string | null) {
@@ -273,6 +274,7 @@ export async function toggleAccountDebt(accountId: string, isDebt: boolean) {
   
   revalidatePath("/");
   revalidatePath("/settings");
+  revalidatePath("/net-worth");
 }
 
 export async function toggleCategoryPause(categoryId: string, isPaused: boolean) {
@@ -284,3 +286,25 @@ export async function toggleCategoryPause(categoryId: string, isPaused: boolean)
   revalidatePath("/");
   revalidatePath(`/categories/${categoryId}`);
 }
+
+export async function updateAccountSettings(
+  accountId: string,
+  data: {
+    name?: string;
+    showInSidebar?: boolean;
+    excludeFromAssetCalculation?: boolean;
+    excludeFromSurplus?: boolean;
+    isDebt?: boolean;
+  }
+) {
+  await prisma.account.update({
+    where: { id: accountId },
+    data
+  });
+  
+  revalidatePath("/");
+  revalidatePath("/settings");
+  revalidatePath("/net-worth");
+  revalidatePath("/accounts");
+}
+
