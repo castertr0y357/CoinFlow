@@ -237,6 +237,48 @@ Format the response as valid JSON only.
 }
 
 /**
+ * Normalizes multiple raw merchant names in a single batch call.
+ */
+export async function getCleanMerchantNamesBatch(rawPayees: string[], examples: any[] = []): Promise<Record<string, string>> {
+  if (rawPayees.length === 0) return {};
+
+  // Deduplicate raw payees to avoid redundant translation
+  const uniqueRawPayees = Array.from(new Set(rawPayees));
+
+  const prompt = `
+Clean the following raw merchant names from bank data into clean, human-readable payee names (e.g., "AMZN Mktp US*123" -> "Amazon", "WAL-MART #3219" -> "Walmart").
+Return a JSON object where the keys are the original raw names and the values are the clean normalized names.
+
+Recent example mappings:
+${examples.map(ex => `- ${ex.raw} -> ${ex.clean}`).join("\n")}
+
+Names to clean:
+${uniqueRawPayees.map(p => `- ${p}`).join("\n")}
+
+Format the response as valid JSON only.
+`;
+
+  try {
+    const response = await createChatCompletion([
+      { role: "system", content: "You are an expert financial data cleaner. You normalize raw merchant names into clean, concise payee names." },
+      { role: "user", content: prompt }
+    ]);
+    const content = response.choices[0].message.content || "{}";
+    const data = JSON.parse(cleanJsonContent(content));
+    
+    const result: Record<string, string> = {};
+    for (const raw of rawPayees) {
+      result[raw] = data[raw] || raw;
+    }
+    return result;
+  } catch (error) {
+    console.error("CoinFlow [AI]: getCleanMerchantNamesBatch failed:", error);
+    return rawPayees.reduce((acc, p) => ({ ...acc, [p]: p }), {});
+  }
+}
+
+
+/**
  * Suggests transaction splits for an order with multiple items.
  */
 export async function getSplitSuggestions(transaction: any, items: any[], categories: any[]): Promise<any> {

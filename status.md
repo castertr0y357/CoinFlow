@@ -1,4 +1,4 @@
-# Project Status: CoinFlow Browser Extension (v2.17.0)
+# Project Status: CoinFlow Browser Extension (v2.17.2)
 
 ## Current Progress
 - [x] **Category Obligations & Commitments Audit (v2.15.0)**: Connected recurring commitments directly to budget categories, rendering monthly-equivalent obligation summaries, active underfunded warning flags, average monthly spend averages (YTD divided by elapsed months), and left-sidebar "Tied Commitments" detail cards while removing fixed costs from the month-end surplus math to prevent double-counting.
@@ -32,6 +32,12 @@
 - [x] **Subscription Detective Alignment (v2.10.0)**: Corrected unmapped keys (`monthlyCost`, `reason`) and wrapped the JSON response array inside an object matching frontend specifications.
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
+
+## Recent Fixes & Features (v2.17.2)
+- **Retroactive Payee Normalization**: Implemented a bulk action button **"🧹 Normalize Payees"** on the Transactions page. Users can select specific transactions using checkboxes (or run on the entire view) to clean raw bank merchant descriptions into clean, human-readable payee names. Added `getCleanMerchantNamesBatch` inside `aiService.ts` to perform batch processing of raw payees in a single AI request, and created a new API route `/api/v1/ai/normalize-payees` to handle the batch processing and database updates.
+
+## Recent Fixes & Features (v2.17.1)
+- **Universal OpenAI-Compatible Fallback**: Implemented a session-wide capability cache and try-catch retry mechanism in the centralized completions wrapper in `aiService.ts`. If standard APIs (like OpenAI, Groq, or DeepSeek) throw a 400 Bad Request error due to custom parameters like `chat_id` (originally added for Open WebUI session persistence), the service automatically logs a warning, strips `chat_id` from the request payload, immediately retries the completion call, and disables `chat_id` for the rest of the server session.
 
 ## Recent Fixes & Features (v2.17.0)
 - **Dashboard Inbox Transactions Banner**: Built a high-visibility, glassmorphic feedback banner directly on the main dashboard layout page above the Category Overview table. The banner shows the count of pending (uncategorized) transactions waiting in the user's inbox, along with their total summed balance (automatically hiding when the inbox is clean). Features a pulsing indicator dot, hover micro-animations, and an interactive review link redirecting to the `/transactions` Inbox page.
@@ -73,7 +79,10 @@
 - [ ] Test the newly added Realtor.com scraper with a live active-listing URL.
 
 ## Technical Details
-- **Version**: 2.17.0
+- **Version**: 2.17.2
 - **Core Files**:
+  - `src/lib/services/aiService.ts`: Added capability caching, try-catch validation fallback, and batch merchant payee name cleaning helpers.
+  - `src/app/api/v1/ai/normalize-payees/route.ts`: Created new batch payee normalization endpoint.
+  - `src/components/transactions/TransactionsClient.tsx`: Integrated the **"🧹 Normalize Payees"** button, state, and handler.
   - `src/lib/services/budgetService.ts`: Added Prisma count and sum queries for uncategorized transaction splits on active and visible accounts.
   - `src/components/dashboard/DashboardClient.tsx`: Handled and formatted inbox totals, implemented glassmorphic alert banner with keyframe pulse animation, and added responsive layout constraints.

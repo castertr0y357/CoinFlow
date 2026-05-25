@@ -15,6 +15,7 @@ export default function TransactionsClient({ categories }: { categories: Categor
     view === 'hidden'
   );
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isNormalizeLoading, setIsNormalizeLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [isBulkLoading, setIsBulkLoading] = useState(false);
@@ -22,6 +23,46 @@ export default function TransactionsClient({ categories }: { categories: Categor
   const [bulkCategoryId, setBulkCategoryId] = useState<string>("floating");
   const [sortBy, setSortBy] = useState<'date' | 'amount' | 'payee'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  const handleNormalizePayees = async () => {
+    if (!transactions) return;
+
+    const targetIds = selectedIds.size > 0 
+      ? Array.from(selectedIds)
+      : (transactions as Transaction[]).map(tx => tx.id);
+
+    if (targetIds.length === 0) return;
+
+    if (selectedIds.size === 0) {
+      const confirmAll = confirm(`Are you sure you want to run AI payee normalization on all ${targetIds.length} transactions in this view?`);
+      if (!confirmAll) return;
+    }
+
+    setIsNormalizeLoading(true);
+    try {
+      const res = await fetch('/api/v1/ai/normalize-payees', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-KEY': process.env.NEXT_PUBLIC_INTERNAL_API_KEY || ''
+        },
+        body: JSON.stringify({ transactionIds: targetIds })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Successfully normalized ${data.count} payee names!`);
+        setSelectedIds(new Set());
+        refresh();
+      } else {
+        alert("Normalization failed: " + (data.error || "Unknown error"));
+      }
+    } catch (error) {
+      console.error("Payee Normalization Error:", error);
+      alert("Error running normalization");
+    } finally {
+      setIsNormalizeLoading(false);
+    }
+  };
 
   const handleAiCategorize = async () => {
     if (!transactions) return;
@@ -188,6 +229,13 @@ export default function TransactionsClient({ categories }: { categories: Categor
               {isBulkLoading ? "✅ Applying..." : "✅ Apply All AI"}
             </Button>
           )}
+          <Button 
+            variant="glass" 
+            onClick={handleNormalizePayees} 
+            disabled={isNormalizeLoading || isLoading}
+          >
+            {isNormalizeLoading ? "🧹 Normalizing..." : "🧹 Normalize Payees"}
+          </Button>
           <Button 
             variant="glass" 
             onClick={handleAiCategorize} 
