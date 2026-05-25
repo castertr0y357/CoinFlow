@@ -1,8 +1,8 @@
 import prisma from "../prisma";
+import * as cheerio from "cheerio";
 
 export async function scrapeHomeValue(url: string, provider: string): Promise<number | null> {
   try {
-    const cheerio = await import("cheerio");
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',

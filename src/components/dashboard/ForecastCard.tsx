@@ -13,9 +13,6 @@ interface ForecastProps {
   paychecks?: PaycheckItem[];
   nextMonthAllocations?: number;
   nextMonthSurplus?: number;
-  expectedIncome?: number;
-  remainingIncome?: number;
-  nextMonthCommitments?: number;
 }
 
 export default function ForecastCard({ 
@@ -24,10 +21,7 @@ export default function ForecastCard({
   paycheckEnabled = false,
   paychecks = [],
   nextMonthAllocations = 0,
-  nextMonthSurplus = 0,
-  expectedIncome = 0,
-  remainingIncome = 0,
-  nextMonthCommitments = 0
+  nextMonthSurplus = 0
 }: ForecastProps) {
 
   const formatDate = (dateStr: string) => {

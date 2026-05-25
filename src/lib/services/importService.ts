@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { suggestHistoricalMapping } from "./aiService";
+import * as XLSX from "xlsx";
 
 interface HistoricalMapping {
   isTransactionSheet: boolean;
@@ -11,7 +12,6 @@ interface HistoricalMapping {
 }
 
 export async function analyzeXlsx(buffer: Buffer) {
-  const XLSX = await import('xlsx');
   const workbook = XLSX.read(buffer, { type: 'buffer' });
   const sheetInfo = workbook.SheetNames.map(name => {
     const sheet = workbook.Sheets[name];
@@ -45,7 +45,6 @@ export async function executeHistoricalImport(
   year: number, 
   mappings: HistoricalMapping[]
 ) {
-  const XLSX = await import('xlsx');
   const workbook = XLSX.read(buffer, { type: 'buffer' });
   
   // 1. Ensure the Year exists

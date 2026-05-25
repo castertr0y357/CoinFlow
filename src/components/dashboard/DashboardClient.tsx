@@ -1,7 +1,6 @@
 "use client";
 
 import { useBudget } from "@/hooks/useBudget";
-import TallyOverview from "./TallyOverview";
 import CashHealth from "./CashHealth";
 import CategorySpreadsheet from "./CategorySpreadsheet";
 
@@ -43,14 +42,11 @@ export default function DashboardClient({ year }: { year?: number }) {
           finalSurplus={tally.finalSurplus}
         />
         <ForecastCard 
-          expectedIncome={tally.forecast?.expectedIncome || 0}
           projectedMonthEnd={tally.forecast?.projectedMonthEnd || 0}
           isHealthy={tally.forecast?.isHealthy || false}
           paycheckEnabled={tally.forecast?.paycheckEnabled || false}
           paychecks={tally.forecast?.paychecks || []}
-          remainingIncome={tally.forecast?.remainingIncome || 0}
           nextMonthAllocations={tally.forecast?.nextMonthAllocations || 0}
-          nextMonthCommitments={tally.forecast?.nextMonthCommitments || 0}
           nextMonthSurplus={tally.forecast?.nextMonthSurplus || 0}
         />
         <GoalsSummaryCard />

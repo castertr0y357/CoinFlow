@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { applySplits, bulkCategorize, deleteSplit } from "@/lib/services/transactionService";
 
 export async function categorizeSplit(splitId: string, categoryId: string | null) {
   await prisma.transactionSplit.update({
@@ -14,8 +15,6 @@ export async function categorizeSplit(splitId: string, categoryId: string | null
 }
 
 export async function applyTransactionSplits(transactionId: string, splits: any[]) {
-  // Use the service we created
-  const { applySplits } = await import("@/lib/services/transactionService");
   await applySplits(transactionId, splits);
   revalidatePath("/transactions");
   revalidatePath("/");
@@ -83,14 +82,12 @@ export async function hideTransaction(transactionId: string, hide: boolean = tru
 }
 
 export async function bulkCategorizeTransactions(transactionIds: string[], categoryId: string | null) {
-  const { bulkCategorize } = await import("@/lib/services/transactionService");
   await bulkCategorize(transactionIds, categoryId);
   revalidatePath("/transactions");
   revalidatePath("/");
 }
 
 export async function deleteTransactionSplit(splitId: string) {
-  const { deleteSplit } = await import("@/lib/services/transactionService");
   await deleteSplit(splitId);
   revalidatePath("/transactions");
   revalidatePath("/");
