@@ -4,7 +4,7 @@ import { useState } from "react";
 import Card from "@/components/ui/Card";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
-import { moveCategory, reorderCategories } from "@/app/categories/actions";
+import { reorderCategories } from "@/app/categories/actions";
 
 interface Category {
   id: string;
@@ -29,15 +29,6 @@ interface CategorySpreadsheetProps {
 export default function CategorySpreadsheet({ categories, integrityWarnings = [], onRefresh }: CategorySpreadsheetProps) {
   const [isEditingOrder, setIsEditingOrder] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
-
-  const handleMove = async (id: string, direction: 'up' | 'down') => {
-    try {
-      await moveCategory(id, direction);
-      onRefresh();
-    } catch (err: any) {
-      alert(err.message);
-    }
-  };
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
     setDraggedId(id);
@@ -64,8 +55,8 @@ export default function CategorySpreadsheet({ categories, integrityWarnings = []
     try {
       await reorderCategories(newOrder.map(c => c.id));
       onRefresh();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
     } finally {
       setDraggedId(null);
     }
@@ -93,12 +84,12 @@ export default function CategorySpreadsheet({ categories, integrityWarnings = []
               {isEditingOrder && <th className="order-th">Order</th>}
               <th className="sticky-col">Category</th>
               <th className="text-right">Budgeted</th>
-              <th className="text-right">Spent</th>
               <th className="text-right">Balance</th>
+              <th className="text-right">Average Spending</th>
             </tr>
           </thead>
           <tbody>
-            {categories.map((cat, index) => {
+            {categories.map((cat) => {
               return (
                 <tr 
                   key={cat.id} 
@@ -136,11 +127,11 @@ export default function CategorySpreadsheet({ categories, integrityWarnings = []
                       <span>${cat.budget.toLocaleString()}</span>
                     </div>
                   </td>
-                  <td className="text-right spent-cell">
-                    ${cat.spent.toLocaleString()}
-                  </td>
                   <td className={`text-right balance-cell ${cat.remaining < 0 ? 'neg' : 'pos'}`}>
                     ${cat.remaining.toLocaleString()}
+                  </td>
+                  <td className="text-right spent-cell">
+                    ${cat.spent.toLocaleString()}
                   </td>
                 </tr>
               );
