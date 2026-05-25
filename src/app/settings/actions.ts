@@ -57,9 +57,10 @@ export async function closeYearAndStartNext() {
         _sum: { amount: true }
       });
       
-      const totalSpent = (Number(ytdSpent._sum.amount || 0) * -1);
-      const totalProvisions = Number(config.monthlyBudget) * 12 + Number(config.adjustment) + Number(config.rollover);
-      const surplus = totalProvisions - totalSpent;
+      const netSplits = Number(ytdSpent._sum.amount || 0);
+      const startingRollover = Number(config.rollover || 0);
+      const adjustment = Number(config.adjustment || 0);
+      const surplus = startingRollover + adjustment + netSplits;
       rollover = surplus > 0 ? surplus : 0;
     }
 

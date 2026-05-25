@@ -50,16 +50,25 @@ export default async function ReportsPage() {
       <ReportsClient 
         availableYears={availableYears}
         initialCategories={categories.map(c => {
-          const config = c.configs[0];
-          return {
-            id: c.id,
-            name: c.name,
-            budget: Number(config?.monthlyBudget || 0) * 12,
-            adjustment: Number(config?.adjustment || 0),
-            rollover: Number(config?.rollover || 0),
-            totalSpent: c.splits.reduce((acc, s) => acc + (Number(s.amount) * -1), 0)
-          };
-        })}
+        const config = c.configs[0];
+        const rollover = Number(config?.rollover || 0);
+        const adjustment = Number(config?.adjustment || 0);
+        const totalSpent = c.splits
+          .filter(s => Number(s.amount) < 0)
+          .reduce((acc, s) => acc + (Number(s.amount) * -1), 0);
+        const netSplits = c.splits.reduce((acc, s) => acc + Number(s.amount), 0);
+        const currentBalance = rollover + adjustment + netSplits;
+
+        return {
+          id: c.id,
+          name: c.name,
+          budget: Number(config?.monthlyBudget || 0) * 12,
+          adjustment,
+          rollover,
+          totalSpent,
+          currentBalance
+        };
+      })}
       />
     </div>
   );

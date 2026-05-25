@@ -12,6 +12,7 @@ interface Category {
   adjustment: number;
   rollover: number;
   totalSpent: number;
+  currentBalance: number;
 }
 
 interface ReportsClientProps {
@@ -75,7 +76,6 @@ export default function ReportsClient({ availableYears, initialCategories }: Rep
                   <span className="text-right">Current balance</span>
                </div>
                {initialCategories.map(cat => {
-                 const remaining = cat.budget + cat.rollover + cat.adjustment - cat.totalSpent;
                  const elapsedMonths = new Date().getFullYear() === selectedYear ? (new Date().getMonth() + 1) : 12;
                  const avgMonthly = cat.totalSpent / elapsedMonths;
                  return (
@@ -83,8 +83,8 @@ export default function ReportsClient({ availableYears, initialCategories }: Rep
                       <span className="cat-name">{cat.name}</span>
                       <span className="text-right">${cat.totalSpent.toLocaleString()}</span>
                       <span className="text-right">${avgMonthly.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      <span className={`text-right font-bold ${remaining < 0 ? 'text-danger' : 'text-success'}`}>
-                        ${remaining.toLocaleString()}
+                      <span className={`text-right font-bold ${cat.currentBalance < 0 ? 'text-danger' : 'text-success'}`}>
+                        ${cat.currentBalance.toLocaleString()}
                       </span>
                    </div>
                  );
@@ -100,7 +100,7 @@ export default function ReportsClient({ availableYears, initialCategories }: Rep
             
             <div className="rollover-list">
               {initialCategories.map(cat => {
-                const surplus = cat.budget + cat.rollover + cat.adjustment - cat.totalSpent;
+                const surplus = cat.currentBalance;
                 const defaultRoll = surplus > 0 ? surplus : 0;
                 return (
                   <div key={cat.id} className="rollover-item">
