@@ -1,4 +1,4 @@
-# Project Status: CoinFlow Browser Extension (v2.16.0)
+# Project Status: CoinFlow Browser Extension (v2.17.0)
 
 ## Current Progress
 - [x] **Category Obligations & Commitments Audit (v2.15.0)**: Connected recurring commitments directly to budget categories, rendering monthly-equivalent obligation summaries, active underfunded warning flags, average monthly spend averages (YTD divided by elapsed months), and left-sidebar "Tied Commitments" detail cards while removing fixed costs from the month-end surplus math to prevent double-counting.
@@ -32,6 +32,9 @@
 - [x] **Subscription Detective Alignment (v2.10.0)**: Corrected unmapped keys (`monthlyCost`, `reason`) and wrapped the JSON response array inside an object matching frontend specifications.
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
+
+## Recent Fixes & Features (v2.17.0)
+- **Dashboard Inbox Transactions Banner**: Built a high-visibility, glassmorphic feedback banner directly on the main dashboard layout page above the Category Overview table. The banner shows the count of pending (uncategorized) transactions waiting in the user's inbox, along with their total summed balance (automatically hiding when the inbox is clean). Features a pulsing indicator dot, hover micro-animations, and an interactive review link redirecting to the `/transactions` Inbox page.
 
 ## Recent Fixes & Features (v2.16.0)
 - **Dedicated Accounts Configuration Page**: Built a dedicated `/accounts` page route, client view (`AccountsClient.tsx`), and styles (`Accounts.css`) for centralizing all account-specific custom settings: inline renaming (stored as `displayName` in the database to prevent SimpleFIN resync overwrites, defaulting to the SimpleFin bank name if cleared), show/hide in the sidebar, asset/debt calculation inclusion, type classification (Cash/Debt), transaction visibility (`showTransactions`), and surplus status (renamed to "On Budget" and linked with "Show in Sidebar" so that hiding an account from the sidebar automatically sets it off-budget and disables the toggle switch in the UI). Cleaned up the left navigation sidebar by removing all inline toggles (`✓`/`✕`/`D`), filtering accounts based on these settings, and ensuring sidebar asset/debt totals only calculate for accounts currently shown in the sidebar.
@@ -70,11 +73,7 @@
 - [ ] Test the newly added Realtor.com scraper with a live active-listing URL.
 
 ## Technical Details
-- **Version**: 2.16.0
+- **Version**: 2.17.0
 - **Core Files**:
-  - `src/components/Sidebar.tsx`: Rendered total assets and debts cards with custom styles on the left navigation bar.
-  - `src/lib/external-orders.ts`: Implemented `getPayeeFilterForSource` and updated Amazon CSV processing to check for payee match.
-  - `src/app/api/v1/external-orders/sync/route.ts`: Integrated payee checking during transaction sync matching.
-  - `src/app/transactions/TransactionRow.tsx` & `actions.ts`: Added click-to-show transaction-level memo form and `updateTransactionMemo` action.
-  - `src/app/transactions/Transactions.css`: Styled payee-text click areas and memo form elements.
-  - `src/types/index.ts`: Added missing `memo` property to `Transaction` interface for type safety.
+  - `src/lib/services/budgetService.ts`: Added Prisma count and sum queries for uncategorized transaction splits on active and visible accounts.
+  - `src/components/dashboard/DashboardClient.tsx`: Handled and formatted inbox totals, implemented glassmorphic alert banner with keyframe pulse animation, and added responsive layout constraints.

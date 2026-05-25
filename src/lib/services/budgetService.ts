@@ -12,6 +12,17 @@ export async function getMonthlyTally(year?: number) {
   // 0. Run lazy provisioning
   await runMonthlyProvisioning(currentYear);
 
+  // 0.1 Enforce invariant: If not shown in sidebar, must be off-budget (exclude from surplus)
+  await prisma.account.updateMany({
+    where: {
+      showInSidebar: false,
+      excludeFromSurplus: false
+    },
+    data: {
+      excludeFromSurplus: true
+    }
+  });
+
   // 1. Get the current active budget year
   let budgetYear = await prisma.budgetYear.findUnique({
     where: { year: currentYear }
@@ -126,7 +137,7 @@ export async function getMonthlyTally(year?: number) {
   }
 
   const accounts = await prisma.account.findMany();
-  const inclusionAccounts = accounts.filter(a => !a.excludeFromSurplus);
+  const inclusionAccounts = accounts.filter(a => !a.excludeFromSurplus && a.showInSidebar);
 
   // Liquid Cash = Accounts NOT marked as debt
   // Credit Debt = Accounts marked as debt
@@ -274,6 +285,36 @@ export async function getMonthlyTally(year?: number) {
     }
   }
 
+  // 6. Query inbox transactions waiting for review
+  const inboxWhere = {
+    isHidden: false,
+    account: {
+      excludeFromSurplus: false,
+      showTransactions: true
+    },
+    splits: {
+      some: {
+        categoryId: null
+      }
+    }
+  };
+
+  const inboxCount = await prisma.transaction.count({
+    where: inboxWhere
+  });
+
+  const inboxSplits = await prisma.transactionSplit.aggregate({
+    where: {
+      categoryId: null,
+      transaction: inboxWhere
+    },
+    _sum: {
+      amount: true
+    }
+  });
+
+  const inboxTotal = Number(inboxSplits._sum.amount || 0);
+
   return {
     year: currentYear,
     savingsTarget: savingsTarget,
@@ -285,6 +326,10 @@ export async function getMonthlyTally(year?: number) {
     finalSurplus: safeNumber(finalSurplus),
     integrityWarnings,
     forecast,
+    inbox: {
+      count: inboxCount,
+      total: inboxTotal
+    },
     lastSync: settings?.lastSync,
     categories: categoryTallies,
     accounts: accounts.map(a => ({ 

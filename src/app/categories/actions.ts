@@ -245,14 +245,20 @@ export async function reorderCategories(orderedIds: string[]) {
 }
 
 export async function updateAccountExclusion(accountId: string, exclude: boolean) {
+  const updateData: any = { excludeFromSurplus: exclude };
+  if (!exclude) {
+    updateData.showInSidebar = true;
+  }
+
   await prisma.account.update({
     where: { id: accountId },
-    data: { excludeFromSurplus: exclude }
+    data: updateData
   });
   
   revalidatePath("/");
   revalidatePath("/settings");
   revalidatePath("/net-worth");
+  revalidatePath("/accounts");
 }
 
 export async function updateCategoryTie(categoryId: string, accountId: string | null) {
@@ -301,6 +307,8 @@ export async function updateAccountSettings(
 ) {
   if (data.showInSidebar === false) {
     data.excludeFromSurplus = true;
+  } else if (data.excludeFromSurplus === false) {
+    data.showInSidebar = true;
   }
 
   await prisma.account.update({
