@@ -59,7 +59,8 @@ export async function closeYearAndStartNext() {
       
       const totalSpent = (Number(ytdSpent._sum.amount || 0) * -1);
       const totalProvisions = Number(config.monthlyBudget) * 12 + Number(config.adjustment) + Number(config.rollover);
-      rollover = totalProvisions - totalSpent;
+      const surplus = totalProvisions - totalSpent;
+      rollover = surplus > 0 ? surplus : 0;
     }
 
     await prisma.yearlyCategory.create({

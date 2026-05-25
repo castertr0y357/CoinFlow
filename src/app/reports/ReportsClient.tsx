@@ -71,9 +71,8 @@ export default function ReportsClient({ availableYears, initialCategories }: Rep
                <div className="performance-header">
                   <span>Category</span>
                   <span className="text-right">Spent</span>
-                  <span className="text-right">Avg Monthly</span>
-                  <span className="text-right">Budget</span>
-                  <span className="text-right">Remaining</span>
+                  <span className="text-right">Avgg monthly</span>
+                  <span className="text-right">Current balance</span>
                </div>
                {initialCategories.map(cat => {
                  const remaining = cat.budget + cat.rollover + cat.adjustment - cat.totalSpent;
@@ -84,7 +83,6 @@ export default function ReportsClient({ availableYears, initialCategories }: Rep
                       <span className="cat-name">{cat.name}</span>
                       <span className="text-right">${cat.totalSpent.toLocaleString()}</span>
                       <span className="text-right">${avgMonthly.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      <span className="text-right">${(cat.budget + cat.rollover + cat.adjustment).toLocaleString()}</span>
                       <span className={`text-right font-bold ${remaining < 0 ? 'text-danger' : 'text-success'}`}>
                         ${remaining.toLocaleString()}
                       </span>
@@ -101,18 +99,24 @@ export default function ReportsClient({ availableYears, initialCategories }: Rep
             <p className="text-muted">Carry over your hard-earned surpluses into the next calendar year.</p>
             
             <div className="rollover-list">
-              {initialCategories.filter(c => c.totalSpent < (c.budget + c.rollover + c.adjustment)).map(cat => (
-                <div key={cat.id} className="rollover-item">
-                   <div className="rollover-info">
-                      <span>{cat.name}</span>
-                      <span className="surplus-val">+${(cat.budget + cat.rollover + cat.adjustment - cat.totalSpent).toLocaleString()}</span>
-                   </div>
-                   <div className="rollover-action">
-                      <input type="number" placeholder="Amt to roll..." />
-                      <Button size="sm" variant="ghost">Apply</Button>
-                   </div>
-                </div>
-              ))}
+              {initialCategories.map(cat => {
+                const surplus = cat.budget + cat.rollover + cat.adjustment - cat.totalSpent;
+                const defaultRoll = surplus > 0 ? surplus : 0;
+                return (
+                  <div key={cat.id} className="rollover-item">
+                     <div className="rollover-info">
+                        <span>{cat.name}</span>
+                        <span className={surplus > 0 ? "surplus-val" : "text-muted"}>
+                          {surplus > 0 ? `+$${surplus.toLocaleString()}` : `$0`}
+                        </span>
+                     </div>
+                     <div className="rollover-action">
+                        <input type="number" defaultValue={defaultRoll} placeholder="Amt to roll..." />
+                        <Button size="sm" variant="ghost">Apply</Button>
+                     </div>
+                  </div>
+                );
+              })}
             </div>
             
             <div className="rollover-footer">
