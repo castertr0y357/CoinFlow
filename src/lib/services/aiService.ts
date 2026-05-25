@@ -26,16 +26,49 @@ const CHAT_ID = process.env.OPENAI_CHAT_ID || process.env.AI_CHAT_ID || (
   (baseURL.includes("webui") || baseURL.includes("ollama")) ? "webbudget-session-id" : undefined
 );
 
+let isChatIdSupported = true;
+
+console.log(`CoinFlow [AI]: Initialized with baseURL=${baseURL}, MODEL=${MODEL}, CHAT_ID=${CHAT_ID}`);
+
 /**
  * Helper to call openai.chat.completions.create with centralized chat_id and model configuration.
  */
 async function createChatCompletion(messages: any[], jsonMode = true) {
-  return openai.chat.completions.create({
+  const params: any = {
     model: MODEL,
     messages,
     ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
-    ...(CHAT_ID ? { extra_body: { chat_id: CHAT_ID } } : {}),
-  });
+  };
+
+  // Only pass chat_id if it is explicitly configured (for Open WebUI custom domains) or implicitly detected
+  if (CHAT_ID && isChatIdSupported) {
+    params.chat_id = CHAT_ID;
+  }
+
+  try {
+    return await openai.chat.completions.create(params);
+  } catch (error: any) {
+    const errorMessage = error?.message || "";
+    const errorStatus = error?.status;
+
+    // Detect if the error is due to an unrecognized parameter (like chat_id)
+    const isParamError = 
+      errorStatus === 400 && 
+      (errorMessage.toLowerCase().includes("chat_id") || 
+       errorMessage.toLowerCase().includes("extra_fields") || 
+       errorMessage.toLowerCase().includes("unknown parameter") ||
+       errorMessage.toLowerCase().includes("unrecognized") ||
+       errorMessage.toLowerCase().includes("invalid parameter"));
+
+    if (params.chat_id && isParamError) {
+      console.warn(`CoinFlow [AI]: Provider at ${baseURL} rejected 'chat_id' parameter. Retrying without it and disabling it for this session...`);
+      isChatIdSupported = false;
+      const { chat_id, ...cleanParams } = params;
+      return await openai.chat.completions.create(cleanParams);
+    }
+
+    throw error;
+  }
 }
 
 function cleanJsonContent(content: string): string {
@@ -122,7 +155,18 @@ Format the response as valid JSON only.
  * Suggests categories for a list of transactions based on existing categories and examples.
  */
 export async function getCategorySuggestions(transactions: any[], categories: any[], examples: any[] = []): Promise<Record<string, string>> {
-  const prompt = `
+  if (transactions.length === 0) return {};
+
+  const CHUNK_SIZE = 15;
+  const chunks: any[][] = [];
+  for (let i = 0; i < transactions.length; i += CHUNK_SIZE) {
+    chunks.push(transactions.slice(i, i + CHUNK_SIZE));
+  }
+
+  const results: Record<string, string> = {};
+
+  const promises = chunks.map(async (chunk) => {
+    const prompt = `
 Suggest the best category for each transaction based on the following categories and examples.
 Return a JSON object where keys are transaction IDs and values are category names.
 
@@ -132,22 +176,34 @@ Examples:
 ${examples.map(ex => `- ${ex.payee} -> ${ex.categoryName}`).join("\n")}
 
 Transactions to categorize:
-${transactions.map(tx => `- ID: ${tx.id}, Payee: ${tx.payee}, Amount: ${tx.amount}`).join("\n")}
+${chunk.map(tx => `- ID: ${tx.id}, Payee: ${tx.payee}, Amount: ${tx.amount}`).join("\n")}
 
 Format the response as valid JSON only.
 `;
 
+    try {
+      const response = await createChatCompletion([
+        { role: "system", content: "You are a budgeting assistant." },
+        { role: "user", content: prompt }
+      ]);
+      const content = response.choices[0].message.content || "{}";
+      return JSON.parse(cleanJsonContent(content));
+    } catch (err) {
+      console.error("CoinFlow [AI]: Chunk categorization failed:", err);
+      return {};
+    }
+  });
+
   try {
-    const response = await createChatCompletion([
-      { role: "system", content: "You are a budgeting assistant." },
-      { role: "user", content: prompt }
-    ]);
-    const content = response.choices[0].message.content || "{}";
-    return JSON.parse(cleanJsonContent(content));
+    const resolved = await Promise.all(promises);
+    for (const map of resolved) {
+      Object.assign(results, map);
+    }
   } catch (error) {
-    console.error("CoinFlow [AI]: getCategorySuggestions failed:", error);
-    return {};
+    console.error("CoinFlow [AI]: getCategorySuggestions batch processing failed:", error);
   }
+
+  return results;
 }
 
 /**
