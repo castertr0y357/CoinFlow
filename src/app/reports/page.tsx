@@ -29,9 +29,6 @@ export default async function ReportsPage() {
             date: {
               gte: yearStart,
               lte: yearEnd
-            },
-            account: {
-              excludeFromSurplus: false
             }
           }
         },
