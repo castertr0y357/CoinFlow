@@ -7,6 +7,7 @@ export interface AmortizationRow {
   principal: number;
   balance: number;
   totalInterest: number;
+  extraPaid?: number;
 }
 
 export async function getMortgageData() {
@@ -22,6 +23,7 @@ export async function getMortgageData() {
     interestRate: Number(mortgage.interestRate),
     monthlyPayment: Number(mortgage.monthlyPayment),
     homeValue: mortgage.homeValue ? Number(mortgage.homeValue) : null,
+    originalBalance: mortgage.originalBalance ? Number(mortgage.originalBalance) : null,
   };
 }
 
@@ -29,20 +31,35 @@ export function calculateAmortization(
   balance: number,
   annualRate: number,
   monthlyPayment: number,
-  extraPrincipal: number = 0
+  extraPrincipal: number = 0,
+  annualExtra: number = 0,
+  oneTimeExtras: { monthIndex: number; amount: number }[] = [],
+  startDate: Date = new Date()
 ): AmortizationRow[] {
   const schedule: AmortizationRow[] = [];
   const monthlyRate = annualRate / 100 / 12;
   let currentBalance = balance;
   let totalInterest = 0;
   let month = 1;
-  const startDate = new Date();
 
   while (currentBalance > 0 && month <= 600) { // Max 50 years to prevent infinite loops
     const interest = currentBalance * monthlyRate;
-    let principal = Math.min(currentBalance, (monthlyPayment - interest) + extraPrincipal);
+    
+    // Calculate extra payments for this month
+    let extraPaidThisMonth = extraPrincipal;
+    if (month % 12 === 0) {
+      extraPaidThisMonth += annualExtra;
+    }
+    const matchingOneTimes = oneTimeExtras.filter(ote => ote.monthIndex === month);
+    const oneTimePaidThisMonth = matchingOneTimes.reduce((sum, ote) => sum + ote.amount, 0);
+    extraPaidThisMonth += oneTimePaidThisMonth;
+
+    let principal = (monthlyPayment - interest) + extraPaidThisMonth;
     
     if (principal < 0) principal = 0; // Edge case for extremely low payments
+    if (principal > currentBalance) {
+      principal = currentBalance;
+    }
 
     currentBalance -= principal;
     totalInterest += interest;
@@ -57,6 +74,7 @@ export function calculateAmortization(
       principal,
       balance: currentBalance,
       totalInterest,
+      extraPaid: extraPaidThisMonth,
     });
 
     month++;
@@ -72,6 +90,7 @@ export async function saveMortgageDetail(data: {
   startDate: Date;
   termMonths: number;
   homeValue?: number;
+  originalBalance?: number;
 }) {
   return prisma.mortgageDetail.upsert({
     where: { accountId: data.accountId },
@@ -81,6 +100,7 @@ export async function saveMortgageDetail(data: {
       startDate: data.startDate,
       termMonths: data.termMonths,
       homeValue: data.homeValue,
+      originalBalance: data.originalBalance,
     },
     create: {
       accountId: data.accountId,
@@ -89,6 +109,7 @@ export async function saveMortgageDetail(data: {
       startDate: data.startDate,
       termMonths: data.termMonths,
       homeValue: data.homeValue,
+      originalBalance: data.originalBalance,
     },
   });
 }

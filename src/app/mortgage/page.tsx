@@ -24,15 +24,11 @@ export default async function MortgagePage() {
     interestRate: Number(mortgage.interestRate),
     monthlyPayment: Number(mortgage.monthlyPayment),
     homeValue: mortgage.homeValue ? Number(mortgage.homeValue) : null,
+    originalBalance: mortgage.originalBalance ? Number(mortgage.originalBalance) : null,
   } : null;
 
   return (
     <div className="mortgage-page container animate-fade-in">
-      <header className="page-header">
-        <h1>Mortgage Mastery</h1>
-        <p className="text-muted">Track equity and optimize your payoff strategy.</p>
-      </header>
-      
       <MortgageClient 
         initialData={mortgageData} 
         accounts={accounts.map(a => ({ id: a.id, name: a.name }))} 

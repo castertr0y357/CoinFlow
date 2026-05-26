@@ -1,4 +1,4 @@
-# Project Status: CoinFlow Browser Extension (v2.17.2)
+# Project Status: CoinFlow Browser Extension (v2.18.0)
 
 ## Current Progress
 - [x] **Category Obligations & Commitments Audit (v2.15.0)**: Connected recurring commitments directly to budget categories, rendering monthly-equivalent obligation summaries, active underfunded warning flags, average monthly spend averages (YTD divided by elapsed months), and left-sidebar "Tied Commitments" detail cards while removing fixed costs from the month-end surplus math to prevent double-counting.
@@ -32,6 +32,19 @@
 - [x] **Subscription Detective Alignment (v2.10.0)**: Corrected unmapped keys (`monthlyCost`, `reason`) and wrapped the JSON response array inside an object matching frontend specifications.
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
+
+## Recent Fixes & Features (v2.18.0)
+- **Premium Mortgage Mastery & Historical Analysis Revamp**:
+  - **Historical Analysis & Original Loan Amount**: Added `originalBalance` field to the database model and setup form. The chart now computes actual balance decay from your original loan amount and start date up to today (historical phase), combining it with future standard/accelerated balance projections from today (future phase), making the start date and original amount directly update the chart timeline and balance coordinates.
+  - **Color-Coded Segments & Today Marker**: Colored historical paid balance in success-green (with gradient fill), future standard projections in dashed slate, and accelerated projections in solid purple. Positioned a vertical dashed line and glowing marker badge labeled "TODAY" to indicate exact progress. Improved Today Marker to render at index 0 even when `historyLength === 0`.
+  - **Amortization Engine Upgrades**: Enhanced calculation helper in `mortgageService.ts` to accept a custom start date and compute monthly, annual, and custom date-locked lump-sum extra payments.
+  - **Interactive Payoff Accelerator controls**: Implemented dual-sliders coupled with manual numeric inputs (monthly recurring extra and annual recurring extra) alongside a date-locked lump-sum manager.
+  - **Payoff Trajectory SVG Chart & Hover Tooltip**: Built a beautiful custom dual-curve SVG chart illustrating standard vs. accelerated balance reduction with X-axis calendar years and Y-axis balance. Implemented an interactive mouse-over tooltip that tracks coordinates, correcting client-to-SVG viewBox scaling ratio, and displays standard/accelerated balance details and equity savings difference at the hovered point.
+  - **Milestones Comparison Panel**: Created a strategy comparison grid showing Interest Tipping Point, total loan cost, interest savings, and 20%/50%/100% equity dates.
+  - **Toggleable Amortization Details**: Added a toggle to switch between a calendar Year-by-Year Summary table and a scrollable Monthly Details table.
+  - **Core Mortgage Form Inputs**: Completed the edit/setup form by adding fields to edit the Mortgage Start Date, Original Loan Amount, and Mortgage Term (Months) and correctly persist them.
+  - **Restructured Page Header & Action Hierarchy**: Relocated the "Edit Core Details" button to the top-right of the page header (next to the title), making it highly visible and accessible. Cleaned up the sidebar card by removing the old duplicate button and expanding the "Sync Live Values" button to a full-width action.
+  - **Docker Environment Alignment**: Appended `COMPOSE_PROJECT_NAME=webbudget` to `.env` to prevent Docker Compose project volume naming mismatch and keep database sessions active.
 
 ## Recent Fixes & Features (v2.17.2)
 - **Retroactive Payee Normalization**: Implemented a bulk action button **"🧹 Normalize Payees"** on the Transactions page. Users can select specific transactions using checkboxes (or run on the entire view) to clean raw bank merchant descriptions into clean, human-readable payee names. Added `getCleanMerchantNamesBatch` inside `aiService.ts` to perform batch processing of raw payees in a single AI request, and created a new API route `/api/v1/ai/normalize-payees` to handle the batch processing and database updates.
@@ -79,10 +92,10 @@
 - [ ] Test the newly added Realtor.com scraper with a live active-listing URL.
 
 ## Technical Details
-- **Version**: 2.17.2
+- **Version**: 2.18.0
 - **Core Files**:
-  - `src/lib/services/aiService.ts`: Added capability caching, try-catch validation fallback, and batch merchant payee name cleaning helpers.
-  - `src/app/api/v1/ai/normalize-payees/route.ts`: Created new batch payee normalization endpoint.
-  - `src/components/transactions/TransactionsClient.tsx`: Integrated the **"🧹 Normalize Payees"** button, state, and handler.
-  - `src/lib/services/budgetService.ts`: Added Prisma count and sum queries for uncategorized transaction splits on active and visible accounts.
-  - `src/components/dashboard/DashboardClient.tsx`: Handled and formatted inbox totals, implemented glassmorphic alert banner with keyframe pulse animation, and added responsive layout constraints.
+  - `prisma/schema.prisma`: Added `originalBalance` Decimal field to `MortgageDetail` model and generated database migration files.
+  - `src/lib/services/mortgageService.ts`: Updated amortization helper function to support custom start dates, monthly, annual, and custom lump-sum payments.
+  - `src/app/mortgage/MortgageClient.tsx`: Revamped client UI with dual sliders, manual numeric fields, lump-sum manager, custom SVG payoff trajectory chart combining history/future curves, comparison milestones grid, and toggleable yearly/monthly details.
+  - `src/app/mortgage/Mortgage.css`: Refined glassmorphism styles, chart curves, inputs, grids, and table responsive configurations.
+  - `.env`: Appended `COMPOSE_PROJECT_NAME=webbudget` to ensure volume state is preserved.

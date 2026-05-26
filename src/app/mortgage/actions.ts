@@ -11,6 +11,7 @@ export async function updateMortgageDetails(data: {
   startDate: string;
   termMonths: number;
   homeValue?: number;
+  originalBalance?: number;
 }) {
   await prisma.mortgageDetail.upsert({
     where: { accountId: data.accountId },
@@ -20,6 +21,7 @@ export async function updateMortgageDetails(data: {
       startDate: new Date(data.startDate),
       termMonths: data.termMonths,
       homeValue: data.homeValue,
+      originalBalance: data.originalBalance,
     },
     create: {
       accountId: data.accountId,
@@ -28,6 +30,7 @@ export async function updateMortgageDetails(data: {
       startDate: new Date(data.startDate),
       termMonths: data.termMonths,
       homeValue: data.homeValue,
+      originalBalance: data.originalBalance,
     },
   });
 

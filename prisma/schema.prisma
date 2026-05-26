@@ -35,6 +35,7 @@ model MortgageDetail {
   startDate      DateTime
   termMonths     Int                 @default(360)
   homeValue      Decimal?
+  originalBalance Decimal?
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
   providers      HomeValueProvider[]
