@@ -210,6 +210,85 @@ export async function deleteSplit(splitId: string) {
   }
 }
 
+export async function findRefundMatches(transactionId: string) {
+  const tx = await prisma.transaction.findUnique({
+    where: { id: transactionId },
+    include: { account: true }
+  });
+  if (!tx) throw new Error("Transaction not found");
+  
+  const amount = Number(tx.amount);
+  if (amount <= 0) {
+    return [];
+  }
+  
+  const ninetyDaysAgo = new Date(tx.date);
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+  
+  const cleanPayee = tx.payee.toLowerCase()
+    .replace(/amazon.*/, 'amazon')
+    .replace(/walmart.*/, 'walmart')
+    .replace(/lowe.*/, "lowe's")
+    .trim();
+    
+  const candidates = await prisma.transaction.findMany({
+    where: {
+      date: {
+        gte: ninetyDaysAgo,
+        lte: tx.date
+      },
+      amount: {
+        lt: 0
+      },
+      id: {
+        not: tx.id
+      }
+    },
+    orderBy: { date: 'desc' },
+    include: {
+      splits: {
+        include: {
+          category: true
+        }
+      }
+    }
+  });
+  
+  return candidates.filter(cand => {
+    const candPayeeClean = cand.payee.toLowerCase();
+    const isSimilarPayee = candPayeeClean.includes(cleanPayee) || cleanPayee.includes(candPayeeClean);
+    const candAbsAmount = Math.abs(Number(cand.amount));
+    const isAmountEligible = candAbsAmount >= amount - 0.01;
+    
+    return isSimilarPayee && isAmountEligible;
+  }).map(cand => ({
+    id: cand.id,
+    date: cand.date,
+    amount: Number(cand.amount),
+    payee: cand.payee,
+    splits: cand.splits.map(s => ({
+      id: s.id,
+      amount: Number(s.amount),
+      categoryId: s.categoryId,
+      categoryName: s.category?.name || "Uncategorized",
+      memo: s.memo
+    }))
+  }));
+}
+
+export async function linkRefund(refundTransactionId: string, categoryId: string) {
+  const refundTx = await prisma.transaction.findUnique({
+    where: { id: refundTransactionId }
+  });
+  if (!refundTx) throw new Error("Refund transaction not found");
+  
+  return prisma.transactionSplit.updateMany({
+    where: { transactionId: refundTransactionId },
+    data: { categoryId }
+  });
+}
+
+
 
 
 

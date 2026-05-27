@@ -1,6 +1,9 @@
-# Project Status: CoinFlow Browser Extension (v2.18.0)
+# Project Status: CoinFlow Browser Extension (v2.19.2)
 
 ## Current Progress
+- [x] **Debt Optimizer Layout Width & Interactive Settings Panel (v2.19.2)**: Centralized debt and liquid cash account configurations in a toggled header settings card with real-time graph recalculations and full-viewport width expansion on `/debts` view.
+- [x] **Premium Cross-Browser Slider Layout Optimization (v2.19.1)**: Solved range input slider compression ("smushing") by using high-specificity selectors, cross-browser pseudoclass track/thumb alignments, and explicit box-model sizing definitions across `/fire-drill`, `/debts`, and `/mortgage` views.
+- [x] **Financial Fire Drill, Debt Optimizer, & Refund Matching (v2.19.0)**: Added visual cash runway crisis simulator, Avalanche/Snowball strategy optimizer with interest leak notifications, and inline transaction refund matching tool.
 - [x] **Category Obligations & Commitments Audit (v2.15.0)**: Connected recurring commitments directly to budget categories, rendering monthly-equivalent obligation summaries, active underfunded warning flags, average monthly spend averages (YTD divided by elapsed months), and left-sidebar "Tied Commitments" detail cards while removing fixed costs from the month-end surplus math to prevent double-counting.
 - [x] **Next-Month Funding Forecast Engine (v2.14.0)**: Built buffer-based next-month forecasting combining current paycheck inflows with next-month budget limits and monthly-scaled fixed commitments.
 - [x] **Paycheck-Based Month-End Forecasting (v2.13.0)**: Built full paycheck schedule evaluation, transaction-level deposit matching (with ±1 day tolerance), visual timeline tracking, and client-side mount guards.
@@ -32,6 +35,23 @@
 - [x] **Subscription Detective Alignment (v2.10.0)**: Corrected unmapped keys (`monthlyCost`, `reason`) and wrapped the JSON response array inside an object matching frontend specifications.
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
+## Recent Fixes & Features (v2.19.0)
+- **Financial Fire Drill (Crisis Runway Simulator)**:
+  - Built an interactive calculator route at `/fire-drill` that lets users adjust sliders for income loss and discretionary spending cuts.
+  - Generates custom SVG remaining cash trajectory curves over 12 months, highlighting the exact date of cash exhaustion.
+  - Dynamically lists discretionary categories with potential runway extensions (in days) if eliminated.
+  - Provides survival classification toggles for budget categories, defaulting to Essential if tied to commitments.
+- **Debt Snowball & Avalanche Payoff Command Center**:
+  - Generalised debt acceleration modeling by establishing a `/debts` dashboard route.
+  - Linked database schema via a new `DebtDetail` model to store custom APRs and minimum monthly payments.
+  - Renders trajectory curves comparing Avalanche, Snowball, and Minimum-only payment options on a custom interactive SVG chart.
+  - Features an **Interest Leak Detector** alert recommending users apply idle cash reserves (above emergency buffer thresholds) to liquidate high-APR liabilities.
+  - Provides a step-by-step payoff checklist detail for the current month.
+- **Smart Refund & Return Matcher**:
+  - Implemented backend queries checking inflow transactions against previous outflows (last 90 days) for identical/similar payees.
+  - Created a badge/trigger button **"🔍 Match"** next to positive inflow transactions on the transactions table.
+  - Selecting a match links the refund split to the category of the original purchase, netting out category spending and keeping financial reports clean.
+  - Exposed matching candidates through `/api/v1/transactions/refund-matches` endpoint.
 
 ## Recent Fixes & Features (v2.18.0)
 - **Premium Mortgage Mastery & Historical Analysis Revamp**:
@@ -88,14 +108,20 @@
 - **Auto-Provisioned Budget Mappings**: Enabled dynamic, on-the-fly budget category creation and seeding during savings goal setups, allowing automatic progress tracking linked to dynamic category balances.
 
 ## Pending Verification
+- [ ] Test the Refund Matcher UI with positive synced transaction flows.
+- [ ] Verify Debt payoff calculation checklist on active debt schedules.
 - [ ] Monitor Nginx logs for any remaining session cookie rejection under high-load/multiple tabs.
 - [ ] Test the newly added Realtor.com scraper with a live active-listing URL.
 
 ## Technical Details
-- **Version**: 2.18.0
+- **Version**: 2.19.0
 - **Core Files**:
-  - `prisma/schema.prisma`: Added `originalBalance` Decimal field to `MortgageDetail` model and generated database migration files.
-  - `src/lib/services/mortgageService.ts`: Updated amortization helper function to support custom start dates, monthly, annual, and custom lump-sum payments.
-  - `src/app/mortgage/MortgageClient.tsx`: Revamped client UI with dual sliders, manual numeric fields, lump-sum manager, custom SVG payoff trajectory chart combining history/future curves, comparison milestones grid, and toggleable yearly/monthly details.
-  - `src/app/mortgage/Mortgage.css`: Refined glassmorphism styles, chart curves, inputs, grids, and table responsive configurations.
-  - `.env`: Appended `COMPOSE_PROJECT_NAME=webbudget` to ensure volume state is preserved.
+  - `prisma/schema.prisma`: Added `DebtDetail` model and generated database migration files.
+  - `src/lib/debtUtils.ts`: Pure JS calculations for Avalanche, Snowball, and Minimums simulations.
+  - `src/lib/services/debtService.ts`: Database getters and setters for the Debt Optimizer features.
+  - `src/app/debts/`: Renders `/debts` page, stylesheet, and Server Actions to persist custom debt details.
+  - `src/app/fire-drill/`: Renders `/fire-drill` crisis runway pages, CSS, and interactive slider logic.
+  - `src/app/api/v1/transactions/refund-matches/route.ts`: API route exposing refund matching candidates.
+  - `src/app/transactions/TransactionRow.tsx`: Integrated inline refund search results, badge controls, and matcher linking.
+  - `src/components/Sidebar.tsx`: Added navigation links for Debts and Fire Drill.
+

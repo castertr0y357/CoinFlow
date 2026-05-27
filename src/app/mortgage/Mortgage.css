@@ -28,23 +28,70 @@
   gap: 2.5rem;
 }
 
-.payment-slider {
-  width: 100%;
-  height: 6px;
-  background: var(--glass-border);
-  border-radius: 5px;
-  outline: none;
-  -webkit-appearance: none;
+input[type="range"].payment-slider {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 100% !important;
+  height: 6px !important;
+  border-radius: 5px !important;
+  background: var(--glass-border) !important;
+  outline: none !important;
+  display: block !important;
+  box-sizing: border-box !important;
 }
 
-.payment-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 24px;
-  height: 24px;
-  background: var(--primary);
-  border-radius: 50%;
-  cursor: pointer;
-  box-shadow: 0 0 15px var(--primary-glow);
+/* Webkit (Chrome/Safari) - Track */
+input[type="range"].payment-slider::-webkit-slider-runnable-track {
+  width: 100% !important;
+  height: 6px !important;
+  background: var(--glass-border) !important;
+  border-radius: 5px !important;
+  border: none !important;
+}
+
+/* Webkit (Chrome/Safari) - Thumb */
+input[type="range"].payment-slider::-webkit-slider-thumb {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 50% !important;
+  background: var(--primary) !important;
+  cursor: pointer !important;
+  box-shadow: 0 0 15px var(--primary-glow) !important;
+  transition: var(--transition-fast) !important;
+  margin-top: -9px !important; /* Centers the 24px thumb vertically on 6px Webkit track */
+}
+
+input[type="range"].payment-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1) !important;
+}
+
+/* Firefox - Track */
+input[type="range"].payment-slider::-moz-range-track {
+  width: 100% !important;
+  height: 6px !important;
+  background: var(--glass-border) !important;
+  border-radius: 5px !important;
+  border: none !important;
+}
+
+/* Firefox - Thumb */
+input[type="range"].payment-slider::-moz-range-thumb {
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 50% !important;
+  background: var(--primary) !important;
+  cursor: pointer !important;
+  box-shadow: 0 0 15px var(--primary-glow) !important;
+  border: none !important;
+  transition: var(--transition-fast) !important;
+}
+
+input[type="range"].payment-slider::-moz-range-thumb:hover {
+  transform: scale(1.1) !important;
 }
 
 .slider-labels {

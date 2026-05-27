@@ -72,6 +72,8 @@ export default function Sidebar({ accounts }: SidebarProps) {
     { label: "Commitments", href: "/commitments", icon: "📜" },
     { label: "Accounts", href: "/accounts", icon: "💳" },
     { label: "Mortgage", href: "/mortgage", icon: "🏠" },
+    { label: "Debts", href: "/debts", icon: "⚖️" },
+    { label: "Fire Drill", href: "/fire-drill", icon: "🚨" },
     { label: "Net Worth", href: "/net-worth", icon: "💼" },
     { label: "Reports", href: "/reports", icon: "📈" },
     { label: "Settings", href: "/settings", icon: "⚙️" },

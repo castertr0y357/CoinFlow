@@ -24,6 +24,7 @@ model Account {
   showTransactions            Boolean         @default(true)
   tiedCategories              Category[]
   mortgage                    MortgageDetail?
+  debtDetail                  DebtDetail?
   transactions                Transaction[]
 }
 
@@ -40,6 +41,16 @@ model MortgageDetail {
   updatedAt      DateTime            @updatedAt
   providers      HomeValueProvider[]
   account        Account             @relation(fields: [accountId], references: [id], onDelete: Cascade)
+}
+
+model DebtDetail {
+  id             String   @id @default(cuid())
+  accountId      String   @unique
+  interestRate   Decimal
+  minimumPayment Decimal
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  account        Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
 }
 
 model HomeValueProvider {

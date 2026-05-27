@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { categorizeSplit, applyTransactionSplits, hideTransaction, addSplit, deleteTransactionSplit, updateSplitMemo, updateTransactionMemo } from "./actions";
+import { categorizeSplit, applyTransactionSplits, hideTransaction, addSplit, deleteTransactionSplit, updateSplitMemo, updateTransactionMemo, linkRefundAction } from "./actions";
 import Button from "@/components/ui/Button";
 import { Category, Transaction } from "@/types";
 
@@ -23,6 +23,50 @@ export default function TransactionRow({
   const [isPending, setIsPending] = useState(false);
   const [isAiSplitting, setIsAiSplitting] = useState(false);
   const [showRaw, setShowRaw] = useState(false);
+  const [refundCandidates, setRefundCandidates] = useState<any[] | null>(null);
+  const [showRefundMatcher, setShowRefundMatcher] = useState(false);
+  const [isSearchingRefunds, setIsSearchingRefunds] = useState(false);
+
+  const handleFindRefundMatches = async () => {
+    setIsSearchingRefunds(true);
+    try {
+      const res = await fetch(`/api/v1/transactions/refund-matches?transactionId=${tx.id}`, {
+        headers: { 'X-API-KEY': process.env.NEXT_PUBLIC_INTERNAL_API_KEY || '' }
+      });
+      const data = await res.json();
+      setRefundCandidates(data.matches || []);
+      setShowRefundMatcher(true);
+    } catch (error) {
+      console.error("Refund search error:", error);
+      alert("Error searching for refund matches");
+    } finally {
+      setIsSearchingRefunds(false);
+    }
+  };
+
+  const handleLinkRefund = async (candidate: any) => {
+    const targetCategory = candidate.splits[0]?.categoryId;
+    const targetCategoryName = candidate.splits[0]?.categoryName || "Uncategorized";
+    
+    if (!targetCategory) {
+      alert("The selected purchase has no category assigned. Please categorize the original purchase first.");
+      return;
+    }
+    
+    if (confirm(`Link refund to original purchase? This will set this refund's category to "${targetCategoryName}" to offset your spending.`)) {
+      setIsPending(true);
+      try {
+        await linkRefundAction(tx.id, targetCategory);
+        setShowRefundMatcher(false);
+        if (onCategorized) onCategorized();
+      } catch (error) {
+        console.error(error);
+        alert("Failed to link refund");
+      } finally {
+        setIsPending(false);
+      }
+    }
+  };
 
   const handleCategoryChange = async (splitId: string, categoryId: string) => {
     setIsPending(true);
@@ -209,6 +253,17 @@ export default function TransactionRow({
           </div>
           <div className={`tx-amount ${Number(tx.amount) < 0 ? 'danger' : 'accent'}`}>
             {Number(tx.amount) < 0 ? '-' : '+'}${Math.abs(Number(tx.amount)).toFixed(2)}
+            {Number(tx.amount) > 0 && !tx.splits.every(s => s.categoryId) && (
+              <button 
+                className="row-action-btn refund-match-btn"
+                onClick={handleFindRefundMatches}
+                disabled={isPending || isSearchingRefunds}
+                style={{ marginLeft: '0.5rem', fontSize: '0.75rem', padding: '2px 6px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', border: '1px solid var(--glass-border)', color: 'var(--text-main)' }}
+                title="Match Refund"
+              >
+                {isSearchingRefunds ? "🔍..." : "🔍 Match"}
+              </button>
+            )}
           </div>
         </div>
         
@@ -247,6 +302,55 @@ export default function TransactionRow({
         </div>
       </div>
 
+      {showRefundMatcher && (
+        <div className="tx-refund-matcher-row glass animate-fade-in" onClick={(e) => e.stopPropagation()} style={{ padding: '1rem', marginTop: '0.5rem', borderRadius: '12px', border: '1px solid var(--glass-border)', background: 'rgba(22, 22, 26, 0.95)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+            <strong style={{ fontSize: '0.85rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span>🔍</span> Refund Match Finder
+            </strong>
+            <Button variant="ghost" size="sm" onClick={() => setShowRefundMatcher(false)}>Close</Button>
+          </div>
+          {refundCandidates && refundCandidates.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <p className="text-dim" style={{ fontSize: '0.75rem', marginBottom: '0.25rem' }}>
+                Select a matching purchase from the last 90 days to copy its category and offset your spending:
+              </p>
+              {refundCandidates.map(cand => (
+                <div 
+                  key={cand.id} 
+                  className="refund-candidate-item glass" 
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0.75rem', borderRadius: '8px', cursor: 'pointer', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)' }} 
+                  onClick={() => handleLinkRefund(cand)}
+                >
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', fontSize: '0.8rem' }}>
+                    <span className="font-mono text-muted" style={{ fontSize: '0.75rem' }}>
+                      {new Date(cand.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
+                    </span>
+                    <strong>{cand.payee}</strong>
+                    <span className="text-danger font-mono" style={{ fontWeight: '700' }}>-${Math.abs(cand.amount).toFixed(2)}</span>
+                  </div>
+                  <div>
+                    {cand.splits.map((s: any, idx: number) => (
+                      <span 
+                        key={idx} 
+                        className="badge" 
+                        style={{ fontSize: '0.65rem', background: 'var(--primary)', color: 'white', padding: '3px 8px', borderRadius: '4px', marginLeft: '0.5rem', fontWeight: '600' }}
+                      >
+                        {s.categoryName}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted" style={{ fontSize: '0.75rem' }}>
+              No matching purchases found in the last 90 days. You can still manually select a category from the dropdown.
+            </p>
+          )}
+        </div>
+      )}
+ 
       {isEditingNote && (
         <div className="tx-note-edit-row glass animate-fade-in" onClick={(e) => e.stopPropagation()}>
           <div className="tx-note-edit-field">

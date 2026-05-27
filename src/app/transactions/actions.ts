@@ -116,4 +116,11 @@ export async function updateTransactionMemo(transactionId: string, memo: string 
   revalidatePath("/transactions");
   revalidatePath("/");
 }
+import { linkRefund as linkRefundService } from "@/lib/services/transactionService";
 
+export async function linkRefundAction(refundTransactionId: string, categoryId: string) {
+  await linkRefundService(refundTransactionId, categoryId);
+  revalidatePath("/transactions");
+  revalidatePath("/");
+  return { success: true };
+}
