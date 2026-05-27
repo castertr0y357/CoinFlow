@@ -1,7 +1,9 @@
-# Project Status: CoinFlow Browser Extension (v2.20.0)
+# Project Status: CoinFlow Browser Extension (v2.22.0)
 
 ## Current Progress
-- [x] **Unified Full-Width Layout, Gradient Headers & Collapsible Sidebar Tools (v2.20.0)**: Centralized page headers in global styles with standard text-gradients, bottom dividers, and expanded page content widths across Transactions, Goals, Settings, Mortgage, Debts, and Fire Drill views to match the Accounts Configuration page styling. Integrated a collapsible "Tools" dropdown list in the navigation sidebar to avoid crowding, dynamically defaulting to open when navigating to any tool sub-link.
+- [x] **Code Solidification, Testing Suite, & API Hardening (v2.22.0)**: Upgraded Next.js to 16.2.6 to patch security vulnerabilities. Installed Vitest and established unit test suites for `debtUtils.ts` calculations and `mortgageService.ts` amortization. Installed Zod and added strict runtime schema validation and session guards to debts Server Actions. Added performance search indexes to the `Transaction` table (`accountId` and `payee`) and generated migrations to keep the database optimal. Appended a detailed self-hosting guide in the README, covering Docker Compose setups and multi-provider AI model configurations (Ollama, OpenAI, Gemini, Claude, Groq).
+- [x] **Comprehensive Styling Unification & Global Variables Alignment (v2.21.0)**: Loaded premium fonts (Outfit and JetBrains Mono) globally via CSS imports. Added a unified page-header-flex layout and subpage descriptions on the main Dashboard to mirror the rest of the application. Replaced all hardcoded hex values in page-specific stylesheets (Settings, Mortgage, and Debts) with responsive root variables to ensure total consistency and theming compatibility.
+- [x] **Unified Full-Width Layout, Gradient Headers & Collapsible Sidebar Tools (v2.20.0)**: Centralized page headers in global styles with standard text-gradients, bottom dividers, and expanded page content widths across Transactions, Goals, Settings, Mortgage, Debts, and Fire Drill views to match the Accounts Configuration page styling. Integrated a collapsible "Tools" dropdown list in the navigation sidebar to avoid crowding, dynamically defaulting to open when navigating to any tool sub-link, and automatically collapsing when navigating to primary pages. Supported sub-route path prefix matching (e.g., settings subpages) in active route checks.
 - [x] **Debt Optimizer Layout Width & Interactive Settings Panel (v2.19.2)**: Centralized debt and liquid cash account configurations in a toggled header settings card with real-time graph recalculations and full-viewport width expansion on `/debts` view.
 - [x] **Premium Cross-Browser Slider Layout Optimization (v2.19.1)**: Solved range input slider compression ("smushing") by using high-specificity selectors, cross-browser pseudoclass track/thumb alignments, and explicit box-model sizing definitions across `/fire-drill`, `/debts`, and `/mortgage` views.
 - [x] **Financial Fire Drill, Debt Optimizer, & Refund Matching (v2.19.0)**: Added visual cash runway crisis simulator, Avalanche/Snowball strategy optimizer with interest leak notifications, and inline transaction refund matching tool.
@@ -115,7 +117,7 @@
 - [ ] Test the newly added Realtor.com scraper with a live active-listing URL.
 
 ## Technical Details
-- **Version**: 2.20.0
+- **Version**: 2.21.0
 - **Core Files**:
   - `src/components/Sidebar.tsx`: Grouped secondary links into a collapsible Tools dropdown.
   - `src/app/globals.css`: Added global header and title styling rules.

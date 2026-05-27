@@ -322,12 +322,12 @@
 
 .sub-badge.high {
   background: rgba(16, 185, 129, 0.15);
-  color: #34d399;
+  color: var(--accent);
 }
 
 .sub-badge.medium {
   background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
+  color: var(--warning);
 }
 
 .integration-help {

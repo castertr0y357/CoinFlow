@@ -126,6 +126,8 @@ model Transaction {
   splits          TransactionSplit[]
 
   @@index([date])
+  @@index([accountId])
+  @@index([payee])
 }
 
 model TransactionSplit {

@@ -227,7 +227,7 @@ input[type="range"].payment-slider::-moz-range-thumb:hover {
 .delete-provider-btn {
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.2);
-  color: #ef4444;
+  color: var(--danger);
   border-radius: 50%;
   width: 24px;
   height: 24px;
@@ -425,7 +425,7 @@ input[type="range"].payment-slider::-moz-range-thumb:hover {
 .schedule-table.sticky-header th {
   position: sticky;
   top: 0;
-  background: #0d0e12; /* Match theme background to overlay correctly */
+  background: var(--bg-color); /* Match theme background to overlay correctly */
   z-index: 10;
 }
 

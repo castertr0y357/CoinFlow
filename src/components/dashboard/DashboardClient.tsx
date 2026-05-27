@@ -30,11 +30,17 @@ export default function DashboardClient({ year }: { year?: number }) {
 
   return (
     <div className="dashboard-layout-content animate-fade-in">
-      {tally.lastSync && (
-        <div className="text-right text-xs text-muted mb-2 animate-fade-in" style={{ opacity: 0.7 }}>
-          🔄 Last synced: {formatDistanceToNow(new Date(tally.lastSync), { addSuffix: true })}
+      <header className="page-header-flex">
+        <div>
+          <h1>Dashboard</h1>
+          <p className="text-dim">Overview of your liquid capital, commitments, and goals.</p>
         </div>
-      )}
+        {tally.lastSync && (
+          <div className="text-right text-xs text-muted animate-fade-in" style={{ opacity: 0.7 }}>
+            🔄 Last synced: {formatDistanceToNow(new Date(tally.lastSync), { addSuffix: true })}
+          </div>
+        )}
+      </header>
       <div className="budget-status-header">
         <CashHealth 
           liquidCash={tally.liquidCash}

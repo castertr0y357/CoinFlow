@@ -194,13 +194,13 @@ input[type="range"].payment-slider::-moz-range-thumb:hover {
 
 .strat-badge.avalanche {
   background: rgba(99, 102, 241, 0.15);
-  color: #a5b4fc;
+  color: var(--primary);
   border: 1px solid rgba(99, 102, 241, 0.3);
 }
 
 .strat-badge.snowball {
   background: rgba(16, 185, 129, 0.15);
-  color: #a7f3d0;
+  color: var(--accent);
   border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
@@ -306,7 +306,7 @@ input[type="range"].payment-slider::-moz-range-thumb:hover {
 .target-badge {
   font-size: 0.6rem;
   background: rgba(239, 68, 68, 0.15);
-  color: #fca5a5;
+  color: var(--danger);
   border: 1px solid rgba(239, 68, 68, 0.3);
   border-radius: 4px;
   padding: 0.1rem 0.35rem;

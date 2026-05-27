@@ -40,6 +40,27 @@ CoinFlow is a premium, self-hosted financial automation hub designed for those w
 
 ## 🏁 Setup Instructions
 
+### 🐳 Deploying with Docker Compose (Recommended)
+
+The easiest way to run CoinFlow is using Docker Compose, which boots the Next.js application and the PostgreSQL database together:
+
+1. Copy the environment template to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+2. Open `.env` and configure your credentials (e.g., your master `APP_PASSWORD`, SimpleFIN token, and local/remote AI API configurations).
+3. Start the containers in detached mode:
+   ```bash
+   docker compose up -d --build
+   ```
+4. Access the web dashboard at `http://localhost:3000`. Your transaction sync worker will automatically run in the background every 6 hours.
+
+---
+
+### 💻 Local Development Setup (Manual)
+
+If you prefer to run the application outside of Docker:
+
 1.  **Environment Setup**:
     ```bash
     cp .env.example .env
@@ -64,8 +85,39 @@ CoinFlow is a premium, self-hosted financial automation hub designed for those w
     - Click "Load unpacked" and select the `extension` folder in this repository.
     - Click the Sync button on supported retailer pages (Amazon, Walmart, Lowe's).
 
-6.  **Automate**:
-    Set up a CRON job to call `/api/v1/sync/background` with your internal API key to keep your data live.
+## 🤖 AI Provider Integration Guide
+
+CoinFlow uses the OpenAI SDK to interact with AI completions. Because of this, it can connect to **any** OpenAI-compatible API endpoint (local or cloud-hosted). Configure your environment variables in `.env` depending on your provider:
+
+### 1. Local LLM (Ollama)
+Perfect for 100% private, free, and local processing.
+- **`OPENAI_BASE_URL`**: `http://host.docker.internal:11434/v1` (if running inside Docker) or `http://localhost:11434/v1` (if running manually)
+- **`OPENAI_API_KEY`**: `sk-placeholder` (or any string)
+- **`AI_MODEL`**: The name of the model you pulled (e.g., `gemma4:e4b`, `llama3`, `mistral`, or `qwen2.5`)
+
+### 2. Standard OpenAI
+Provides high accuracy and fast response times.
+- **`OPENAI_BASE_URL`**: `https://api.openai.com/v1` (or leave empty to default)
+- **`OPENAI_API_KEY`**: Your OpenAI API key (`sk-proj-...`)
+- **`AI_MODEL`**: `gpt-4o-mini` (highly recommended for cost/speed) or `gpt-4o`
+
+### 3. Google Gemini (via OpenAI Compatibility)
+Excellent performance, large context windows, and low cost.
+- **`OPENAI_BASE_URL`**: `https://generativelanguage.googleapis.com/v1beta/openai`
+- **`OPENAI_API_KEY`**: Your Gemini API key from Google AI Studio.
+- **`AI_MODEL`**: `gemini-1.5-flash` or `gemini-2.0-flash`
+
+### 4. Anthropic Claude (via OpenRouter proxy)
+Anthropic's models are accessible through OpenAI-compatible aggregators like OpenRouter.
+- **`OPENAI_BASE_URL`**: `https://openrouter.ai/api/v1`
+- **`OPENAI_API_KEY`**: Your OpenRouter API key.
+- **`AI_MODEL`**: `anthropic/claude-3.5-sonnet` or `anthropic/claude-3-haiku`
+
+### 5. Groq (High-Speed Cloud Llama/Mixtral)
+Ultra-fast API response times.
+- **`OPENAI_BASE_URL`**: `https://api.groq.com/openai/v1`
+- **`OPENAI_API_KEY`**: Your Groq API key.
+- **`AI_MODEL`**: `llama-3.3-70b-versatile` or `mixtral-8x7b-32768`
 
 ---
 *Built for the privacy-conscious optimizer.*
