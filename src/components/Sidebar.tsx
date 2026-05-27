@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { mutate } from "swr";
@@ -82,8 +82,15 @@ export default function Sidebar({ accounts }: SidebarProps) {
     { label: "Settings", href: "/settings", icon: "⚙️" },
   ];
 
-  const isToolActive = toolLinks.some(link => pathname === link.href);
+  const isToolActive = toolLinks.some(link => 
+    link.href === '/' ? pathname === '/' : pathname.startsWith(link.href)
+  );
   const [toolsOpen, setToolsOpen] = useState(isToolActive);
+
+  // Automatically close or open the tools dropdown based on active path changes
+  useEffect(() => {
+    setToolsOpen(isToolActive);
+  }, [pathname, isToolActive]);
 
 
   return (
@@ -123,7 +130,13 @@ export default function Sidebar({ accounts }: SidebarProps) {
               <Link 
                 key={link.href} 
                 href={link.href} 
-                className={`sidebar-link submenu-link ${pathname === link.href ? 'active' : ''}`}
+                className={`sidebar-link submenu-link ${
+                  link.href === '/' 
+                    ? pathname === '/' 
+                    : pathname.startsWith(link.href) 
+                      ? 'active' 
+                      : ''
+                }`}
               >
                 <span className="icon">{link.icon}</span>
                 <span className="label">{link.label}</span>
