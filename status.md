@@ -43,7 +43,7 @@
   - **Milestones Comparison Panel**: Created a strategy comparison grid showing Interest Tipping Point, total loan cost, interest savings, and 20%/50%/100% equity dates.
   - **Toggleable Amortization Details**: Added a toggle to switch between a calendar Year-by-Year Summary table and a scrollable Monthly Details table.
   - **Core Mortgage Form Inputs**: Completed the edit/setup form by adding fields to edit the Mortgage Start Date, Original Loan Amount, and Mortgage Term (Months) and correctly persist them.
-  - **Restructured Page Header & Action Hierarchy**: Relocated the "Edit Core Details" button to the top-right of the page header (next to the title), making it highly visible and accessible. Cleaned up the sidebar card by removing the old duplicate button and expanding the "Sync Live Values" button to a full-width action.
+  - **Restructured Page Header & Action Hierarchy**: Relocated the "Edit Core Details" button to the top-right of the page header (next to the title), making it highly visible and accessible. Styled the page header using Vanilla CSS (eliminating Tailwind class dependencies) to ensure correct flex alignment across all browser rendering pipelines. Cleaned up the sidebar card by removing the old duplicate button and expanding the "Sync Live Values" button to a full-width action.
   - **Docker Environment Alignment**: Appended `COMPOSE_PROJECT_NAME=webbudget` to `.env` to prevent Docker Compose project volume naming mismatch and keep database sessions active.
 
 ## Recent Fixes & Features (v2.17.2)
