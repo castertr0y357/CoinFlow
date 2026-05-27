@@ -454,7 +454,7 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
 
   return (
     <div className="mortgage-dashboard">
-      <header className="page-header">
+      <header className="page-header-flex">
         <div>
           <h1>Mortgage Mastery</h1>
           <p className="text-muted">Track equity and optimize your payoff strategy.</p>

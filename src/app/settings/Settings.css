@@ -2,8 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 3rem;
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .settings-grid-container {
@@ -89,19 +88,6 @@
   }
 }
 
-.page-header {
-  margin-bottom: 1rem;
-}
-
-.page-header h1 {
-  font-size: 2.75rem;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  margin-bottom: 0.75rem;
-  background: linear-gradient(135deg, var(--text-main) 0%, var(--text-dim) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
 
 .settings-form {
   padding: 2.5rem !important;

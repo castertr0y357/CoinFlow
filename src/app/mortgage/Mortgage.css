@@ -523,28 +523,3 @@ input[type="range"].payment-slider::-moz-range-thumb:hover {
   text-shadow: 0 0 6px rgba(16, 185, 129, 0.4);
 }
 
-/* Page Header layout */
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--glass-border);
-}
-
-.page-header h1 {
-  font-size: 2.25rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  font-family: 'Outfit', sans-serif;
-  margin-bottom: 0.25rem;
-}
-
-.page-header .text-muted {
-  font-size: 0.9rem;
-  color: var(--text-dim);
-}

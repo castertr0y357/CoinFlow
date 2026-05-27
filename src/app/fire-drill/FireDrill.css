@@ -4,21 +4,6 @@
   gap: 1.5rem;
   width: 100%;
 }
-
-.page-header-flex {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  border-bottom: 1px solid var(--glass-border);
-  padding-bottom: 1rem;
-}
-
-.page-header-flex h1 {
-  margin: 0;
-  font-size: 1.75rem;
-}
-
 .setup-card-header {
   display: flex;
   justify-content: space-between;

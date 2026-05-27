@@ -65,12 +65,15 @@ export default function Sidebar({ accounts }: SidebarProps) {
       return acc;
     }, {} as Record<string, Account[]>);
 
-  const navLinks = [
+  const mainLinks = [
     { label: "Dashboard", href: "/", icon: "📊" },
     { label: "Transactions", href: "/transactions", icon: "💸" },
     { label: "Goals", href: "/goals", icon: "🎯" },
     { label: "Commitments", href: "/commitments", icon: "📜" },
     { label: "Accounts", href: "/accounts", icon: "💳" },
+  ];
+
+  const toolLinks = [
     { label: "Mortgage", href: "/mortgage", icon: "🏠" },
     { label: "Debts", href: "/debts", icon: "⚖️" },
     { label: "Fire Drill", href: "/fire-drill", icon: "🚨" },
@@ -78,6 +81,10 @@ export default function Sidebar({ accounts }: SidebarProps) {
     { label: "Reports", href: "/reports", icon: "📈" },
     { label: "Settings", href: "/settings", icon: "⚙️" },
   ];
+
+  const isToolActive = toolLinks.some(link => pathname === link.href);
+  const [toolsOpen, setToolsOpen] = useState(isToolActive);
+
 
   return (
     <div className="sidebar-container glass">
@@ -89,7 +96,7 @@ export default function Sidebar({ accounts }: SidebarProps) {
       </div>
 
       <nav className="sidebar-nav">
-        {navLinks.map(link => (
+        {mainLinks.map(link => (
           <Link 
             key={link.href} 
             href={link.href} 
@@ -99,6 +106,32 @@ export default function Sidebar({ accounts }: SidebarProps) {
             <span className="label">{link.label}</span>
           </Link>
         ))}
+
+        {/* Tools Dropdown */}
+        <button 
+          onClick={() => setToolsOpen(!toolsOpen)}
+          className={`sidebar-link dropdown-toggle ${isToolActive ? 'active-parent' : ''}`}
+        >
+          <span className="icon">🛠️</span>
+          <span className="label" style={{ flex: 1, textAlign: 'left' }}>Tools</span>
+          <span className="arrow">{toolsOpen ? "▼" : "▶"}</span>
+        </button>
+
+        {toolsOpen && (
+          <div className="tools-submenu">
+            {toolLinks.map(link => (
+              <Link 
+                key={link.href} 
+                href={link.href} 
+                className={`sidebar-link submenu-link ${pathname === link.href ? 'active' : ''}`}
+              >
+                <span className="icon">{link.icon}</span>
+                <span className="label">{link.label}</span>
+              </Link>
+            ))}
+          </div>
+        )}
+
 
         <div className="sidebar-divider"></div>
 
@@ -243,6 +276,36 @@ export default function Sidebar({ accounts }: SidebarProps) {
         .sidebar-link.active {
           background: rgba(99, 102, 241, 0.1);
           color: var(--primary);
+        }
+        .dropdown-toggle {
+          width: 100%;
+          border: none;
+          background: transparent;
+          cursor: pointer;
+        }
+        .dropdown-toggle.active-parent {
+          color: var(--text-main);
+        }
+        .arrow {
+          font-size: 0.65rem;
+          opacity: 0.5;
+          transition: var(--transition-fast);
+        }
+        .tools-submenu {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+          padding-left: 0.5rem;
+          margin-top: 0.25rem;
+          border-left: 1px solid var(--glass-border);
+          margin-left: 1.15rem;
+        }
+        .submenu-link {
+          font-size: 0.9rem;
+          opacity: 0.85;
+        }
+        .submenu-link.active {
+          opacity: 1;
         }
         .sidebar-divider {
           height: 1px;

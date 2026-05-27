@@ -1,6 +1,7 @@
-# Project Status: CoinFlow Browser Extension (v2.19.2)
+# Project Status: CoinFlow Browser Extension (v2.20.0)
 
 ## Current Progress
+- [x] **Unified Full-Width Layout, Gradient Headers & Collapsible Sidebar Tools (v2.20.0)**: Centralized page headers in global styles with standard text-gradients, bottom dividers, and expanded page content widths across Transactions, Goals, Settings, Mortgage, Debts, and Fire Drill views to match the Accounts Configuration page styling. Integrated a collapsible "Tools" dropdown list in the navigation sidebar to avoid crowding, dynamically defaulting to open when navigating to any tool sub-link.
 - [x] **Debt Optimizer Layout Width & Interactive Settings Panel (v2.19.2)**: Centralized debt and liquid cash account configurations in a toggled header settings card with real-time graph recalculations and full-viewport width expansion on `/debts` view.
 - [x] **Premium Cross-Browser Slider Layout Optimization (v2.19.1)**: Solved range input slider compression ("smushing") by using high-specificity selectors, cross-browser pseudoclass track/thumb alignments, and explicit box-model sizing definitions across `/fire-drill`, `/debts`, and `/mortgage` views.
 - [x] **Financial Fire Drill, Debt Optimizer, & Refund Matching (v2.19.0)**: Added visual cash runway crisis simulator, Avalanche/Snowball strategy optimizer with interest leak notifications, and inline transaction refund matching tool.
@@ -114,8 +115,16 @@
 - [ ] Test the newly added Realtor.com scraper with a live active-listing URL.
 
 ## Technical Details
-- **Version**: 2.19.0
+- **Version**: 2.20.0
 - **Core Files**:
+  - `src/components/Sidebar.tsx`: Grouped secondary links into a collapsible Tools dropdown.
+  - `src/app/globals.css`: Added global header and title styling rules.
+  - `src/app/transactions/Transactions.css`: Removed max-width layout constraint and local page-header overrides.
+  - `src/app/settings/Settings.css`: Removed max-width layout constraint and local page-header overrides.
+  - `src/app/goals/Goals.css`: Removed max-width layout constraint and local page-header overrides.
+  - `src/app/mortgage/Mortgage.css`: Removed local page-header overrides.
+  - `src/app/debts/Debts.css`: Removed local page-header overrides.
+  - `src/app/fire-drill/FireDrill.css`: Removed local page-header overrides.
   - `prisma/schema.prisma`: Added `DebtDetail` model and generated database migration files.
   - `src/lib/debtUtils.ts`: Pure JS calculations for Avalanche, Snowball, and Minimums simulations.
   - `src/lib/services/debtService.ts`: Database getters and setters for the Debt Optimizer features.

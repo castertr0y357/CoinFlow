@@ -1,6 +1,5 @@
 .transactions-container {
-  max-width: 1000px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .transactions-list {
@@ -340,12 +339,7 @@
 /* Ensure the parent doesn't restrict the sticky element */
 .transactions-container {
   display: block; /* Change from flex to block to avoid height issues with sticky children */
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
-.page-header {
-  margin-bottom: 2.5rem;
+  width: 100%;
 }
 
 .tx-checkbox-cell {

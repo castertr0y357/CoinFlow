@@ -335,22 +335,6 @@ input[type="range"].payment-slider::-moz-range-thumb:hover {
 .leak-header h3 {
   margin: 0;
 }
-
-/* Page Header & Settings Panel Layout */
-.page-header-flex {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  border-bottom: 1px solid var(--glass-border);
-  padding-bottom: 1rem;
-}
-
-.page-header-flex h1 {
-  margin: 0;
-  font-size: 1.75rem;
-}
-
 .debts-accounts-setup {
   padding: 1.5rem;
   margin-bottom: 1.5rem;
