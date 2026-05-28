@@ -44,13 +44,14 @@ model MortgageDetail {
 }
 
 model DebtDetail {
-  id             String   @id @default(cuid())
-  accountId      String   @unique
-  interestRate   Decimal
-  minimumPayment Decimal
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  account        Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  id                String   @id @default(cuid())
+  accountId         String   @unique
+  interestRate      Decimal
+  minimumPayment    Decimal
+  remainingPayments Int?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  account           Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
 }
 
 model HomeValueProvider {

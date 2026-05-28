@@ -23,7 +23,8 @@ export default async function AccountsPage() {
     isDebt: a.isDebt,
     showInSidebar: a.showInSidebar,
     excludeFromAssetCalculation: a.excludeFromAssetCalculation,
-    showTransactions: a.showTransactions
+    showTransactions: a.showTransactions,
+    isManual: a.remoteId.startsWith("manual-")
   }));
 
   return (

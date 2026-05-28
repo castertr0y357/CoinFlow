@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { randomUUID } from "crypto";
 
 export async function updateCategoryBudget(categoryId: string, budget: number) {
   const currentYear = new Date().getFullYear();
@@ -303,12 +304,23 @@ export async function updateAccountSettings(
     excludeFromSurplus?: boolean;
     isDebt?: boolean;
     showTransactions?: boolean;
+    balance?: number;
   }
 ) {
   if (data.showInSidebar === false) {
     data.excludeFromSurplus = true;
   } else if (data.excludeFromSurplus === false) {
     data.showInSidebar = true;
+  }
+
+  // If balance is updated, ensure correct sign based on isDebt state
+  if (typeof data.balance === "number") {
+    const account = await prisma.account.findUnique({
+      where: { id: accountId },
+      select: { isDebt: true }
+    });
+    const isDebt = data.isDebt !== undefined ? data.isDebt : (account?.isDebt ?? false);
+    data.balance = isDebt ? -Math.abs(data.balance) : Math.abs(data.balance);
   }
 
   await prisma.account.update({
@@ -321,5 +333,72 @@ export async function updateAccountSettings(
   revalidatePath("/net-worth");
   revalidatePath("/accounts");
   revalidatePath("/transactions");
+}
+
+export async function createManualAccountAction(data: {
+  name: string;
+  balance: number;
+  isDebt: boolean;
+  interestRate?: number;
+  minimumPayment?: number;
+  remainingPayments?: number;
+}) {
+  const remoteId = `manual-${randomUUID()}`;
+  
+  // Enforce correct sign for balance (negative for debts, positive for assets)
+  const finalBalance = data.isDebt ? -Math.abs(data.balance) : Math.abs(data.balance);
+  
+  const account = await prisma.account.create({
+    data: {
+      remoteId,
+      name: data.name.trim(),
+      displayName: data.name.trim(),
+      balance: finalBalance,
+      isDebt: data.isDebt,
+      excludeFromSurplus: data.isDebt, // default debts to off-budget
+      type: data.isDebt ? "Loan" : "Cash",
+      showTransactions: false,
+    }
+  });
+
+  if (data.isDebt && (data.interestRate !== undefined || data.minimumPayment !== undefined || data.remainingPayments !== undefined)) {
+    await prisma.debtDetail.create({
+      data: {
+        accountId: account.id,
+        interestRate: data.interestRate ?? 0,
+        minimumPayment: data.minimumPayment ?? 0,
+        remainingPayments: data.remainingPayments ?? null
+      }
+    });
+  }
+
+  revalidatePath("/");
+  revalidatePath("/settings");
+  revalidatePath("/net-worth");
+  revalidatePath("/accounts");
+  revalidatePath("/transactions");
+  revalidatePath("/debts");
+}
+
+export async function deleteAccountAction(accountId: string) {
+  const txIds = (await prisma.transaction.findMany({
+    where: { accountId },
+    select: { id: true }
+  })).map(t => t.id);
+
+  await prisma.$transaction([
+    prisma.debtDetail.deleteMany({ where: { accountId } }),
+    prisma.mortgageDetail.deleteMany({ where: { accountId } }),
+    prisma.transactionSplit.deleteMany({ where: { transactionId: { in: txIds } } }),
+    prisma.transaction.deleteMany({ where: { accountId } }),
+    prisma.account.delete({ where: { id: accountId } })
+  ]);
+
+  revalidatePath("/");
+  revalidatePath("/settings");
+  revalidatePath("/net-worth");
+  revalidatePath("/accounts");
+  revalidatePath("/transactions");
+  revalidatePath("/debts");
 }
 

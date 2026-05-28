@@ -9,9 +9,15 @@ const SaveDebtDetailSchema = z.object({
   accountId: z.string().min(1, "Account ID is required"),
   interestRate: z.number().min(0, "Interest rate cannot be negative").max(100, "Interest rate cannot exceed 100%"),
   minimumPayment: z.number().min(0, "Minimum payment cannot be negative"),
+  remainingPayments: z.number().int().min(0, "Remaining payments cannot be negative").nullable().optional(),
 });
 
-export async function saveDebtDetailAction(accountId: string, interestRate: number, minimumPayment: number) {
+export async function saveDebtDetailAction(
+  accountId: string,
+  interestRate: number,
+  minimumPayment: number,
+  remainingPayments?: number | null
+) {
   // 1. Authorization check
   const session = await getSession();
   if (!session) {
@@ -24,10 +30,16 @@ export async function saveDebtDetailAction(accountId: string, interestRate: numb
       accountId,
       interestRate,
       minimumPayment,
+      remainingPayments,
     });
 
     // 3. Database operations
-    const result = await saveDebtDetail(parsed.accountId, parsed.interestRate, parsed.minimumPayment);
+    const result = await saveDebtDetail(
+      parsed.accountId,
+      parsed.interestRate,
+      parsed.minimumPayment,
+      parsed.remainingPayments
+    );
     
     // 4. Cache revalidation
     revalidatePath("/debts");

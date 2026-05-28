@@ -263,3 +263,137 @@
     font-weight: 600;
   }
 }
+
+/* Add Manual Account Form & Action Buttons */
+.accounts-actions-header {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.add-account-card {
+  padding: 1.75rem 2rem;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.add-account-card h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 1.25rem;
+  color: var(--text-main);
+  letter-spacing: -0.02em;
+}
+
+.account-form .form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 600px) {
+  .account-form .form-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+.account-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.account-form .form-group label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.account-form .form-group input[type="text"],
+.account-form .form-group input[type="number"],
+.account-form .form-group select {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 0.65rem 0.85rem;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  color: white;
+  transition: var(--transition-fast);
+}
+
+.account-form .form-group input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 8px var(--primary-glow);
+}
+
+.account-form .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  font-size: 0.9rem !important;
+  color: var(--text-main) !important;
+  text-transform: none !important;
+}
+
+.account-form .checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.account-form .form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-start;
+}
+
+/* Display Name and Delete button alignment */
+.display-name-group-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.delete-account-btn {
+  opacity: 0;
+  transition: var(--transition-fast);
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+.display-name-group-wrapper:hover .delete-account-btn {
+  opacity: 1;
+}
+
+.delete-account-btn:hover {
+  color: var(--danger) !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+}
+
+.balance-input {
+  max-width: 120px !important;
+}
+
+.account-form .form-grid.three-col-grid {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+@media (max-width: 768px) {
+  .account-form .form-grid.three-col-grid {
+    grid-template-columns: 1fr;
+  }
+}

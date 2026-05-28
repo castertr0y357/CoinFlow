@@ -17,6 +17,7 @@ interface LiquidAsset {
 
 interface DebtWithExtra extends Debt {
   excludeFromSurplus: boolean;
+  remainingPayments?: number | null;
 }
 
 interface DebtsClientProps {
@@ -30,6 +31,7 @@ export default function DebtsClient({ initialDebts, liquidAssets }: DebtsClientP
   const [editingDebtId, setEditingDebtId] = useState<string | null>(null);
   const [editInterest, setEditInterest] = useState<string>("");
   const [editMinPayment, setEditMinPayment] = useState<string>("");
+  const [editRemainingPayments, setEditRemainingPayments] = useState<string>("");
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
   // Interest Leak settings
@@ -269,10 +271,11 @@ export default function DebtsClient({ initialDebts, liquidAssets }: DebtsClientP
     }, 0);
   }, [activeDebts]);
 
-  const handleEditClick = (debt: Debt) => {
+  const handleEditClick = (debt: DebtWithExtra) => {
     setEditingDebtId(debt.id);
     setEditInterest(String(debt.interestRate));
     setEditMinPayment(String(debt.minimumPayment));
+    setEditRemainingPayments(debt.remainingPayments != null ? String(debt.remainingPayments) : "");
   };
 
   const handleSaveClick = async (id: string) => {
@@ -280,13 +283,14 @@ export default function DebtsClient({ initialDebts, liquidAssets }: DebtsClientP
     try {
       const rate = Number(editInterest);
       const min = Number(editMinPayment);
-      if (isNaN(rate) || isNaN(min)) {
+      const remainingVal = editRemainingPayments.trim() !== "" ? Number(editRemainingPayments) : null;
+      if (isNaN(rate) || isNaN(min) || (remainingVal !== null && isNaN(remainingVal))) {
         alert("Please enter valid numbers");
         return;
       }
-      const res = await saveDebtDetailAction(id, rate, min);
+      const res = await saveDebtDetailAction(id, rate, min, remainingVal);
       if (res.success) {
-        setDebts(prev => prev.map(d => d.id === id ? { ...d, interestRate: rate, minimumPayment: min } : d));
+        setDebts(prev => prev.map(d => d.id === id ? { ...d, interestRate: rate, minimumPayment: min, remainingPayments: remainingVal } : d));
         setEditingDebtId(null);
       }
     } catch (e) {
@@ -380,6 +384,7 @@ export default function DebtsClient({ initialDebts, liquidAssets }: DebtsClientP
                       <th>Balance</th>
                       <th>APR (%)</th>
                       <th>Min. Payment</th>
+                      <th>Rem. Payments</th>
                       <th>Action</th>
                     </tr>
                   </thead>
@@ -421,6 +426,20 @@ export default function DebtsClient({ initialDebts, liquidAssets }: DebtsClientP
                               />
                             ) : (
                               <span className="font-mono">{d.minimumPayment > 0 ? `$${d.minimumPayment}` : "—"}</span>
+                            )}
+                          </td>
+                          <td>
+                            {editingDebtId === d.id ? (
+                              <input 
+                                type="number" 
+                                step="1"
+                                placeholder="—"
+                                value={editRemainingPayments} 
+                                onChange={(e) => setEditRemainingPayments(e.target.value)} 
+                                className="table-input"
+                              />
+                            ) : (
+                              <span className="font-mono">{d.remainingPayments != null ? `${d.remainingPayments} mo` : "—"}</span>
                             )}
                           </td>
                           <td>

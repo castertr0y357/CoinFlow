@@ -1,6 +1,7 @@
-# Project Status: CoinFlow Browser Extension (v2.22.1)
+# Project Status: CoinFlow Browser Extension (v2.22.2)
 
 ## Current Progress
+- [x] **Manual Accounts & Debts Creation (v2.22.2)**: Integrated support for creating and managing manual accounts and debts that are not synced from SimpleFIN, including tracking remaining payments. Created database migrations to add `remainingPayments` to the `DebtDetail` model, updated server actions `createManualAccountAction`, `saveDebtDetailAction`, and `deleteAccountAction`, and built toggleable creation form cards, inline name/balance editors, and remaining payment inputs into `/accounts` and `/debts` configuration views with responsive layout styles.
 - [x] **Agent Rules Hardening & Styling Consistency Guidelines (v2.22.1)**: Formulated strict guidelines in [AGENTS.md](file:///e:/Coding%20Projects/CoinFlow/AGENTS.md) to prioritize production-ready code (preventing lazy/inline imports, banning type system evasion via `any` or `@ts-ignore`, requiring full TypeScript typing, runtime Zod validations, decoupled business logic, and LLM output sanitization) and styling/layout consistency (using root variables in [globals.css](file:///e:/Coding%20Projects/CoinFlow/src/app/globals.css) and global header templates).
 - [x] **Code Solidification, Testing Suite, & API Hardening (v2.22.0)**: Upgraded Next.js to 16.2.6 to patch security vulnerabilities. Installed Vitest and established unit test suites for `debtUtils.ts` calculations and `mortgageService.ts` amortization. Installed Zod and added strict runtime schema validation and session guards to debts Server Actions. Added performance search indexes to the `Transaction` table (`accountId` and `payee`) and generated migrations to keep the database optimal. Appended a detailed self-hosting guide in the README, covering Docker Compose setups and multi-provider AI model configurations (Ollama, OpenAI, Gemini, Claude, Groq).
 - [x] **Comprehensive Styling Unification & Global Variables Alignment (v2.21.0)**: Loaded premium fonts (Outfit and JetBrains Mono) globally via CSS imports. Added a unified page-header-flex layout and subpage descriptions on the main Dashboard to mirror the rest of the application. Replaced all hardcoded hex values in page-specific stylesheets (Settings, Mortgage, and Debts) with responsive root variables to ensure total consistency and theming compatibility.
@@ -118,8 +119,14 @@
 - [ ] Test the newly added Realtor.com scraper with a live active-listing URL.
 
 ## Technical Details
-- **Version**: 2.22.1
+- **Version**: 2.22.2
 - **Core Files**:
+  - `src/app/debts/DebtsClient.tsx`: Added remaining payments column and inline inputs.
+  - `src/app/debts/actions.ts`: Added schema validations and save actions for remaining payments.
+  - `src/lib/services/debtService.ts`: Added getter/setter database support for remaining payments.
+  - `src/app/accounts/AccountsClient.tsx`: Added form card and inline balance editors.
+  - `src/app/accounts/Accounts.css`: Form styles and layout modifiers.
+  - `src/app/categories/actions.ts`: Added create, update, and delete actions for manual accounts.
   - `AGENTS.md`: Hardened guidelines for code quality, production standards, and design consistency.
   - `src/components/Sidebar.tsx`: Grouped secondary links into a collapsible Tools dropdown.
   - `src/app/globals.css`: Added global header and title styling rules.
