@@ -1,6 +1,7 @@
-# Project Status: CoinFlow Browser Extension (v2.22.0)
+# Project Status: CoinFlow Browser Extension (v2.22.1)
 
 ## Current Progress
+- [x] **Agent Rules Hardening & Styling Consistency Guidelines (v2.22.1)**: Formulated strict guidelines in [AGENTS.md](file:///e:/Coding%20Projects/CoinFlow/AGENTS.md) to prioritize production-ready code (preventing lazy/inline imports, banning type system evasion via `any` or `@ts-ignore`, requiring full TypeScript typing, runtime Zod validations, decoupled business logic, and LLM output sanitization) and styling/layout consistency (using root variables in [globals.css](file:///e:/Coding%20Projects/CoinFlow/src/app/globals.css) and global header templates).
 - [x] **Code Solidification, Testing Suite, & API Hardening (v2.22.0)**: Upgraded Next.js to 16.2.6 to patch security vulnerabilities. Installed Vitest and established unit test suites for `debtUtils.ts` calculations and `mortgageService.ts` amortization. Installed Zod and added strict runtime schema validation and session guards to debts Server Actions. Added performance search indexes to the `Transaction` table (`accountId` and `payee`) and generated migrations to keep the database optimal. Appended a detailed self-hosting guide in the README, covering Docker Compose setups and multi-provider AI model configurations (Ollama, OpenAI, Gemini, Claude, Groq).
 - [x] **Comprehensive Styling Unification & Global Variables Alignment (v2.21.0)**: Loaded premium fonts (Outfit and JetBrains Mono) globally via CSS imports. Added a unified page-header-flex layout and subpage descriptions on the main Dashboard to mirror the rest of the application. Replaced all hardcoded hex values in page-specific stylesheets (Settings, Mortgage, and Debts) with responsive root variables to ensure total consistency and theming compatibility.
 - [x] **Unified Full-Width Layout, Gradient Headers & Collapsible Sidebar Tools (v2.20.0)**: Centralized page headers in global styles with standard text-gradients, bottom dividers, and expanded page content widths across Transactions, Goals, Settings, Mortgage, Debts, and Fire Drill views to match the Accounts Configuration page styling. Integrated a collapsible "Tools" dropdown list in the navigation sidebar to avoid crowding, dynamically defaulting to open when navigating to any tool sub-link, and automatically collapsing when navigating to primary pages. Supported sub-route path prefix matching (e.g., settings subpages) in active route checks.
@@ -117,8 +118,9 @@
 - [ ] Test the newly added Realtor.com scraper with a live active-listing URL.
 
 ## Technical Details
-- **Version**: 2.21.0
+- **Version**: 2.22.1
 - **Core Files**:
+  - `AGENTS.md`: Hardened guidelines for code quality, production standards, and design consistency.
   - `src/components/Sidebar.tsx`: Grouped secondary links into a collapsible Tools dropdown.
   - `src/app/globals.css`: Added global header and title styling rules.
   - `src/app/transactions/Transactions.css`: Removed max-width layout constraint and local page-header overrides.
