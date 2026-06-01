@@ -47,13 +47,14 @@ export async function saveDebtDetailAction(
     revalidatePath("/");
     
     return { success: true, data: JSON.parse(JSON.stringify(result)) };
-  } catch (error: any) {
+  } catch (error) {
     console.error("[DEBT ACTION ERROR] saveDebtDetailAction failed:", error);
     
     if (error instanceof z.ZodError) {
       return { success: false, error: error.issues[0]?.message || "Validation failed" };
     }
     
-    return { success: false, error: error.message || "An unexpected error occurred" };
+    const errMsg = error instanceof Error ? error.message : "An unexpected error occurred";
+    return { success: false, error: errMsg };
   }
 }

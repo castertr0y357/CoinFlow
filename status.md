@@ -1,6 +1,7 @@
-# Project Status: CoinFlow Browser Extension (v2.22.2)
+# Project Status: CoinFlow Browser Extension (v2.23.0)
 
 ## Current Progress
+- [x] **Codebase Audit & Standardisation (v2.23.0)**: Resolved 146 lint and TypeScript compilation issues across the entire codebase, including converting `any` casts, removing unused variables/imports, and correcting React mounting warnings. Centralized logging by introducing a formatted structured logger mapping to `[Job/Operation] - [Category/Level] - [Detail Message]` format. Configured Docker container pipeline to preserve source test files, enabling successful containerized verification testing via the Vitest runner.
 - [x] **Manual Accounts & Debts Creation (v2.22.2)**: Integrated support for creating and managing manual accounts and debts that are not synced from SimpleFIN, including tracking remaining payments. Created database migrations to add `remainingPayments` to the `DebtDetail` model, updated server actions `createManualAccountAction`, `saveDebtDetailAction`, and `deleteAccountAction`, and built toggleable creation form cards, inline name/balance editors, and remaining payment inputs into `/accounts` and `/debts` configuration views with responsive layout styles.
 - [x] **Agent Rules Hardening & Styling Consistency Guidelines (v2.22.1)**: Formulated strict guidelines in [AGENTS.md](file:///e:/Coding%20Projects/CoinFlow/AGENTS.md) to prioritize production-ready code (preventing lazy/inline imports, banning type system evasion via `any` or `@ts-ignore`, requiring full TypeScript typing, runtime Zod validations, decoupled business logic, and LLM output sanitization) and styling/layout consistency (using root variables in [globals.css](file:///e:/Coding%20Projects/CoinFlow/src/app/globals.css) and global header templates).
 - [x] **Code Solidification, Testing Suite, & API Hardening (v2.22.0)**: Upgraded Next.js to 16.2.6 to patch security vulnerabilities. Installed Vitest and established unit test suites for `debtUtils.ts` calculations and `mortgageService.ts` amortization. Installed Zod and added strict runtime schema validation and session guards to debts Server Actions. Added performance search indexes to the `Transaction` table (`accountId` and `payee`) and generated migrations to keep the database optimal. Appended a detailed self-hosting guide in the README, covering Docker Compose setups and multi-provider AI model configurations (Ollama, OpenAI, Gemini, Claude, Groq).
@@ -40,6 +41,16 @@
 - [x] **Subscription Detective Alignment (v2.10.0)**: Corrected unmapped keys (`monthlyCost`, `reason`) and wrapped the JSON response array inside an object matching frontend specifications.
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
+
+## Recent Fixes & Features (v2.23.0)
+- **Codebase Audit & Standardisation**:
+  - Audited and resolved 146 TypeScript compilation and ESLint issues.
+  - Eliminated unsafe `any` casts and unused variables/imports across auth, simplefin, external orders, and AI services.
+  - Corrected React rendering and mount state-cascade issues in `Sidebar.tsx` and `DebtsClient.tsx`.
+  - Replaced the sidebar's LCP logo image with the Next.js `Image` component.
+  - Centralized logs under a formatted, structured logger (`src/lib/logger.ts`) using the standard pattern: `[Job/Operation] - [Category/Level] - [Detail Message]`.
+  - Configured the Docker production runner image stage to copy test files and configurations, enabling clean containerized `npm run test` execution.
+
 ## Recent Fixes & Features (v2.19.0)
 - **Financial Fire Drill (Crisis Runway Simulator)**:
   - Built an interactive calculator route at `/fire-drill` that lets users adjust sliders for income loss and discretionary spending cuts.

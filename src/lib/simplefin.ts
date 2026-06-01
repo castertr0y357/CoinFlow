@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import { getCleanMerchantName } from "./services/aiService";
+import { logger } from "./logger";
 
 interface SimpleFinTransaction {
   id: string;
@@ -30,7 +31,7 @@ export async function syncSimpleFin() {
     throw new Error("SimpleFIN token not configured");
   }
 
-  console.log("SimpleFIN: Starting sync...");
+  logger.info("SimpleFIN", "Starting sync...");
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout
 
@@ -53,12 +54,12 @@ export async function syncSimpleFin() {
           const startOfYear = Math.floor(new Date(new Date().getFullYear(), 0, 1).getTime() / 1000);
           url = urlObj.toString().replace(/\/$/, '') + `/accounts?version=2&start-date=${startOfYear}`;
         }
-      } catch (e) {
-        console.warn("SimpleFIN: Failed to parse URL credentials, trying raw.");
+      } catch {
+        logger.warn("SimpleFIN", "Failed to parse URL credentials, trying raw.");
       }
     }
 
-    console.log("SimpleFIN: Attempting fetch from:", url);
+    logger.info("SimpleFIN", `Attempting fetch from: ${url}`);
     const startOfYear = Math.floor(new Date(new Date().getFullYear(), 0, 1).getTime() / 1000);
     const fetchUrl = url.includes('?') 
       ? `${url}&start-date=${startOfYear}` 
@@ -70,25 +71,23 @@ export async function syncSimpleFin() {
     });
     clearTimeout(timeoutId);
     
-    console.log("SimpleFIN: Sync status:", response.status);
-
+    logger.info("SimpleFIN", `Sync status: ${response.status}`);
+ 
     if (!response.ok) {
       const errText = await response.text();
-      console.error("SimpleFIN: Sync failed with status", response.status);
-      console.error("SimpleFIN: Response snippet:", errText.substring(0, 500));
+      logger.error("SimpleFIN", `Sync failed with status ${response.status}: ${errText.substring(0, 500)}`);
       throw new Error(`SimpleFIN sync failed: ${response.statusText}`);
     }
 
     const contentType = response.headers.get("content-type") || "";
     if (!contentType.includes("application/json")) {
       const text = await response.text();
-      console.error("SimpleFIN: Expected JSON but got:", contentType);
-      console.error("SimpleFIN: Body snippet:", text.substring(0, 500));
+      logger.error("SimpleFIN", `Expected JSON but got ${contentType}: ${text.substring(0, 500)}`);
       throw new Error("SimpleFIN returned non-JSON response");
     }
 
     const data: SimpleFinResponse = await response.json();
-    console.log(`SimpleFIN: Found ${data.accounts.length} accounts.`);
+    logger.info("SimpleFIN", `Found ${data.accounts.length} accounts.`);
 
     for (const remoteAccount of data.accounts) {
       const account = await prisma.account.upsert({
@@ -106,7 +105,7 @@ export async function syncSimpleFin() {
         },
       });
 
-      console.log(`SimpleFIN: Processing account ${remoteAccount.name} with ${remoteAccount.transactions.length} transactions. (First TX Date: ${remoteAccount.transactions[0]?.date || remoteAccount.transactions[0]?.posted})`);
+      logger.info("SimpleFIN", `Processing account ${remoteAccount.name} with ${remoteAccount.transactions.length} transactions. (First TX Date: ${remoteAccount.transactions[0]?.date || remoteAccount.transactions[0]?.posted})`);
 
       for (const remoteTx of remoteAccount.transactions) {
         const existing = await prisma.transaction.findUnique({
@@ -174,9 +173,10 @@ export async function syncSimpleFin() {
     });
 
     return { success: true, accountCount: data.accounts.length };
-  } catch (err: any) {
+  } catch (err) {
     clearTimeout(timeoutId);
-    console.error("SimpleFIN: Sync process error:", err.name === 'AbortError' ? 'Timeout' : err.message);
+    const errorMsg = err instanceof Error ? (err.name === 'AbortError' ? 'Timeout' : err.message) : String(err);
+    logger.error("SimpleFIN", `Sync process error: ${errorMsg}`);
     throw err;
   }
 }

@@ -14,8 +14,9 @@ export async function POST(req: NextRequest) {
     const result = await processAmazonCsv(csvContent);
     
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Amazon processing error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

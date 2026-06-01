@@ -31,7 +31,17 @@ export async function deleteCommitment(id: string) {
   revalidatePath("/");
 }
 
-export async function updateCommitment(id: string, data: any) {
+export async function updateCommitment(
+  id: string,
+  data: {
+    name?: string;
+    amount?: number;
+    frequency?: string;
+    type?: string;
+    categoryId?: string | null;
+    nextDueDate?: Date | null;
+  }
+) {
   await prisma.commitment.update({
     where: { id },
     data

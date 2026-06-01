@@ -1,7 +1,27 @@
 import prisma from "@/lib/prisma";
 import { runMonthlyProvisioning } from "./provisioning";
+import { Transaction } from "@prisma/client";
 
-function safeNumber(val: any): number {
+export interface PaycheckForecastItem {
+  date: string;
+  amount: number;
+  status: "received" | "pending";
+}
+
+export interface BudgetForecast {
+  expectedIncome: number;
+  projectedMonthEnd: number;
+  isHealthy: boolean;
+  paycheckEnabled: boolean;
+  paychecks: PaycheckForecastItem[];
+  remainingIncome: number;
+  nextMonthAllocations: number;
+  nextMonthCommitments: number;
+  nextMonthSurplus: number;
+}
+
+function safeNumber(val: unknown): number {
+  if (val === null || val === undefined) return 0;
   const n = Number(val);
   return isNaN(n) ? 0 : n;
 }
@@ -194,7 +214,7 @@ export async function getMonthlyTally(year?: number) {
   // We no longer subtract nextMonthCommitments from the next month surplus!
   const defaultNextMonthSurplus = defaultMonthEndBuffer - nextMonthAllocations;
 
-  let forecast: any = {
+  let forecast: BudgetForecast = {
     expectedIncome,
     projectedMonthEnd: defaultMonthEndBuffer,
     isHealthy: defaultNextMonthSurplus >= 0,
@@ -456,7 +476,7 @@ export function getPaycheckDatesInMonth(
 async function hasReceivedPaycheck(
   amount: number,
   date: Date,
-  monthTransactions: any[]
+  monthTransactions: Transaction[]
 ): Promise<boolean> {
   const paycheckTime = date.getTime();
   const oneDayMs = 24 * 60 * 60 * 1000;

@@ -26,8 +26,8 @@ export default function CategoryManager({ initialCategories }: { initialCategori
     try {
       await createCategory(newName);
       setNewName("");
-    } catch (err: any) {
-      setError(err.message || "Failed to create category");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create category");
     } finally {
       setIsSubmitting(false);
     }
@@ -43,8 +43,8 @@ export default function CategoryManager({ initialCategories }: { initialCategori
     try {
       await updateCategoryName(editingId, editName.trim());
       setEditingId(null);
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to update category");
     }
   };
 
@@ -53,8 +53,8 @@ export default function CategoryManager({ initialCategories }: { initialCategori
 
     try {
       await deleteCategory(id);
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete category");
     }
   };
 

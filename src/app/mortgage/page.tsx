@@ -1,5 +1,4 @@
 import prisma from "@/lib/prisma";
-import { getMortgageData } from "@/lib/services/mortgageService";
 import MortgageClient from "./MortgageClient";
 
 export const metadata = {
@@ -25,6 +24,11 @@ export default async function MortgagePage() {
     monthlyPayment: Number(mortgage.monthlyPayment),
     homeValue: mortgage.homeValue ? Number(mortgage.homeValue) : null,
     originalBalance: mortgage.originalBalance ? Number(mortgage.originalBalance) : null,
+    providers: mortgage.providers.map(p => ({
+      ...p,
+      lastValue: p.lastValue ? Number(p.lastValue) : null,
+      lastSync: p.lastSync ? p.lastSync.toISOString() : null,
+    })),
   } : null;
 
   return (

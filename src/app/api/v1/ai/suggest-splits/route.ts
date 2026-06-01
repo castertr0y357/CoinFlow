@@ -42,7 +42,13 @@ export async function POST(req: NextRequest) {
 
         const txIsNegative = Number(transaction.amount) < 0;
 
-        const mappedSplits = suggestions.splits.map((s: any) => {
+        interface AISuggestedSplit {
+          categoryName: string | null;
+          price: number;
+          title?: string | null;
+        }
+
+        const mappedSplits = suggestions.splits.map((s: AISuggestedSplit) => {
           const normalizedName = String(s.categoryName || "").toLowerCase().trim();
           const categoryId = nameToIdMap[normalizedName] || null;
           
@@ -60,7 +66,7 @@ export async function POST(req: NextRequest) {
         // Balance splits to equal transaction.amount exactly
         const txAmount = Number(transaction.amount);
         if (mappedSplits.length > 0) {
-          const splitTotal = mappedSplits.reduce((acc: number, s: any) => acc + s.amount, 0);
+          const splitTotal = mappedSplits.reduce((acc: number, s: { amount: number }) => acc + s.amount, 0);
           const diff = txAmount - splitTotal;
           if (Math.abs(diff) > 0.001) {
             mappedSplits[mappedSplits.length - 1].amount = Number((mappedSplits[mappedSplits.length - 1].amount + diff).toFixed(2));
@@ -77,8 +83,9 @@ export async function POST(req: NextRequest) {
       }
 
       return NextResponse.json(suggestions);
-    } catch (error: any) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return NextResponse.json({ error: message }, { status: 500 });
     }
   });
 }

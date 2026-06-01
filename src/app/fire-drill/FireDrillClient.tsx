@@ -55,39 +55,41 @@ export default function FireDrillClient({ categories, accounts, initialForecast 
 
   // Load from localStorage on client mount to prevent SSR hydration mismatch
   useEffect(() => {
-    setIsMounted(true);
-    
-    // Load category selections
-    const savedCategories = localStorage.getItem("coinflow_fire_drill_essential_ids");
-    if (savedCategories) {
-      try {
-        setEssentialIds(new Set(JSON.parse(savedCategories)));
-      } catch (e) {
-        console.error("Failed to parse saved categories", e);
-      }
-    } else {
-      // Clean start (do not default to anything)
-      setEssentialIds(new Set());
-    }
-
-    // Load account selections
-    const savedAccounts = localStorage.getItem("coinflow_fire_drill_liquid_account_ids");
-    if (savedAccounts) {
-      try {
-        setSelectedAccountIds(new Set(JSON.parse(savedAccounts)));
-      } catch (e) {
-        console.error("Failed to parse saved accounts", e);
-      }
-    } else {
-      // Default to accounts that are On Budget (excludeFromSurplus = false)
-      const defaultIds = new Set<string>();
-      accounts.forEach(a => {
-        if (!a.excludeFromSurplus) {
-          defaultIds.add(a.id);
+    setTimeout(() => {
+      setIsMounted(true);
+      
+      // Load category selections
+      const savedCategories = localStorage.getItem("coinflow_fire_drill_essential_ids");
+      if (savedCategories) {
+        try {
+          setEssentialIds(new Set(JSON.parse(savedCategories)));
+        } catch (e) {
+          console.error("Failed to parse saved categories", e);
         }
-      });
-      setSelectedAccountIds(defaultIds);
-    }
+      } else {
+        // Clean start (do not default to anything)
+        setEssentialIds(new Set());
+      }
+
+      // Load account selections
+      const savedAccounts = localStorage.getItem("coinflow_fire_drill_liquid_account_ids");
+      if (savedAccounts) {
+        try {
+          setSelectedAccountIds(new Set(JSON.parse(savedAccounts)));
+        } catch (e) {
+          console.error("Failed to parse saved accounts", e);
+        }
+      } else {
+        // Default to accounts that are On Budget (excludeFromSurplus = false)
+        const defaultIds = new Set<string>();
+        accounts.forEach(a => {
+          if (!a.excludeFromSurplus) {
+            defaultIds.add(a.id);
+          }
+        });
+        setSelectedAccountIds(defaultIds);
+      }
+    }, 0);
   }, [accounts]);
 
   const toggleEssential = (id: string) => {
@@ -459,7 +461,7 @@ export default function FireDrillClient({ categories, accounts, initialForecast 
           <p className="text-muted text-xs mb-4">Eliminating these discretionary categories entirely stretches your runway.</p>
 
           <div className="recommendations-list">
-            {recommendations.map((r, i) => (
+            {recommendations.map(r => (
               <div key={r.id} className="rec-item glass p-3 mb-2 flex justify-between items-center">
                 <div>
                   <span className="rec-name font-bold">{r.name}</span>

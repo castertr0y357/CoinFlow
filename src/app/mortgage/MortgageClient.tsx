@@ -7,16 +7,29 @@ import { calculateAmortization, AmortizationRow } from "@/lib/services/mortgageS
 import { updateMortgageDetails, addValuationProvider, removeValuationProvider, syncValuations } from "./actions";
 import "./Mortgage.css";
 
-interface Provider {
+interface MortgageProvider {
   id: string;
   name: string;
   url: string;
   lastValue: number | null;
-  lastSync: string | null;
+  lastSync: string | Date | null;
+}
+
+interface MortgageDetailData {
+  id: string;
+  accountId: string;
+  interestRate: number;
+  monthlyPayment: number;
+  startDate: string | Date;
+  termMonths: number;
+  homeValue: number | null;
+  originalBalance: number | null;
+  currentBalance: number;
+  providers: MortgageProvider[];
 }
 
 interface MortgageClientProps {
-  initialData: any;
+  initialData: MortgageDetailData | null;
   accounts: { id: string, name: string }[];
 }
 
@@ -46,7 +59,7 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
 
-  const formatInitialDate = (date: any) => {
+  const formatInitialDate = (date: string | Date | null | undefined) => {
     if (!date) return new Date().toISOString().split('T')[0];
     if (date instanceof Date) return date.toISOString().split('T')[0];
     if (typeof date === 'string') return date.split('T')[0];
@@ -74,7 +87,7 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
         originalBalance: formData.originalBalance ? Number(formData.originalBalance) : undefined,
       });
       setIsEditing(false);
-    } catch (error) {
+    } catch {
       alert("Failed to save mortgage details.");
     } finally {
       setIsSaving(false);
@@ -82,12 +95,12 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
   };
 
   const handleAddProvider = async () => {
-    if (!newProvider.url) return;
+    if (!newProvider.url || !initialData) return;
     setIsSaving(true);
     try {
       await addValuationProvider(initialData.id, newProvider.name, newProvider.url);
       setNewProvider({ ...newProvider, url: "" });
-    } catch (error) {
+    } catch {
       alert("Failed to add provider.");
     } finally {
       setIsSaving(false);
@@ -99,7 +112,7 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
     setIsSaving(true);
     try {
       await removeValuationProvider(id);
-    } catch (error) {
+    } catch {
       alert("Failed to remove provider.");
     } finally {
       setIsSaving(false);
@@ -107,10 +120,11 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
   };
 
   const handleSyncValuations = async () => {
+    if (!initialData) return;
     setIsSyncing(true);
     try {
       await syncValuations(initialData.id);
-    } catch (error) {
+    } catch {
       alert("Failed to sync valuations.");
     } finally {
       setIsSyncing(false);
@@ -149,7 +163,7 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
   };
 
   // Amortization Schedules (Combined History & Future)
-  const { schedule, optimizedSchedule, historyInterestPaid, standardFutureInterest, acceleratedFutureInterest, historyLength } = useMemo(() => {
+  const { schedule, optimizedSchedule, historyLength } = useMemo(() => {
     if (!initialData) {
       return {
         schedule: [],
@@ -515,7 +529,7 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
             </div>
           </form>
         </Card>
-      ) : (
+      ) : initialData ? (
         <>
       {/* Stat Cards */}
       <div className="mortgage-stats-grid">
@@ -931,7 +945,7 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
               {initialData.providers?.length === 0 ? (
                 <p className="text-muted py-4 text-center text-xs">No live sources linked. Paste a property URL below.</p>
               ) : (
-                initialData.providers?.map((p: Provider) => (
+                initialData.providers?.map((p: MortgageProvider) => (
                   <div key={p.id} className="provider-item">
                     <div className="provider-header">
                       <span className="provider-name">{p.name}</span>
@@ -1159,7 +1173,7 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
         )}
       </Card>
       </>
-      )}
+      ) : null}
     </div>
   );
 }

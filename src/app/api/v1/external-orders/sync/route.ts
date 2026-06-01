@@ -5,11 +5,29 @@ import { applySplits } from "@/lib/services/transactionService";
 import { calculateProportionalSplits, getPayeeFilterForSource } from "@/lib/external-orders";
 import { normalizeItemNames } from "@/lib/services/aiService";
 
+interface SyncOrderItem {
+  title: string;
+  price: number;
+  quantity?: number;
+}
+
+interface SyncOrder {
+  orderId: string;
+  date: string;
+  totalAmount: number;
+  items: SyncOrderItem[];
+}
+
+interface SyncPayload {
+  source: string;
+  orders: SyncOrder[];
+}
+
 export async function POST(req: NextRequest) {
   return withAuth(req, async () => {
-    let body: any;
+    let body: SyncPayload | undefined;
     try {
-      body = await req.json();
+      body = await req.json() as SyncPayload;
       const { source, orders } = body;
 
       if (!source || !orders || !Array.isArray(orders)) {
@@ -26,7 +44,7 @@ export async function POST(req: NextRequest) {
       const allTitles = new Set<string>();
       for (const order of orders) {
         if (order.items && Array.isArray(order.items)) {
-          order.items.forEach((item: any) => {
+          order.items.forEach((item: SyncOrderItem) => {
             if (item.title) allTitles.add(item.title);
           });
         }
@@ -39,8 +57,8 @@ export async function POST(req: NextRequest) {
         const { orderId, date, totalAmount, items } = order;
 
         // Deduplicate incoming items as a safety measure
-        const uniqueItems = items.filter((item: any, index: number, self: any[]) =>
-          index === self.findIndex((t: any) => (
+        const uniqueItems = items.filter((item: SyncOrderItem, index: number, self: SyncOrderItem[]) =>
+          index === self.findIndex((t: SyncOrderItem) => (
             t.title.toLowerCase() === item.title.toLowerCase() && t.price === item.price
           ))
         );
@@ -79,7 +97,7 @@ export async function POST(req: NextRequest) {
             totalAmount: totalAmount,
             source: source,
             items: {
-              create: uniqueItems.map((item: any) => ({
+              create: uniqueItems.map((item: SyncOrderItem) => ({
                 title: normalizedTitles[item.title] || item.title,
                 rawTitle: item.title,
                 price: item.price,
@@ -93,7 +111,7 @@ export async function POST(req: NextRequest) {
             date: new Date(date),
             totalAmount: totalAmount,
             items: {
-              create: uniqueItems.map((item: any) => ({
+              create: uniqueItems.map((item: SyncOrderItem) => ({
                 title: normalizedTitles[item.title] || item.title,
                 rawTitle: item.title,
                 price: item.price,
@@ -109,44 +127,44 @@ export async function POST(req: NextRequest) {
         // Matching logic
         let matchedTransactionId: string | null = existingOrder?.transaction?.id || null;
 
-          // Broaden search window to handle timezone shifts and posting delays
-          // Range: [OrderDate - 3 days, OrderDate + 10 days]
-          const startDate = new Date(date);
-          startDate.setDate(startDate.getDate() - 3);
-          startDate.setHours(0, 0, 0, 0);
+        // Broaden search window to handle timezone shifts and posting delays
+        // Range: [OrderDate - 3 days, OrderDate + 10 days]
+        const startDate = new Date(date);
+        startDate.setDate(startDate.getDate() - 3);
+        startDate.setHours(0, 0, 0, 0);
 
-          const endDate = new Date(date);
-          endDate.setDate(endDate.getDate() + 10);
-          endDate.setHours(23, 59, 59, 999);
+        const endDate = new Date(date);
+        endDate.setDate(endDate.getDate() + 10);
+        endDate.setHours(23, 59, 59, 999);
 
-          console.log(`CoinFlow [Sync]: Searching for transaction: Amount -${totalAmount}, Range ${startDate.toISOString()} to ${endDate.toISOString()}`);
+        console.log(`CoinFlow [Sync]: Searching for transaction: Amount -${totalAmount}, Range ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
-          const payeeFilter = getPayeeFilterForSource(source);
+        const payeeFilter = getPayeeFilterForSource(source);
 
-          const foundTx = await prisma.transaction.findFirst({
-            where: {
-              amount: -totalAmount, 
-              date: {
-                gte: startDate,
-                lte: endDate
-              },
-              externalOrderId: null,
-              ...payeeFilter
+        const foundTx = await prisma.transaction.findFirst({
+          where: {
+            amount: -totalAmount, 
+            date: {
+              gte: startDate,
+              lte: endDate
             },
-            orderBy: { date: 'asc' } // Pick the one closest to the order date if multiple exist
-          });
+            externalOrderId: null,
+            ...payeeFilter
+          },
+          orderBy: { date: 'asc' } // Pick the one closest to the order date if multiple exist
+        });
 
-          if (foundTx) {
-            console.log(`CoinFlow [Sync]: Matched transaction ${foundTx.id} (${foundTx.payee}) to order ${orderId}`);
-            await prisma.transaction.update({
-              where: { id: foundTx.id },
-              data: { externalOrderId: externalOrder.id }
-            });
-            matchedTransactionId = foundTx.id;
-            results.matchedTransactions++;
-          } else {
-            console.warn(`CoinFlow [Sync]: No transaction match found for order ${orderId} ($${totalAmount}) in window.`);
-          }
+        if (foundTx) {
+          console.log(`CoinFlow [Sync]: Matched transaction ${foundTx.id} (${foundTx.payee}) to order ${orderId}`);
+          await prisma.transaction.update({
+            where: { id: foundTx.id },
+            data: { externalOrderId: externalOrder.id }
+          });
+          matchedTransactionId = foundTx.id;
+          results.matchedTransactions++;
+        } else {
+          console.warn(`CoinFlow [Sync]: No transaction match found for order ${orderId} ($${totalAmount}) in window.`);
+        }
 
         // Auto-split or re-split the transaction based on fresh items
         if (matchedTransactionId) {
@@ -154,17 +172,23 @@ export async function POST(req: NextRequest) {
             where: { id: matchedTransactionId }
           });
           if (fullTx) {
-            const splits = calculateProportionalSplits(Number(fullTx.amount), uniqueItems);
+            const itemsForSplits = uniqueItems.map(item => ({
+              title: item.title,
+              price: item.price,
+              quantity: item.quantity ?? 1
+            }));
+            const splits = calculateProportionalSplits(Number(fullTx.amount), itemsForSplits);
             await applySplits(fullTx.id, splits);
           }
         }
       }
 
       return NextResponse.json(results);
-    } catch (error: any) {
+    } catch (error) {
       console.error("External Sync Error:", error);
       console.error("Payload:", JSON.stringify(body, null, 2));
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      const message = error instanceof Error ? error.message : String(error);
+      return NextResponse.json({ error: message }, { status: 500 });
     }
   });
 }

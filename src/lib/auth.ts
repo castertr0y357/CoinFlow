@@ -1,28 +1,35 @@
-import { SignJWT, jwtVerify } from "jose";
+import { SignJWT, jwtVerify, JWTPayload } from "jose";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "./prisma";
+import { logger } from "./logger";
 
 const SECRET = new TextEncoder().encode(
   process.env.APP_PASSWORD || "change-this-default-password-12345"
 );
 
-export async function encrypt(payload: any) {
-  return await new SignJWT(payload)
+export interface SessionPayload {
+  user: string;
+  expiresAt: number;
+  [key: string]: unknown;
+}
+
+export async function encrypt(payload: SessionPayload) {
+  return await new SignJWT(payload as JWTPayload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
     .sign(SECRET);
 }
 
-export async function decrypt(input: string): Promise<any> {
+export async function decrypt(input: string): Promise<SessionPayload | null> {
   try {
     const { payload } = await jwtVerify(input, SECRET, {
       algorithms: ["HS256"],
     });
-    return payload;
-  } catch (e: any) {
-    console.error(`[AUTH] Decrypt failed: ${e.message}`);
+    return payload as unknown as SessionPayload;
+  } catch (err) {
+    logger.error("Auth/Decrypt", "Decrypt failed", err);
     return null;
   }
 }

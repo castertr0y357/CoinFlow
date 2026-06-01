@@ -10,9 +10,10 @@ export async function GET(req: NextRequest) {
       const result = await syncSimpleFin();
       console.log(`Background sync completed: ${result.accountCount} accounts synced.`);
       return NextResponse.json(result);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Background sync failed:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      const message = error instanceof Error ? error.message : String(error);
+      return NextResponse.json({ error: message }, { status: 500 });
     }
   });
 }

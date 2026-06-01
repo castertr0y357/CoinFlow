@@ -1,5 +1,4 @@
 import prisma from "../prisma";
-import { simulatePayoff as simPayoff, Debt } from "../debtUtils";
 
 export async function getDebtAccounts() {
   const accounts = await prisma.account.findMany({

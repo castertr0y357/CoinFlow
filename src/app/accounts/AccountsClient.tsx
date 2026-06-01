@@ -25,6 +25,17 @@ interface AccountsClientProps {
   initialAccounts: Account[];
 }
 
+interface AccountSettingsUpdate {
+  name?: string;
+  displayName?: string | null;
+  showInSidebar?: boolean;
+  excludeFromAssetCalculation?: boolean;
+  excludeFromSurplus?: boolean;
+  isDebt?: boolean;
+  showTransactions?: boolean;
+  balance?: number;
+}
+
 export default function AccountsClient({ initialAccounts }: AccountsClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -42,7 +53,7 @@ export default function AccountsClient({ initialAccounts }: AccountsClientProps)
     remainingPayments: ""
   });
 
-  const handleUpdate = (id: string, data: any) => {
+  const handleUpdate = (id: string, data: AccountSettingsUpdate) => {
     startTransition(async () => {
       await updateAccountSettings(id, data);
       router.refresh();
@@ -95,7 +106,7 @@ export default function AccountsClient({ initialAccounts }: AccountsClientProps)
   };
 
   const saveEdit = (id: string, isManual: boolean) => {
-    const updateData: any = { displayName: editName.trim() || null };
+    const updateData: AccountSettingsUpdate = { displayName: editName.trim() || null };
     if (isManual) {
       const balanceNum = Number(editBalance);
       if (!isNaN(balanceNum)) {

@@ -94,7 +94,7 @@ export function simulatePayoff(
     activeDebts.forEach(d => {
       const balance = currentBalances[d.id];
       // Minimum payment cannot exceed the current balance (with accrued interest)
-      let minPayment = Math.min(d.minimumPayment, balance);
+      const minPayment = Math.min(d.minimumPayment, balance);
       paymentsThisMonth[d.id] = minPayment;
       currentBalances[d.id] -= minPayment;
       availableBudget -= minPayment;

@@ -14,8 +14,9 @@ export async function GET(req: NextRequest) {
 
       const matches = await findRefundMatches(transactionId);
       return NextResponse.json({ matches });
-    } catch (error: any) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return NextResponse.json({ error: message }, { status: 500 });
     }
   });
 }

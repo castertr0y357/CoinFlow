@@ -246,7 +246,7 @@ export async function reorderCategories(orderedIds: string[]) {
 }
 
 export async function updateAccountExclusion(accountId: string, exclude: boolean) {
-  const updateData: any = { excludeFromSurplus: exclude };
+  const updateData: { excludeFromSurplus: boolean; showInSidebar?: boolean } = { excludeFromSurplus: exclude };
   if (!exclude) {
     updateData.showInSidebar = true;
   }

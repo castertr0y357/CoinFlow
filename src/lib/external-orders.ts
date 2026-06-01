@@ -9,7 +9,13 @@ export interface AmazonCsvRow {
   'Quantity': string;
   'Unit Price': string;
   'Total': string;
-  [key: string]: any;
+  [key: string]: unknown;
+}
+
+export interface ExternalOrderItemPayload {
+  title: string;
+  price: number;
+  quantity: number;
 }
 
 export async function processAmazonCsv(csvContent: string) {
@@ -26,7 +32,7 @@ export async function processAmazonCsv(csvContent: string) {
   };
 
   // Group items by Order ID
-  const ordersMap = new Map<string, { date: Date, total: number, items: any[] }>();
+  const ordersMap = new Map<string, { date: Date, total: number, items: ExternalOrderItemPayload[] }>();
 
   for (const row of parsed.data) {
     const orderId = row['Order ID'];

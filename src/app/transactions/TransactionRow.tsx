@@ -1,9 +1,25 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { categorizeSplit, applyTransactionSplits, hideTransaction, addSplit, deleteTransactionSplit, updateSplitMemo, updateTransactionMemo, linkRefundAction } from "./actions";
+import { useState } from "react";
+import { categorizeSplit, applyTransactionSplits, hideTransaction, addSplit, deleteTransactionSplit, updateTransactionMemo, linkRefundAction } from "./actions";
 import Button from "@/components/ui/Button";
-import { Category, Transaction } from "@/types";
+import { Category, Transaction, Split } from "@/types";
+
+interface RefundCandidateSplit {
+  id: string;
+  amount: number;
+  categoryId: string | null;
+  categoryName: string;
+  memo: string | null;
+}
+
+interface RefundCandidate {
+  id: string;
+  date: Date | string;
+  amount: number;
+  payee: string;
+  splits: RefundCandidateSplit[];
+}
 
 export default function TransactionRow({ 
   tx, 
@@ -23,7 +39,7 @@ export default function TransactionRow({
   const [isPending, setIsPending] = useState(false);
   const [isAiSplitting, setIsAiSplitting] = useState(false);
   const [showRaw, setShowRaw] = useState(false);
-  const [refundCandidates, setRefundCandidates] = useState<any[] | null>(null);
+  const [refundCandidates, setRefundCandidates] = useState<RefundCandidate[] | null>(null);
   const [showRefundMatcher, setShowRefundMatcher] = useState(false);
   const [isSearchingRefunds, setIsSearchingRefunds] = useState(false);
 
@@ -44,7 +60,7 @@ export default function TransactionRow({
     }
   };
 
-  const handleLinkRefund = async (candidate: any) => {
+  const handleLinkRefund = async (candidate: RefundCandidate) => {
     const targetCategory = candidate.splits[0]?.categoryId;
     const targetCategoryName = candidate.splits[0]?.categoryName || "Uncategorized";
     
@@ -91,8 +107,9 @@ export default function TransactionRow({
       const splitAmount = Number(tx.amount) < 0 ? -Math.abs(amount) : Math.abs(amount);
       await addSplit(tx.id, splitAmount, null);
       if (onCategorized) onCategorized();
-    } catch (error: any) {
-      alert(error.message);
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : "An error occurred";
+      alert(errMsg);
     } finally {
       setIsPending(false);
     }
@@ -127,7 +144,7 @@ export default function TransactionRow({
 
   const handleHide = async () => {
     setIsPending(true);
-    await hideTransaction(tx.id, !(tx as any).isHidden);
+    await hideTransaction(tx.id, !tx.isHidden);
     setIsPending(false);
     if (onCategorized) onCategorized();
   };
@@ -145,11 +162,13 @@ export default function TransactionRow({
   };
 
   const [isEditingNote, setIsEditingNote] = useState(false);
+  const [prevMemo, setPrevMemo] = useState(tx.memo);
   const [noteDraft, setNoteDraft] = useState(tx.memo || "");
 
-  useEffect(() => {
+  if (tx.memo !== prevMemo) {
+    setPrevMemo(tx.memo);
     setNoteDraft(tx.memo || "");
-  }, [tx.memo]);
+  }
 
   const handleSaveNote = async () => {
     setIsPending(true);
@@ -295,9 +314,9 @@ export default function TransactionRow({
             className="row-action-btn hide-btn" 
             onClick={handleHide}
             disabled={isPending}
-            title={(tx as any).isHidden ? "Unhide Transaction" : "Hide Transaction"}
+            title={tx.isHidden ? "Unhide Transaction" : "Hide Transaction"}
           >
-            {(tx as any).isHidden ? "👁️" : "✖"}
+            {tx.isHidden ? "👁️" : "✖"}
           </button>
         </div>
       </div>
@@ -330,7 +349,7 @@ export default function TransactionRow({
                     <span className="text-danger font-mono" style={{ fontWeight: '700' }}>-${Math.abs(cand.amount).toFixed(2)}</span>
                   </div>
                   <div>
-                    {cand.splits.map((s: any, idx: number) => (
+                    {cand.splits.map((s, idx: number) => (
                       <span 
                         key={idx} 
                         className="badge" 
@@ -384,7 +403,7 @@ export default function TransactionRow({
 }
 
 interface SplitItemProps {
-  split: any;
+  split: Split;
   categories: Category[];
   suggestion?: string;
   isPending: boolean;

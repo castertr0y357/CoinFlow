@@ -1,7 +1,8 @@
 import prisma from "@/lib/prisma";
 import { getMonthlyTally } from "./budgetService";
 
-function safeNumber(val: any): number {
+function safeNumber(val: unknown): number {
+  if (val === null || val === undefined) return 0;
   const n = Number(val);
   return isNaN(n) ? 0 : n;
 }

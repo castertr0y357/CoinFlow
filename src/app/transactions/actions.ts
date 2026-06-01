@@ -14,7 +14,10 @@ export async function categorizeSplit(splitId: string, categoryId: string | null
   revalidatePath("/");
 }
 
-export async function applyTransactionSplits(transactionId: string, splits: any[]) {
+export async function applyTransactionSplits(
+  transactionId: string,
+  splits: { categoryId: string | null; amount: number; memo?: string }[]
+) {
   await applySplits(transactionId, splits);
   revalidatePath("/transactions");
   revalidatePath("/");

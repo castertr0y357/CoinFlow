@@ -26,7 +26,9 @@ export default function BackupManager() {
   };
 
   useEffect(() => {
-    fetchServerBackups();
+    setTimeout(() => {
+      fetchServerBackups();
+    }, 0);
     
     const handleClickOutside = () => setOpenMenu(null);
     window.addEventListener("click", handleClickOutside);

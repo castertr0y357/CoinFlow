@@ -18,8 +18,8 @@ export default function YearManager({ currentYear }: { currentYear: number }) {
       const year = await closeYearAndStartNext();
       setNextYear(year);
       alert(`${year} Budget successfully initialized with rollovers from ${currentYear}!`);
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to close year");
     } finally {
       setIsProcessing(false);
     }

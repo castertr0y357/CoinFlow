@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { logger } from "@/lib/logger";
 
 export async function runMonthlyProvisioning(targetYear?: number) {
   const now = new Date();
@@ -94,11 +95,11 @@ export async function runMonthlyProvisioning(targetYear?: number) {
   }
 
   if (provisionsCreated > 0) {
-    console.log(`[Provisioning] Created ${provisionsCreated} missing budget allotments for ${yearNum}.`);
+    logger.info("Provisioning", `Created ${provisionsCreated} missing budget allotments for ${yearNum}.`);
     try {
       revalidatePath("/");
       revalidatePath("/settings/general");
-    } catch (e) {
+    } catch {
       // Ignore if not in Next environment
     }
   }

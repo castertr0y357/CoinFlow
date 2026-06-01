@@ -1,5 +1,6 @@
 import prisma from "../prisma";
 import * as cheerio from "cheerio";
+import { logger } from "../logger";
 
 export async function scrapeHomeValue(url: string, provider: string): Promise<number | null> {
   try {
@@ -49,7 +50,7 @@ export async function scrapeHomeValue(url: string, provider: string): Promise<nu
               const val = json.value || json.offers?.price;
               if (val) value = parseInt(String(val).replace(/[^0-9]/g, ''));
             }
-          } catch (e) {}
+          } catch {}
         });
       }
     } else if (url.includes('redfin.com')) {
@@ -114,14 +115,14 @@ export async function scrapeHomeValue(url: string, provider: string): Promise<nu
                 if (val) value = parseInt(String(val).replace(/[^0-9]/g, ''));
               }
             }
-          } catch (e) {}
+          } catch {}
         }
       }
     }
 
     return value > 0 ? value : null;
   } catch (error) {
-    console.error(`Scraping error for ${provider}:`, error);
+    logger.error("Valuation/Scrape", `Scraping error for ${provider}`, error);
     return null;
   }
 }

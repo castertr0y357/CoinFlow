@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { mutate } from "swr";
 import Card from "@/components/ui/Card";
-import Button from "@/components/ui/Button";
 import { updateAccountExclusion, toggleAccountDebt } from "@/app/categories/actions";
 
 interface NetWorthClientProps {

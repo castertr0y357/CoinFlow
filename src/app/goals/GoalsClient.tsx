@@ -59,7 +59,7 @@ export default function GoalsClient({
         const data = await res.json();
         if (data.goals) setGoals(data.goals);
       }
-    } catch (e) {
+    } catch {
       // Fallback: window refresh
       window.location.reload();
     }
@@ -175,7 +175,7 @@ export default function GoalsClient({
     });
 
   // Helper to format date nicely
-  const formatDate = (dateVal: any) => {
+  const formatDate = (dateVal: string | Date | null | undefined) => {
     if (!dateVal) return "";
     const d = new Date(dateVal);
     return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });

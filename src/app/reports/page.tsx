@@ -1,5 +1,4 @@
 import prisma from "@/lib/prisma";
-import Card from "@/components/ui/Card";
 import ReportsClient from "./ReportsClient";
 
 export const metadata = {

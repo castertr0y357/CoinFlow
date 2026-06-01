@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { mutate } from "swr";
+import Image from "next/image";
 
 interface Account {
   id: string;
@@ -85,19 +86,20 @@ export default function Sidebar({ accounts }: SidebarProps) {
   const isToolActive = toolLinks.some(link => 
     link.href === '/' ? pathname === '/' : pathname.startsWith(link.href)
   );
+  const [prevPath, setPrevPath] = useState(pathname);
   const [toolsOpen, setToolsOpen] = useState(isToolActive);
 
-  // Automatically close or open the tools dropdown based on active path changes
-  useEffect(() => {
+  if (pathname !== prevPath) {
+    setPrevPath(pathname);
     setToolsOpen(isToolActive);
-  }, [pathname, isToolActive]);
+  }
 
 
   return (
     <div className="sidebar-container glass">
       <div className="sidebar-header">
         <Link href="/" className="logo-container">
-          <img src="/logo.png" alt="CoinFlow Logo" className="logo-icon" />
+          <Image src="/logo.png" alt="CoinFlow Logo" className="logo-icon" width={32} height={32} />
           <span className="logo-text">CoinFlow</span>
         </Link>
       </div>

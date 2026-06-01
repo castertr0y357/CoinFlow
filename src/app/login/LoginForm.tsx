@@ -2,13 +2,11 @@
 
 import { useState } from "react";
 import Button from "@/components/ui/Button";
-import { useRouter } from "next/navigation";
 
 export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +25,7 @@ export default function LoginForm() {
       } else {
         setError("Invalid master password. Please try again.");
       }
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred.");
     } finally {
       setIsLoading(false);

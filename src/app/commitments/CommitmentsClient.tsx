@@ -31,7 +31,12 @@ export default function CommitmentsClient({ initialCommitments, categories }: Co
     categoryId: ""
   });
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editFormData, setEditFormData] = useState<any>(null);
+  const [editFormData, setEditFormData] = useState<{
+    name: string;
+    amount: number;
+    frequency: string;
+    categoryId: string;
+  } | null>(null);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +47,7 @@ export default function CommitmentsClient({ initialCommitments, categories }: Co
 
 
   const handleUpdate = async () => {
-    if (!editingId) return;
+    if (!editingId || !editFormData) return;
     await updateCommitment(editingId, {
       name: editFormData.name,
       amount: Number(editFormData.amount),
@@ -172,14 +177,14 @@ export default function CommitmentsClient({ initialCommitments, categories }: Co
                 ) : (
                   items.map(item => (
                     <div key={item.id} className={`commitment-item glass ${editingId === item.id ? 'editing' : ''}`}>
-                      {editingId === item.id ? (
+                      {editingId === item.id && editFormData ? (
                         <div className="edit-commitment-inline" style={{ width: '100%' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: '0.5rem' }}>
                               <input 
                                 type="text" 
                                 value={editFormData.name} 
-                                onChange={e => setEditFormData({...editFormData, name: e.target.value})} 
+                                onChange={e => setEditFormData(prev => prev ? {...prev, name: e.target.value} : null)} 
                                 className="edit-input name-input"
                                 style={{ padding: '0.5rem', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '4px', width: '100%' }}
                               />
@@ -187,7 +192,7 @@ export default function CommitmentsClient({ initialCommitments, categories }: Co
                                 type="number" 
                                 step="0.01" 
                                 value={editFormData.amount} 
-                                onChange={e => setEditFormData({...editFormData, amount: Number(e.target.value)})} 
+                                onChange={e => setEditFormData(prev => prev ? {...prev, amount: Number(e.target.value)} : null)} 
                                 className="edit-input amount-input"
                                 style={{ padding: '0.5rem', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '4px', width: '100%' }}
                               />
@@ -195,7 +200,7 @@ export default function CommitmentsClient({ initialCommitments, categories }: Co
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                               <select 
                                 value={editFormData.frequency} 
-                                onChange={e => setEditFormData({...editFormData, frequency: e.target.value})}
+                                onChange={e => setEditFormData(prev => prev ? {...prev, frequency: e.target.value} : null)}
                                 className="edit-select"
                                 style={{ padding: '0.5rem', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '4px', width: '100%', cursor: 'pointer' }}
                               >
@@ -206,7 +211,7 @@ export default function CommitmentsClient({ initialCommitments, categories }: Co
                               </select>
                               <select 
                                 value={editFormData.categoryId} 
-                                onChange={e => setEditFormData({...editFormData, categoryId: e.target.value})}
+                                onChange={e => setEditFormData(prev => prev ? {...prev, categoryId: e.target.value} : null)}
                                 className="edit-select"
                                 style={{ padding: '0.5rem', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '4px', width: '100%', cursor: 'pointer' }}
                               >

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
-import { simulatePayoff, Debt, DebtPayoffSummary, DebtPayoffSimRow } from "@/lib/debtUtils";
+import { simulatePayoff, Debt, DebtPayoffSimRow } from "@/lib/debtUtils";
 import { saveDebtDetailAction } from "./actions";
 import "./Debts.css";
 
@@ -39,7 +39,6 @@ export default function DebtsClient({ initialDebts, liquidAssets }: DebtsClientP
 
   // States for hovering the graph
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
 
   // Account Settings Drawer states
   const [showSettings, setShowSettings] = useState<boolean>(false);
@@ -49,45 +48,47 @@ export default function DebtsClient({ initialDebts, liquidAssets }: DebtsClientP
 
   // Load from localStorage on client mount to prevent SSR hydration mismatch
   useEffect(() => {
-    setIsMounted(true);
-    
-    // Load selected debt accounts
-    const savedDebts = localStorage.getItem("coinflow_debts_selected_account_ids");
-    if (savedDebts) {
-      try {
-        setSelectedDebtIds(new Set(JSON.parse(savedDebts)));
-      } catch (e) {
-        console.error("Failed to parse saved debts", e);
-      }
-    } else {
-      // Smart default: Select all debts that have balance > 0 and excludeFromSurplus is false
-      const defaultIds = new Set<string>();
-      initialDebts.forEach(d => {
-        if (d.balance > 0 && !d.excludeFromSurplus) {
-          defaultIds.add(d.id);
+    setTimeout(() => {
+      setIsMounted(true);
+      
+      // Load selected debt accounts
+      const savedDebts = localStorage.getItem("coinflow_debts_selected_account_ids");
+      if (savedDebts) {
+        try {
+          setSelectedDebtIds(new Set(JSON.parse(savedDebts)));
+        } catch (e) {
+          console.error("Failed to parse saved debts", e);
         }
-      });
-      setSelectedDebtIds(defaultIds);
-    }
+      } else {
+        // Smart default: Select all debts that have balance > 0 and excludeFromSurplus is false
+        const defaultIds = new Set<string>();
+        initialDebts.forEach(d => {
+          if (d.balance > 0 && !d.excludeFromSurplus) {
+            defaultIds.add(d.id);
+          }
+        });
+        setSelectedDebtIds(defaultIds);
+      }
 
-    // Load selected liquid asset accounts
-    const savedAssets = localStorage.getItem("coinflow_debts_selected_liquid_ids");
-    if (savedAssets) {
-      try {
-        setSelectedLiquidIds(new Set(JSON.parse(savedAssets)));
-      } catch (e) {
-        console.error("Failed to parse saved liquid assets", e);
-      }
-    } else {
-      // Smart default: Select checking/savings that are On Budget
-      const defaultIds = new Set<string>();
-      liquidAssets.forEach(acc => {
-        if (!acc.excludeFromSurplus) {
-          defaultIds.add(acc.id);
+      // Load selected liquid asset accounts
+      const savedAssets = localStorage.getItem("coinflow_debts_selected_liquid_ids");
+      if (savedAssets) {
+        try {
+          setSelectedLiquidIds(new Set(JSON.parse(savedAssets)));
+        } catch (e) {
+          console.error("Failed to parse saved liquid assets", e);
         }
-      });
-      setSelectedLiquidIds(defaultIds);
-    }
+      } else {
+        // Smart default: Select checking/savings that are On Budget
+        const defaultIds = new Set<string>();
+        liquidAssets.forEach(acc => {
+          if (!acc.excludeFromSurplus) {
+            defaultIds.add(acc.id);
+          }
+        });
+        setSelectedLiquidIds(defaultIds);
+      }
+    }, 0);
   }, [initialDebts, liquidAssets]);
 
   const toggleDebtSelection = (id: string) => {
@@ -165,7 +166,7 @@ export default function DebtsClient({ initialDebts, liquidAssets }: DebtsClientP
   const plotHeight = chartHeight - paddingTop - paddingBottom;
 
   // Convert schedules into SVG coordinates
-  const scalePoints = (schedule: DebtPayoffSimRow[]) => {
+  const scalePoints = useCallback((schedule: DebtPayoffSimRow[]) => {
     if (schedule.length === 0) return [];
     return schedule.map((row) => {
       // Scale X based on the longest schedule (maxSimMonths) to align points temporally
@@ -173,11 +174,11 @@ export default function DebtsClient({ initialDebts, liquidAssets }: DebtsClientP
       const y = chartHeight - paddingBottom - (row.totalBalance / maxTotalBalance) * plotHeight;
       return { x, y, row };
     });
-  };
+  }, [maxSimMonths, maxTotalBalance, plotWidth, plotHeight, paddingLeft, paddingBottom, chartHeight]);
 
-  const avalanchePoints = useMemo(() => scalePoints(avalanche.schedule), [avalanche, maxSimMonths, maxTotalBalance]);
-  const snowballPoints = useMemo(() => scalePoints(snowball.schedule), [snowball, maxSimMonths, maxTotalBalance]);
-  const minimumsPoints = useMemo(() => scalePoints(minimums.schedule), [minimums, maxSimMonths, maxTotalBalance]);
+  const avalanchePoints = useMemo(() => scalePoints(avalanche.schedule), [avalanche, scalePoints]);
+  const snowballPoints = useMemo(() => scalePoints(snowball.schedule), [snowball, scalePoints]);
+  const minimumsPoints = useMemo(() => scalePoints(minimums.schedule), [minimums, scalePoints]);
 
   const getPath = (points: { x: number, y: number }[]) => {
     return points.map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`)).join(" ");
@@ -220,7 +221,7 @@ export default function DebtsClient({ initialDebts, liquidAssets }: DebtsClientP
       snowballBalance: snPoint?.row.totalBalance ?? 0,
       x: paddingLeft + (hoveredIndex / maxSimMonths) * plotWidth
     };
-  }, [hoveredIndex, avalanchePoints, snowballPoints, minimumsPoints, maxSimMonths]);
+  }, [hoveredIndex, avalanchePoints, snowballPoints, minimumsPoints, maxSimMonths, plotWidth, paddingLeft]);
 
   // Tick marks for years on the X axis
   const yearTicks = useMemo(() => {
@@ -242,7 +243,7 @@ export default function DebtsClient({ initialDebts, liquidAssets }: DebtsClientP
       }
     }
     return ticks;
-  }, [minimums, maxSimMonths]);
+  }, [minimums, maxSimMonths, plotWidth, paddingLeft]);
 
   // Interest Leak calculations
   const totalLiquidCash = useMemo(() => {
@@ -735,7 +736,6 @@ export default function DebtsClient({ initialDebts, liquidAssets }: DebtsClientP
                 if (!svg) return;
                 const rect = svg.getBoundingClientRect();
                 const mouseX = ((e.clientX - rect.left) * chartWidth) / rect.width;
-                const mouseY = ((e.clientY - rect.top) * chartHeight) / rect.height;
                 
                 const relativeX = mouseX - paddingLeft;
                 const fraction = relativeX / plotWidth;
@@ -743,12 +743,10 @@ export default function DebtsClient({ initialDebts, liquidAssets }: DebtsClientP
                 
                 if (index >= 0 && index <= maxSimMonths) {
                   setHoveredIndex(index);
-                  setHoverPos({ x: mouseX, y: mouseY });
                 }
               }}
               onMouseLeave={() => {
                 setHoveredIndex(null);
-                setHoverPos(null);
               }}
             />
           </svg>
@@ -764,7 +762,7 @@ export default function DebtsClient({ initialDebts, liquidAssets }: DebtsClientP
           <p className="text-dim text-xs mb-4">Pay off your debts according to the optimized Avalanche math for this month.</p>
           
           <div className="checklist-items">
-            {nextMonthChecklist.map((c, i) => (
+            {nextMonthChecklist.map((c) => (
               <div key={c.id} className={`checklist-item ${c.isTarget ? 'target-payoff' : ''}`}>
                 <div className="item-main">
                   <div className="item-name flex items-center gap-2">

@@ -68,9 +68,10 @@ export async function POST(req: NextRequest) {
       }
 
       return NextResponse.json({ success: true, count: updatedCount });
-    } catch (error: any) {
+    } catch (error) {
       console.error("CoinFlow [AI Route]: Payee normalization failed:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      const message = error instanceof Error ? error.message : String(error);
+      return NextResponse.json({ error: message }, { status: 500 });
     }
   });
 }

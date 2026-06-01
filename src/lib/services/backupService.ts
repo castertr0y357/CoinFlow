@@ -1,6 +1,8 @@
 import prisma from "@/lib/prisma";
 import fs from "fs";
 import path from "path";
+import { logger } from "../logger";
+import { Transaction, Account, Category, BudgetYear, YearlyCategory, MortgageDetail, HomeValueProvider, Settings, TransactionSplit } from "@prisma/client";
 
 const BACKUP_DIR = "/app/backups";
 
@@ -54,14 +56,14 @@ export async function createBackupSnapshot(reason: string = "auto") {
     const filepath = path.join(BACKUP_DIR, filename);
     
     fs.writeFileSync(filepath, JSON.stringify(backup, null, 2));
-    console.log(`[BackupService] Snapshot created: ${filename}`);
+    logger.info("Backup", `Snapshot created: ${filename}`);
 
     // 4. Cleanup old backups
     await rotateBackups();
 
     return filename;
   } catch (error) {
-    console.error("[BackupService] Failed to create snapshot:", error);
+    logger.error("Backup", "Failed to create snapshot", error);
     return null;
   }
 }
@@ -83,15 +85,26 @@ async function rotateBackups() {
 
       if (ageDays > retentionDays) {
         fs.unlinkSync(filepath);
-        console.log(`[BackupService] Rotated old backup: ${file}`);
+        logger.info("Backup", `Rotated old backup: ${file}`);
       }
     }
   } catch (error) {
-    console.error("[BackupService] Rotation failed:", error);
+    logger.error("Backup", "Rotation failed", error);
   }
 }
 
-export async function restoreBackupData(data: any) {
+export interface BackupData {
+  accounts?: Account[];
+  categories?: Category[];
+  budgetYears?: BudgetYear[];
+  yearlyCategories?: YearlyCategory[];
+  transactions?: (Transaction & { splits?: TransactionSplit[] })[];
+  mortgageDetails?: MortgageDetail | null;
+  valuationProviders?: HomeValueProvider[];
+  settings?: Settings | null;
+}
+
+export async function restoreBackupData(data: BackupData) {
   // We use a transaction to ensure atomic restore
   await prisma.$transaction(async (tx) => {
     // 0. Clean up existing data to prevent unique constraint conflicts (in order of dependencies)

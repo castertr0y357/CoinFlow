@@ -7,7 +7,8 @@ export async function GET() {
   try {
     const goals = await getGoals();
     return NextResponse.json({ goals });
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || "Failed to fetch goals" }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to fetch goals";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

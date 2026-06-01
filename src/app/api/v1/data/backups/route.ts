@@ -26,8 +26,9 @@ export async function GET(req: NextRequest) {
         .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
       return NextResponse.json({ backups: files });
-    } catch (error: any) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return NextResponse.json({ error: message }, { status: 500 });
     }
   });
 }
@@ -38,8 +39,9 @@ export async function POST(req: NextRequest) {
       const filename = await createBackupSnapshot("manual");
       if (!filename) throw new Error("Failed to create snapshot");
       return NextResponse.json({ success: true, filename });
-    } catch (error: any) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return NextResponse.json({ error: message }, { status: 500 });
     }
   });
 }

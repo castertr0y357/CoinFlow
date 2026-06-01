@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 export async function getTransactions(options: { 
   take?: number, 
@@ -9,7 +10,7 @@ export async function getTransactions(options: {
 } = {}) {
   const { take = 1000, skip = 0, inboxOnly = false, includeHidden = false, hiddenOnly = false } = options;
 
-  const where: any = {
+  const where: Prisma.TransactionWhereInput = {
     account: {
       excludeFromSurplus: false,
       showTransactions: true

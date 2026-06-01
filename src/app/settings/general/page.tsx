@@ -6,7 +6,6 @@ import Button from "@/components/ui/Button";
 
 export default async function GeneralSettingsPage() {
   const settings = await prisma.settings.findUnique({ where: { id: 'global' } });
-  const currentYear = new Date().getFullYear();
   
   const categories = await prisma.category.findMany({
     orderBy: [
@@ -39,7 +38,7 @@ export default async function GeneralSettingsPage() {
           if (decoded.startsWith('https://')) {
             claimUrl = decoded;
           }
-        } catch (e) {}
+        } catch {}
       }
 
       if (claimUrl.includes('/claim/')) {
@@ -51,7 +50,7 @@ export default async function GeneralSettingsPage() {
               token = accessUrl;
             }
           }
-        } catch (err) {}
+        } catch {}
       }
     }
 

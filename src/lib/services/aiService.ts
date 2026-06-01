@@ -1,4 +1,6 @@
 import OpenAI from "openai";
+import { Category, Prisma } from "@prisma/client";
+import { logger } from "../logger";
 
 let baseURL = process.env.OPENAI_BASE_URL || "http://localhost:11434/v1";
 
@@ -28,16 +30,49 @@ const CHAT_ID = process.env.OPENAI_CHAT_ID || process.env.AI_CHAT_ID || (
 
 let isChatIdSupported = true;
 
-console.log(`CoinFlow [AI]: Initialized with baseURL=${baseURL}, MODEL=${MODEL}, CHAT_ID=${CHAT_ID}`);
+logger.info("AI", `Initialized with baseURL=${baseURL}, MODEL=${MODEL}, CHAT_ID=${CHAT_ID}`);
+
+type CustomChatCompletionCreateParams = OpenAI.Chat.ChatCompletionCreateParams & {
+  chat_id?: string;
+};
+
+export interface SubscriptionTxInput {
+  date: Date | string;
+  payee: string;
+  amount: number | string | Prisma.Decimal;
+}
+
+export interface SubscriptionResult {
+  name: string;
+  monthlyCost: number;
+  confidence: number;
+  reason: string;
+}
+
+export interface CategorizeTxInput {
+  id: string;
+  payee: string;
+  amount: number | string | Prisma.Decimal;
+}
+
+export interface CategorizeExampleInput {
+  payee: string;
+  categoryName: string;
+}
+
+export interface MerchantCleanExample {
+  raw: string;
+  clean: string;
+}
 
 /**
  * Helper to call openai.chat.completions.create with centralized chat_id and model configuration.
  */
-async function createChatCompletion(messages: any[], jsonMode = true) {
-  const params: any = {
+async function createChatCompletion(messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[], jsonMode = true) {
+  const params: CustomChatCompletionCreateParams = {
     model: MODEL,
     messages,
-    ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
+    ...(jsonMode ? { response_format: { type: "json_object" as const } } : {}),
   };
 
   // Only pass chat_id if it is explicitly configured (for Open WebUI custom domains) or implicitly detected
@@ -47,9 +82,10 @@ async function createChatCompletion(messages: any[], jsonMode = true) {
 
   try {
     return await openai.chat.completions.create(params);
-  } catch (error: any) {
-    const errorMessage = error?.message || "";
-    const errorStatus = error?.status;
+  } catch (error) {
+    const err = error as { message?: string; status?: number };
+    const errorMessage = err?.message || "";
+    const errorStatus = err?.status;
 
     // Detect if the error is due to an unrecognized parameter (like chat_id)
     const isParamError = 
@@ -61,9 +97,10 @@ async function createChatCompletion(messages: any[], jsonMode = true) {
        errorMessage.toLowerCase().includes("invalid parameter"));
 
     if (params.chat_id && isParamError) {
-      console.warn(`CoinFlow [AI]: Provider at ${baseURL} rejected 'chat_id' parameter. Retrying without it and disabling it for this session...`);
+      logger.warn("AI", `Provider at ${baseURL} rejected 'chat_id' parameter. Retrying without it and disabling it for this session...`);
       isChatIdSupported = false;
-      const { chat_id, ...cleanParams } = params;
+      const cleanParams = { ...params };
+      delete cleanParams.chat_id;
       return await openai.chat.completions.create(cleanParams);
     }
 
@@ -114,11 +151,11 @@ Format the response as valid JSON only.
       }
       return result;
     } catch (parseError) {
-      console.error("CoinFlow [AI]: Failed to parse JSON response from LLM:", parseError);
+      logger.error("AI", "Failed to parse JSON response from LLM", parseError);
       return titles.reduce((acc, title) => ({ ...acc, [title]: title }), {});
     }
   } catch (error) {
-    console.error("CoinFlow [AI]: LLM normalization failed:", error);
+    logger.error("AI", "LLM normalization failed", error);
     return titles.reduce((acc, title) => ({ ...acc, [title]: title }), {});
   }
 }
@@ -126,7 +163,7 @@ Format the response as valid JSON only.
 /**
  * Detects recurring subscriptions from a list of transactions.
  */
-export async function detectSubscriptions(transactions: any[]): Promise<any[]> {
+export async function detectSubscriptions(transactions: SubscriptionTxInput[]): Promise<SubscriptionResult[]> {
   const prompt = `
 Analyze the following financial transactions and identify potential recurring subscriptions.
 Return a JSON array of objects, each with 'name', 'monthlyCost', 'confidence', and 'reason'.
@@ -146,7 +183,7 @@ Format the response as valid JSON only.
     const data = JSON.parse(cleanJsonContent(content));
     return data.subscriptions || [];
   } catch (error) {
-    console.error("CoinFlow [AI]: detectSubscriptions failed:", error);
+    logger.error("AI", "detectSubscriptions failed", error);
     return [];
   }
 }
@@ -154,11 +191,11 @@ Format the response as valid JSON only.
 /**
  * Suggests categories for a list of transactions based on existing categories and examples.
  */
-export async function getCategorySuggestions(transactions: any[], categories: any[], examples: any[] = []): Promise<Record<string, string>> {
+export async function getCategorySuggestions(transactions: CategorizeTxInput[], categories: Category[], examples: CategorizeExampleInput[] = []): Promise<Record<string, string>> {
   if (transactions.length === 0) return {};
 
   const CHUNK_SIZE = 15;
-  const chunks: any[][] = [];
+  const chunks: CategorizeTxInput[][] = [];
   for (let i = 0; i < transactions.length; i += CHUNK_SIZE) {
     chunks.push(transactions.slice(i, i + CHUNK_SIZE));
   }
@@ -189,7 +226,7 @@ Format the response as valid JSON only.
       const content = response.choices[0].message.content || "{}";
       return JSON.parse(cleanJsonContent(content));
     } catch (err) {
-      console.error("CoinFlow [AI]: Chunk categorization failed:", err);
+      logger.error("AI", "Chunk categorization failed", err);
       return {};
     }
   });
@@ -200,7 +237,7 @@ Format the response as valid JSON only.
       Object.assign(results, map);
     }
   } catch (error) {
-    console.error("CoinFlow [AI]: getCategorySuggestions batch processing failed:", error);
+    logger.error("AI", "getCategorySuggestions batch processing failed", error);
   }
 
   return results;
@@ -209,7 +246,7 @@ Format the response as valid JSON only.
 /**
  * Cleans a raw merchant name from bank data into a human-readable payee name.
  */
-export async function getCleanMerchantName(rawPayee: string, examples: any[] = []): Promise<string> {
+export async function getCleanMerchantName(rawPayee: string, examples: MerchantCleanExample[] = []): Promise<string> {
   const prompt = `
 Clean this raw merchant name into a human-readable payee name (e.g., "AMZN Mktp US*123" -> "Amazon").
 Return a JSON object with a single key 'cleanName'.
@@ -231,7 +268,7 @@ Format the response as valid JSON only.
     const data = JSON.parse(cleanJsonContent(content));
     return data.cleanName || rawPayee;
   } catch (error) {
-    console.error("CoinFlow [AI]: getCleanMerchantName failed:", error);
+    logger.error("AI", "getCleanMerchantName failed", error);
     return rawPayee;
   }
 }
@@ -239,7 +276,7 @@ Format the response as valid JSON only.
 /**
  * Normalizes multiple raw merchant names in a single batch call.
  */
-export async function getCleanMerchantNamesBatch(rawPayees: string[], examples: any[] = []): Promise<Record<string, string>> {
+export async function getCleanMerchantNamesBatch(rawPayees: string[], examples: MerchantCleanExample[] = []): Promise<Record<string, string>> {
   if (rawPayees.length === 0) return {};
 
   // Deduplicate raw payees to avoid redundant translation
@@ -272,7 +309,7 @@ Format the response as valid JSON only.
     }
     return result;
   } catch (error) {
-    console.error("CoinFlow [AI]: getCleanMerchantNamesBatch failed:", error);
+    logger.error("AI", "getCleanMerchantNamesBatch failed", error);
     return rawPayees.reduce((acc, p) => ({ ...acc, [p]: p }), {});
   }
 }
@@ -281,7 +318,11 @@ Format the response as valid JSON only.
 /**
  * Suggests transaction splits for an order with multiple items.
  */
-export async function getSplitSuggestions(transaction: any, items: any[], categories: any[]): Promise<any> {
+export async function getSplitSuggestions(
+  transaction: { amount: number | string | Prisma.Decimal },
+  items: { title: string, price: number }[],
+  categories: Category[]
+): Promise<{ splits: { title: string, price: number, categoryName: string }[] }> {
   const prompt = `
 Suggest budget categories for each item in this order to split the transaction.
 Return a JSON object with 'splits', which is an array of { title, price, categoryName }.
@@ -303,7 +344,7 @@ Format the response as valid JSON only.
     const content = response.choices[0].message.content || "{\"splits\": []}";
     return JSON.parse(cleanJsonContent(content));
   } catch (error) {
-    console.error("CoinFlow [AI]: getSplitSuggestions failed:", error);
+    logger.error("AI", "getSplitSuggestions failed", error);
     return { splits: [] };
   }
 }
@@ -311,7 +352,10 @@ Format the response as valid JSON only.
 /**
  * Suggests historical mappings for importing data from spreadsheets.
  */
-export async function suggestHistoricalMapping(sheetInfo: any[], categories: any[]): Promise<any> {
+export async function suggestHistoricalMapping(
+  sheetInfo: Record<string, unknown>[],
+  categories: Category[]
+): Promise<{ mappings: { sheetName: string; categoryMappings: Record<string, string> }[] }> {
   const prompt = `
 Analyze these spreadsheet headers and samples to suggest which sheet contains transactions and how to map its columns.
 Return a JSON object with 'mappings', which is an array of mapping objects.
@@ -332,7 +376,7 @@ Format the response as valid JSON only.
     const content = response.choices[0].message.content || "{\"mappings\": []}";
     return JSON.parse(cleanJsonContent(content));
   } catch (error) {
-    console.error("CoinFlow [AI]: suggestHistoricalMapping failed:", error);
+    logger.error("AI", "suggestHistoricalMapping failed", error);
     return { mappings: [] };
   }
 }

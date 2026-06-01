@@ -12,7 +12,6 @@ interface ApiKey {
 }
 
 export default function ApiKeyManager({ initialKeys }: { initialKeys: ApiKey[] }) {
-  const [keys, setKeys] = useState(initialKeys);
   const [newKeyName, setNewKeyName] = useState("");
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
 

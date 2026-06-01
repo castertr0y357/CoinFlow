@@ -10,9 +10,38 @@ import { updateCategoryBudget, reclassifyTransaction, updateTransaction, deleteT
 import AddTransactionModal from "@/components/transactions/AddTransactionModal";
 import "./CategoryDetail.css";
 
+interface CategoryCommitment {
+  id: string;
+  name: string;
+  amount: number;
+  frequency: string;
+  category?: { name: string } | null;
+}
+
+interface CategoryDetail {
+  id: string;
+  name: string;
+  budget: number;
+  tiedAccountId: string | null;
+  isPaused: boolean;
+  commitmentsMonthly: number;
+  rollover: number;
+  spent: number;
+  remaining: number;
+  commitments?: CategoryCommitment[];
+}
+
+interface DetailTransaction {
+  id: string;
+  payee: string;
+  amount: number;
+  date: string | Date;
+  memo?: string | null;
+}
+
 interface CategoryDetailClientProps {
-  category: any;
-  transactions: any[];
+  category: CategoryDetail;
+  transactions: DetailTransaction[];
   otherCategories: { id: string, name: string }[];
   accounts: { id: string, name: string }[];
 }
@@ -27,7 +56,12 @@ export default function CategoryDetailClient({ category, transactions, otherCate
   const [editingTxId, setEditingTxId] = useState<string | null>(null);
   const [splittingTxId, setSplittingTxId] = useState<string | null>(null);
   const [splitData, setSplitData] = useState({ amount: 0, targetCategoryId: "" });
-  const [editFormData, setEditFormData] = useState<any>(null);
+  const [editFormData, setEditFormData] = useState<{
+    payee: string;
+    amount: number;
+    date: string;
+    memo: string;
+  } | null>(null);
   const [sortBy, setSortBy] = useState<'date' | 'payee' | 'amount'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
@@ -55,7 +89,7 @@ export default function CategoryDetailClient({ category, transactions, otherCate
     }
   };
 
-  const startEditing = (tx: any) => {
+  const startEditing = (tx: DetailTransaction) => {
     setEditingTxId(tx.id);
     setEditFormData({
       payee: tx.payee,
@@ -66,7 +100,7 @@ export default function CategoryDetailClient({ category, transactions, otherCate
   };
 
   const saveEdit = async () => {
-    if (!editingTxId) return;
+    if (!editingTxId || !editFormData) return;
     await updateTransaction(editingTxId, editFormData);
     refreshUI();
     setEditingTxId(null);
@@ -87,8 +121,8 @@ export default function CategoryDetailClient({ category, transactions, otherCate
       setSplittingTxId(null);
       setSplitData({ amount: 0, targetCategoryId: "" });
       refreshUI();
-    } catch (err: any) {
-      alert(err.message || "Split failed");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Split failed");
     } finally {
       setIsSaving(false);
     }
@@ -115,7 +149,7 @@ export default function CategoryDetailClient({ category, transactions, otherCate
     return sortOrder === 'asc' ? comparison : -comparison;
   });
 
-  const SortIcon = ({ field }: { field: 'date' | 'payee' | 'amount' }) => {
+  const renderSortIcon = (field: 'date' | 'payee' | 'amount') => {
     if (sortBy !== field) return <span className="sort-icon-placeholder">↕️</span>;
     return <span className="sort-icon active">{sortOrder === 'asc' ? '🔼' : '🔽'}</span>;
   };
@@ -154,7 +188,7 @@ export default function CategoryDetailClient({ category, transactions, otherCate
                     <span>⚠️ Underfunded Alert</span>
                   </div>
                   <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', lineHeight: 1.4 }}>
-                    Your monthly budget of <strong>${budget.toLocaleString()}</strong> is less than the <strong>${category.commitmentsMonthly.toLocaleString(undefined, { maximumFractionDigits: 2 })}/mo</strong> needed to cover this category's recurring obligations.
+                    Your monthly budget of <strong>${budget.toLocaleString()}</strong> is less than the <strong>${category.commitmentsMonthly.toLocaleString(undefined, { maximumFractionDigits: 2 })}/mo</strong> needed to cover this category&apos;s recurring obligations.
                   </span>
                 </div>
               )}
@@ -169,7 +203,7 @@ export default function CategoryDetailClient({ category, transactions, otherCate
                     onChange={e => setBudget(e.target.value === "" ? 0 : Number(e.target.value))} 
                   />
                 </div>
-                <p className="text-dim text-xs mt-2">This is the amount "deposited" on the 1st of each month.</p>
+                <p className="text-dim text-xs mt-2">This is the amount &quot;deposited&quot; on the 1st of each month.</p>
               </div>
 
               <div className="config-group mt-4">
@@ -210,7 +244,7 @@ export default function CategoryDetailClient({ category, transactions, otherCate
               <h3>Tied Commitments</h3>
               <p className="text-muted text-xs mb-3">Recurring obligations funded by this category.</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {category.commitments.map((comm: any) => {
+                {category.commitments.map((comm: CategoryCommitment) => {
                   let monthly = comm.amount;
                   if (comm.frequency === "YEARLY") monthly = comm.amount / 12;
                   else if (comm.frequency === "SEMI_ANNUAL") monthly = comm.amount / 6;
@@ -280,20 +314,20 @@ export default function CategoryDetailClient({ category, transactions, otherCate
                    className={`sortable-header ${sortBy === 'date' ? 'active' : ''}`}
                    onClick={() => handleSort('date')}
                  >
-                   Date <SortIcon field="date" />
+                   Date {renderSortIcon('date')}
                  </span>
                  <span 
                    className={`sortable-header ${sortBy === 'payee' ? 'active' : ''}`}
                    onClick={() => handleSort('payee')}
                  >
-                   Payee <SortIcon field="payee" />
+                   Payee {renderSortIcon('payee')}
                  </span>
                  <span 
                    className={`sortable-header ${sortBy === 'amount' ? 'active' : ''}`}
                    onClick={() => handleSort('amount')}
                    style={{ justifyContent: 'flex-end' }}
                  >
-                   Amount <SortIcon field="amount" />
+                   Amount {renderSortIcon('amount')}
                  </span>
                </div>
              </div>

@@ -47,9 +47,10 @@ export default function AddTransactionModal({
       });
       onSuccess();
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      alert(err.message || "An error occurred");
+      const errMsg = err instanceof Error ? err.message : "An error occurred";
+      alert(errMsg);
     } finally {
       setIsSubmitting(false);
     }

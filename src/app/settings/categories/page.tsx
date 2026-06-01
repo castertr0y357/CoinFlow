@@ -3,8 +3,6 @@ import Card from "@/components/ui/Card";
 import CategoryManager from "../CategoryManager";
 
 export default async function CategoriesSettingsPage() {
-  const currentYear = new Date().getFullYear();
-  
   const categories = await prisma.category.findMany({
     orderBy: [
       { displayOrder: 'asc' },
