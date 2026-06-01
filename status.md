@@ -1,6 +1,7 @@
-# Project Status: CoinFlow Browser Extension (v2.23.0)
+# Project Status: CoinFlow Browser Extension (v2.24.0)
 
 ## Current Progress
+- [x] **Premium Mobile Viewport Responsiveness (v2.24.0)**: Enhanced mobile browser experience by refactoring layouts and styles. Replaced the hidden sidebar on mobile with a collapsible sliding glassmorphic drawer toggled via a new fixed top header bar. Restructured transaction ledger row contents into stacked grid layouts (checkbox/date/amount on first tier, payee on second, category dropdowns occupying full width below) to eliminate content cutoff. Configured cash health calculator layouts to wrap vertically on narrow viewports with rotated formula symbols.
 - [x] **Codebase Audit & Standardisation (v2.23.0)**: Resolved 146 lint and TypeScript compilation issues across the entire codebase, including converting `any` casts, removing unused variables/imports, and correcting React mounting warnings. Centralized logging by introducing a formatted structured logger mapping to `[Job/Operation] - [Category/Level] - [Detail Message]` format. Configured Docker container pipeline to preserve source test files, enabling successful containerized verification testing via the Vitest runner.
 - [x] **Manual Accounts & Debts Creation (v2.22.2)**: Integrated support for creating and managing manual accounts and debts that are not synced from SimpleFIN, including tracking remaining payments. Created database migrations to add `remainingPayments` to the `DebtDetail` model, updated server actions `createManualAccountAction`, `saveDebtDetailAction`, and `deleteAccountAction`, and built toggleable creation form cards, inline name/balance editors, and remaining payment inputs into `/accounts` and `/debts` configuration views with responsive layout styles.
 - [x] **Agent Rules Hardening & Styling Consistency Guidelines (v2.22.1)**: Formulated strict guidelines in [AGENTS.md](file:///e:/Coding%20Projects/CoinFlow/AGENTS.md) to prioritize production-ready code (preventing lazy/inline imports, banning type system evasion via `any` or `@ts-ignore`, requiring full TypeScript typing, runtime Zod validations, decoupled business logic, and LLM output sanitization) and styling/layout consistency (using root variables in [globals.css](file:///e:/Coding%20Projects/CoinFlow/src/app/globals.css) and global header templates).
@@ -41,6 +42,15 @@
 - [x] **Subscription Detective Alignment (v2.10.0)**: Corrected unmapped keys (`monthlyCost`, `reason`) and wrapped the JSON response array inside an object matching frontend specifications.
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
+
+## Recent Fixes & Features (v2.24.0)
+- **Premium Mobile Viewport Responsiveness**:
+  - Restored responsive navigation by converting the hidden mobile sidebar into a slide-out drawer layout (`transform: translateX(-100%)`) with a glassmorphic look, and adding a fixed top header bar with a hamburger menu button.
+  - Implemented vertical stacking grid system for transaction rows on viewports `<= 768px` using CSS Grid to arrange checkbox, date, and amount above the payee, and full-width category selectors below.
+  - Set `min-width: 0` on transaction split select dropdown inputs to resolve overflow cutoffs.
+  - Offset the sticky transaction actions header to `top: 59px` on mobile screens to keep it accessible beneath the mobile header.
+  - Redesigned reports lists and rollover components into stacked grid layouts on smaller viewports.
+  - Refactored cash health banner to render detail blocks in a column layout on screens `<= 600px`, rotating math symbols (`−`) by `90deg` to point down.
 
 ## Recent Fixes & Features (v2.23.0)
 - **Codebase Audit & Standardisation**:

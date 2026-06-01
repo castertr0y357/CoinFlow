@@ -27,6 +27,7 @@ export default function Sidebar({ accounts }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
 
 
@@ -92,60 +93,85 @@ export default function Sidebar({ accounts }: SidebarProps) {
   if (pathname !== prevPath) {
     setPrevPath(pathname);
     setToolsOpen(isToolActive);
+    setIsOpen(false);
   }
 
 
   return (
-    <div className="sidebar-container glass">
-      <div className="sidebar-header">
-        <Link href="/" className="logo-container">
-          <Image src="/logo.png" alt="CoinFlow Logo" className="logo-icon" width={32} height={32} />
+    <>
+      {/* Mobile Top Header Bar */}
+      <div className="mobile-header-bar glass">
+        <button 
+          className="mobile-menu-btn" 
+          onClick={() => setIsOpen(!isOpen)}
+          aria-label="Toggle Menu"
+        >
+          {isOpen ? "✕" : "☰"}
+        </button>
+        <div className="mobile-logo">
+          <Image src="/logo.png" alt="CoinFlow Logo" width={24} height={24} className="logo-icon" />
           <span className="logo-text">CoinFlow</span>
-        </Link>
+        </div>
+        <div style={{ width: '40px' }} /> {/* Spacer to balance the flex layout */}
       </div>
 
-      <nav className="sidebar-nav">
-        {mainLinks.map(link => (
-          <Link 
-            key={link.href} 
-            href={link.href} 
-            className={`sidebar-link ${pathname === link.href ? 'active' : ''}`}
-          >
-            <span className="icon">{link.icon}</span>
-            <span className="label">{link.label}</span>
+      {/* Mobile Backdrop Overlay */}
+      {isOpen && (
+        <div className="sidebar-backdrop" onClick={() => setIsOpen(false)} />
+      )}
+
+      <div className={`sidebar-container glass ${isOpen ? 'mobile-open' : ''}`}>
+        <div className="sidebar-header">
+          <Link href="/" className="logo-container" onClick={() => setIsOpen(false)}>
+            <Image src="/logo.png" alt="CoinFlow Logo" className="logo-icon" width={32} height={32} />
+            <span className="logo-text">CoinFlow</span>
           </Link>
-        ))}
+        </div>
 
-        {/* Tools Dropdown */}
-        <button 
-          onClick={() => setToolsOpen(!toolsOpen)}
-          className={`sidebar-link dropdown-toggle ${isToolActive ? 'active-parent' : ''}`}
-        >
-          <span className="icon">🛠️</span>
-          <span className="label" style={{ flex: 1, textAlign: 'left' }}>Tools</span>
-          <span className="arrow">{toolsOpen ? "▼" : "▶"}</span>
-        </button>
+        <nav className="sidebar-nav">
+          {mainLinks.map(link => (
+            <Link 
+              key={link.href} 
+              href={link.href} 
+              className={`sidebar-link ${pathname === link.href ? 'active' : ''}`}
+              onClick={() => setIsOpen(false)}
+            >
+              <span className="icon">{link.icon}</span>
+              <span className="label">{link.label}</span>
+            </Link>
+          ))}
 
-        {toolsOpen && (
-          <div className="tools-submenu">
-            {toolLinks.map(link => (
-              <Link 
-                key={link.href} 
-                href={link.href} 
-                className={`sidebar-link submenu-link ${
-                  link.href === '/' 
-                    ? pathname === '/' 
-                    : pathname.startsWith(link.href) 
-                      ? 'active' 
-                      : ''
-                }`}
-              >
-                <span className="icon">{link.icon}</span>
-                <span className="label">{link.label}</span>
-              </Link>
-            ))}
-          </div>
-        )}
+          {/* Tools Dropdown */}
+          <button 
+            onClick={() => setToolsOpen(!toolsOpen)}
+            className={`sidebar-link dropdown-toggle ${isToolActive ? 'active-parent' : ''}`}
+          >
+            <span className="icon">🛠️</span>
+            <span className="label" style={{ flex: 1, textAlign: 'left' }}>Tools</span>
+            <span className="arrow">{toolsOpen ? "▼" : "▶"}</span>
+          </button>
+
+          {toolsOpen && (
+            <div className="tools-submenu">
+              {toolLinks.map(link => (
+                <Link 
+                  key={link.href} 
+                  href={link.href} 
+                  className={`sidebar-link submenu-link ${
+                    link.href === '/' 
+                      ? pathname === '/' 
+                      : pathname.startsWith(link.href) 
+                        ? 'active' 
+                        : ''
+                  }`}
+                  onClick={() => setIsOpen(false)}
+                >
+                  <span className="icon">{link.icon}</span>
+                  <span className="label">{link.label}</span>
+                </Link>
+              ))}
+            </div>
+          )}
 
 
         <div className="sidebar-divider"></div>
@@ -419,6 +445,7 @@ export default function Sidebar({ accounts }: SidebarProps) {
           color: var(--danger);
         }
       `}</style>
-    </div>
+      </div>
+    </>
   );
 }

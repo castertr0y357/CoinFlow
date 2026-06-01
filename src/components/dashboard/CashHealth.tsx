@@ -101,6 +101,25 @@ export default function CashHealth({ liquidCash, creditDebt, totalObligations, f
           font-weight: 300;
           opacity: 0.6;
         }
+        @media (max-width: 600px) {
+          .cash-health-banner {
+            padding: 1.5rem;
+          }
+          .surplus-value {
+            font-size: 2.25rem;
+          }
+          .banner-details {
+            flex-direction: column;
+            gap: 0.75rem;
+            width: 100%;
+            padding-top: 1rem;
+          }
+          .detail-operator {
+            transform: rotate(90deg);
+            font-size: 1.25rem;
+            margin: -0.25rem 0;
+          }
+        }
       `}</style>
     </Card>
   );

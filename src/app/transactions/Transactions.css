@@ -543,4 +543,104 @@
   margin-top: 0.25rem;
 }
 
+@media (max-width: 768px) {
+  .tx-list-header {
+    display: none;
+  }
+
+  .transactions-actions.sticky-header {
+    top: 59px !important;
+    padding: 1rem 0;
+  }
+
+  .tx-row-main-content {
+    display: grid;
+    grid-template-areas:
+      "checkbox main"
+      ". splits";
+    grid-template-columns: auto 1fr;
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+
+  .tx-checkbox-cell {
+    grid-area: checkbox;
+    align-self: start;
+    margin-right: 0;
+    margin-top: 4px;
+  }
+
+  .tx-main {
+    grid-area: main;
+    display: grid;
+    grid-template-areas:
+      "date amount"
+      "payee payee";
+    grid-template-columns: 1fr auto;
+    gap: 0.35rem;
+    padding-right: 0;
+    width: 100%;
+  }
+
+  .tx-date {
+    grid-area: date;
+    font-size: 0.8rem;
+  }
+
+  .tx-amount {
+    grid-area: amount;
+    text-align: right;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+
+  .tx-payee {
+    grid-area: payee;
+    font-size: 0.95rem;
+    word-break: break-word;
+  }
+
+  .tx-splits {
+    grid-area: splits;
+    width: 100%;
+    margin-top: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .splits-container {
+    width: 100%;
+  }
+
+  .tx-split {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .split-category-select {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .row-action-btn {
+    opacity: 0.85 !important;
+  }
+
+  .tx-note-edit-row {
+    padding: 1rem !important;
+    margin-left: 0 !important;
+  }
+
+  .tx-refund-matcher-row {
+    margin-left: 0 !important;
+  }
+}
+
 
