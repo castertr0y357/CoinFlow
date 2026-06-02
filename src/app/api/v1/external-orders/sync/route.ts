@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { applySplits } from "@/lib/services/transactionService";
 import { calculateProportionalSplits, getPayeeFilterForSource } from "@/lib/external-orders";
 import { normalizeItemNames } from "@/lib/services/aiService";
+import { logger } from "@/lib/logger";
 
 interface SyncOrderItem {
   title: string;
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      console.log(`CoinFlow [AI]: Normalizing ${allTitles.size} unique titles...`);
+      logger.info("ExternalOrderSync", `Normalizing ${allTitles.size} unique titles...`);
       const normalizedTitles = await normalizeItemNames(Array.from(allTitles));
 
       for (const order of orders) {
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest) {
         const canRefresh = !existingOrder || !isCategorized;
 
         if (!canRefresh) {
-          console.log(`CoinFlow: Skipping order ${orderId} - Already categorized.`);
+          logger.info("ExternalOrderSync", `Skipping order ${orderId} - Already categorized.`);
           continue;
         }
 
@@ -137,7 +138,7 @@ export async function POST(req: NextRequest) {
         endDate.setDate(endDate.getDate() + 10);
         endDate.setHours(23, 59, 59, 999);
 
-        console.log(`CoinFlow [Sync]: Searching for transaction: Amount -${totalAmount}, Range ${startDate.toISOString()} to ${endDate.toISOString()}`);
+        logger.info("ExternalOrderSync", `Searching for transaction: Amount -${totalAmount}, Range ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
         const payeeFilter = getPayeeFilterForSource(source);
 
@@ -155,7 +156,7 @@ export async function POST(req: NextRequest) {
         });
 
         if (foundTx) {
-          console.log(`CoinFlow [Sync]: Matched transaction ${foundTx.id} (${foundTx.payee}) to order ${orderId}`);
+          logger.info("ExternalOrderSync", `Matched transaction ${foundTx.id} (${foundTx.payee}) to order ${orderId}`);
           await prisma.transaction.update({
             where: { id: foundTx.id },
             data: { externalOrderId: externalOrder.id }
@@ -163,7 +164,7 @@ export async function POST(req: NextRequest) {
           matchedTransactionId = foundTx.id;
           results.matchedTransactions++;
         } else {
-          console.warn(`CoinFlow [Sync]: No transaction match found for order ${orderId} ($${totalAmount}) in window.`);
+          logger.warn("ExternalOrderSync", `No transaction match found for order ${orderId} ($${totalAmount}) in window.`);
         }
 
         // Auto-split or re-split the transaction based on fresh items
@@ -185,8 +186,8 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json(results);
     } catch (error) {
-      console.error("External Sync Error:", error);
-      console.error("Payload:", JSON.stringify(body, null, 2));
+      logger.error("ExternalOrderSync", "External Sync Error", error);
+      logger.error("ExternalOrderSync", `Payload: ${JSON.stringify(body, null, 2)}`);
       const message = error instanceof Error ? error.message : String(error);
       return NextResponse.json({ error: message }, { status: 500 });
     }

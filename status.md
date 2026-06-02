@@ -1,6 +1,7 @@
-# Project Status: CoinFlow Browser Extension (v2.24.1)
+# Project Status: CoinFlow Browser Extension (v2.24.2)
 
 ## Current Progress
+- [x] **Project Standards Compliance Audit & Diagnostic Tooling (v2.24.2)**: Completed full audit against global standards. Implemented a workspace diagnostic utility (`scripts/doctor.ts`) with prisma migration validation, network loop verification, and SimpleFIN/AI integration diagnostics. Formulated a dynamic route scanner test (`src/app/routeScanner.test.ts`) utilizing Vitest to perform GET response sanity checks. Refactored server-side files to standardize logging under the centralized structured logger.
 - [x] **Workspace Standards Sync & Category Page Mobile Responsiveness (v2.24.1)**: Synchronized local rules files (AGENTS.md, CLAUDE.md, .cursorrules, .windsurfrules) with updated global standard templates. Resolved mobile styling regressions on dynamic Category Details views (/categories/[id]) by implementing stacked vertical details lists, stacked form inputs, and responsive layout wraps.
 - [x] **Premium Mobile Viewport Responsiveness (v2.24.0)**: Enhanced mobile browser experience by refactoring layouts and styles. Replaced the hidden sidebar on mobile with a collapsible sliding glassmorphic drawer toggled via a new fixed top header bar. Restructured transaction ledger row contents into stacked grid layouts (checkbox/date/amount on first tier, payee on second, category dropdowns occupying full width below) to eliminate content cutoff. Configured cash health calculator layouts to wrap vertically on narrow viewports with rotated formula symbols.
 - [x] **Codebase Audit & Standardisation (v2.23.0)**: Resolved 146 lint and TypeScript compilation issues across the entire codebase, including converting `any` casts, removing unused variables/imports, and correcting React mounting warnings. Centralized logging by introducing a formatted structured logger mapping to `[Job/Operation] - [Category/Level] - [Detail Message]` format. Configured Docker container pipeline to preserve source test files, enabling successful containerized verification testing via the Vitest runner.
@@ -43,6 +44,16 @@
 - [x] **Subscription Detective Alignment (v2.10.0)**: Corrected unmapped keys (`monthlyCost`, `reason`) and wrapped the JSON response array inside an object matching frontend specifications.
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
+
+## Recent Fixes & Features (v2.24.2)
+- **Workspace Diagnostics**:
+  - Implemented `scripts/doctor.ts` execution check validating env configs, database connectivity, database migrations status, local ports (3000/5433), and AI integration reachability.
+  - Added npm shortcut run script `"doctor": "ts-node scripts/doctor.ts"` inside `package.json`.
+- **Dynamic Route Sanity Scanning**:
+  - Implemented `src/app/routeScanner.test.ts` to fetch and verify that route handlers compile cleanly and behave as expected under Vitest.
+  - Added a `vitest.config.ts` path alias resolver mapping `@/` to `./src/` for correct TypeScript resolution inside Vitest, and configured Dockerfile runner stage to copy it and the diagnostics scripts.
+- **Log Standardization**:
+  - Replaced remaining raw `console.log` statements in server code (`scrapingService.ts`, `api-utils.ts`, `auth/login`, `sync/background`, and `external-orders/sync`) to utilize the centralized structured `logger`.
 
 ## Recent Fixes & Features (v2.24.1)
 - **Workspace Standards Sync**:
@@ -151,8 +162,18 @@
 - [ ] Test the newly added Realtor.com scraper with a live active-listing URL.
 
 ## Technical Details
-- **Version**: 2.24.1
+- **Version**: 2.24.2
 - **Core Files**:
+  - `scripts/doctor.ts`: Workspace diagnostic script executing checks in sequence.
+  - `src/app/routeScanner.test.ts`: Vitest API route sanity checking suite.
+  - `vitest.config.ts`: Vitest path alias resolution mapping setup.
+  - `Dockerfile`: Runner stage modified to copy scripts directory and vitest configuration.
+  - `package.json`: Doctor npm command hook.
+  - `src/lib/services/scrapingService.ts`: Standardized logging.
+  - `src/lib/api-utils.ts`: Standardized logging.
+  - `src/app/api/v1/external-orders/sync/route.ts`: Standardized logging.
+  - `src/app/api/v1/sync/background/route.ts`: Standardized logging.
+  - `src/app/api/v1/auth/login/route.ts`: Standardized logging.
   - `src/app/categories/[id]/CategoryDetail.css`: Mobile styling media queries.
   - `AGENTS.md`: Workspace rules file synchronized with global template.
   - `CLAUDE.md`: Workspace rules file synchronized with global template.

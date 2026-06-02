@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateApiKey } from "./services/auth";
+import { logger } from "./logger";
 
 import { cookies } from "next/headers";
 import { decrypt } from "./auth";
@@ -27,17 +28,17 @@ export async function withAuth(req: NextRequest, handler: (user: User) => Promis
         if (user) {
           return addCorsHeaders(await handler(user));
         } else {
-          console.log(`[AUTH] Valid session but User 'admin@webbudget.local' not found in DB!`);
+          logger.warn("AUTH", "Valid session but User 'admin@webbudget.local' not found in DB!");
         }
       } else {
-        console.log(`[AUTH] Session cookie decryption failed.`);
+        logger.warn("AUTH", "Session cookie decryption failed.");
       }
     }
 
     return addCorsHeaders(NextResponse.json({ error: "Unauthorized" }, { status: 401 }));
   } catch (error) {
     const err = error as Error;
-    console.error(`API Error [${req.nextUrl.pathname}]:`, err);
+    logger.error("API", `API Error [${req.nextUrl.pathname}]`, err);
     return addCorsHeaders(NextResponse.json(
       { error: "Internal server error", details: err.message }, 
       { status: 500 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { login, getCookieOptions } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,13 +19,13 @@ export async function POST(req: NextRequest) {
         ...getCookieOptions(),
       });
 
-      console.log(`[AUTH] Login successful. Session cookie attached to response.`);
+      logger.info("AUTH", "Login successful. Session cookie attached to response.");
       return response;
     } else {
       return NextResponse.json({ error: "Invalid password" }, { status: 401 });
     }
   } catch (error) {
-    console.error(`[AUTH] Login error:`, error);
+    logger.error("AUTH", "Login error", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

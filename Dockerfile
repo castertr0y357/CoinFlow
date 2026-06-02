@@ -61,6 +61,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 COPY --from=builder --chown=nextjs:nodejs /app/src ./src
 COPY --from=builder --chown=nextjs:nodejs /app/tsconfig.json ./tsconfig.json
+COPY --from=builder --chown=nextjs:nodejs /app/vitest.config.ts ./vitest.config.ts
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 
 COPY --from=builder --chown=nextjs:nodejs /app/entrypoint.sh ./entrypoint.sh
 RUN chmod +x entrypoint.sh
