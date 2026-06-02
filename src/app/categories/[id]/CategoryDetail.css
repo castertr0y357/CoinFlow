@@ -358,3 +358,98 @@
   font-size: 0.75rem;
   opacity: 0.7;
 }
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  /* Offset sticky elements on mobile to sit below the header bar */
+  .category-config {
+    position: relative;
+    top: 0;
+  }
+  
+  .sticky-ledger-header {
+    top: 59px !important;
+  }
+
+  .detail-tx-header {
+    display: none;
+  }
+
+  .detail-tx-row {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+
+  .tx-info {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .tx-date {
+    font-size: 0.8rem;
+    color: var(--primary);
+    align-self: start;
+  }
+
+  .tx-payee-memo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .tx-payee {
+    font-size: 0.95rem;
+    font-weight: 600;
+    word-break: break-word;
+  }
+
+  .tx-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    gap: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.03);
+    padding-top: 0.5rem;
+  }
+
+  .tx-amount {
+    width: auto;
+    text-align: left;
+    font-size: 1rem;
+  }
+
+  .tx-row-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .reclassify-select {
+    max-width: 120px;
+  }
+
+  .category-select-sm {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Stack editing form fields */
+  .edit-fields {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 500px) {
+  .split-form-row {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+}
+

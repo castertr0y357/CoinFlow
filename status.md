@@ -1,6 +1,7 @@
-# Project Status: CoinFlow Browser Extension (v2.24.0)
+# Project Status: CoinFlow Browser Extension (v2.24.1)
 
 ## Current Progress
+- [x] **Workspace Standards Sync & Category Page Mobile Responsiveness (v2.24.1)**: Synchronized local rules files (AGENTS.md, CLAUDE.md, .cursorrules, .windsurfrules) with updated global standard templates. Resolved mobile styling regressions on dynamic Category Details views (/categories/[id]) by implementing stacked vertical details lists, stacked form inputs, and responsive layout wraps.
 - [x] **Premium Mobile Viewport Responsiveness (v2.24.0)**: Enhanced mobile browser experience by refactoring layouts and styles. Replaced the hidden sidebar on mobile with a collapsible sliding glassmorphic drawer toggled via a new fixed top header bar. Restructured transaction ledger row contents into stacked grid layouts (checkbox/date/amount on first tier, payee on second, category dropdowns occupying full width below) to eliminate content cutoff. Configured cash health calculator layouts to wrap vertically on narrow viewports with rotated formula symbols.
 - [x] **Codebase Audit & Standardisation (v2.23.0)**: Resolved 146 lint and TypeScript compilation issues across the entire codebase, including converting `any` casts, removing unused variables/imports, and correcting React mounting warnings. Centralized logging by introducing a formatted structured logger mapping to `[Job/Operation] - [Category/Level] - [Detail Message]` format. Configured Docker container pipeline to preserve source test files, enabling successful containerized verification testing via the Vitest runner.
 - [x] **Manual Accounts & Debts Creation (v2.22.2)**: Integrated support for creating and managing manual accounts and debts that are not synced from SimpleFIN, including tracking remaining payments. Created database migrations to add `remainingPayments` to the `DebtDetail` model, updated server actions `createManualAccountAction`, `saveDebtDetailAction`, and `deleteAccountAction`, and built toggleable creation form cards, inline name/balance editors, and remaining payment inputs into `/accounts` and `/debts` configuration views with responsive layout styles.
@@ -42,6 +43,16 @@
 - [x] **Subscription Detective Alignment (v2.10.0)**: Corrected unmapped keys (`monthlyCost`, `reason`) and wrapped the JSON response array inside an object matching frontend specifications.
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
+
+## Recent Fixes & Features (v2.24.1)
+- **Workspace Standards Sync**:
+  - Synced local rules files (`AGENTS.md`, `CLAUDE.md`, `.cursorrules`, `.windsurfrules`) with the latest global developers standards template.
+  - Formulated and synchronised rules covering sanity checks, test configurations, and environment configurations.
+- **Category Detail Page Mobile Responsiveness**:
+  - Added CSS media queries in `CategoryDetail.css` for viewports `<= 768px` and `<= 500px`.
+  - Stacking transaction details, reclassification selectors, and action buttons vertically.
+  - Stacked form input fields inside row and inline split elements.
+  - Offset sticky headers to avoid overlap with the mobile top bar layout.
 
 ## Recent Fixes & Features (v2.24.0)
 - **Premium Mobile Viewport Responsiveness**:
@@ -140,15 +151,19 @@
 - [ ] Test the newly added Realtor.com scraper with a live active-listing URL.
 
 ## Technical Details
-- **Version**: 2.22.2
+- **Version**: 2.24.1
 - **Core Files**:
+  - `src/app/categories/[id]/CategoryDetail.css`: Mobile styling media queries.
+  - `AGENTS.md`: Workspace rules file synchronized with global template.
+  - `CLAUDE.md`: Workspace rules file synchronized with global template.
+  - `.cursorrules`: Workspace rules file synchronized with global template.
+  - `.windsurfrules`: Workspace rules file synchronized with global template.
   - `src/app/debts/DebtsClient.tsx`: Added remaining payments column and inline inputs.
   - `src/app/debts/actions.ts`: Added schema validations and save actions for remaining payments.
   - `src/lib/services/debtService.ts`: Added getter/setter database support for remaining payments.
   - `src/app/accounts/AccountsClient.tsx`: Added form card and inline balance editors.
   - `src/app/accounts/Accounts.css`: Form styles and layout modifiers.
   - `src/app/categories/actions.ts`: Added create, update, and delete actions for manual accounts.
-  - `AGENTS.md`: Hardened guidelines for code quality, production standards, and design consistency.
   - `src/components/Sidebar.tsx`: Grouped secondary links into a collapsible Tools dropdown.
   - `src/app/globals.css`: Added global header and title styling rules.
   - `src/app/transactions/Transactions.css`: Removed max-width layout constraint and local page-header overrides.
