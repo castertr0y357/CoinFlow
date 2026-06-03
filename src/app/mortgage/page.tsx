@@ -28,6 +28,7 @@ export default async function MortgagePage() {
     interestRate: Number(mortgage.interestRate),
     monthlyPayment: Number(mortgage.monthlyPayment),
     homeValue: mortgage.homeValue ? Number(mortgage.homeValue) : null,
+    manualHomeValue: mortgage.manualHomeValue ? Number(mortgage.manualHomeValue) : null,
     originalBalance: mortgage.originalBalance ? Number(mortgage.originalBalance) : null,
     address: mortgage.address || "",
     providers: mortgage.providers.map(p => ({

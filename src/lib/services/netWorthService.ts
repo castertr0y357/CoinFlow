@@ -20,8 +20,11 @@ export async function getNetWorthData() {
     }
   });
 
-  const mortgage = await prisma.mortgageDetail.findFirst();
-  const homeValue = mortgage?.homeValue ? safeNumber(mortgage.homeValue) : 0;
+  const mortgages = await prisma.mortgageDetail.findMany();
+  const homeValue = mortgages.reduce((sum, m) => {
+    const effValue = m.manualHomeValue !== null ? m.manualHomeValue : m.homeValue;
+    return sum + (effValue ? safeNumber(effValue) : 0);
+  }, 0);
 
   // 1. Group accounts by asset vs debt
   // Asset: !isDebt, Debt: isDebt

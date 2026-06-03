@@ -1,6 +1,7 @@
-# Project Status: CoinFlow Browser Extension (v2.25.0)
+# Project Status: CoinFlow Browser Extension (v2.25.1)
 
 ## Current Progress
+- [x] **Manual Home Valuation Isolation (v2.25.1)**: Added a dedicated `manualHomeValue` database field to the `MortgageDetail` model to separate user-configured values from synced provider averages. Updated the Net Worth calculation and mortgage page UI to calculate equity and render trajectories using `manualHomeValue` when configured, preventing RentCast or scraped AVM updates from overwriting manual entries.
 - [x] **RentCast Integration & Multi-Mortgage Selection (v2.25.0)**: Added support for tracking multiple mortgages and properties. Refactored the backend loader to fetch all mortgage details. Added a dynamic dropdown selector in the header to switch active property datasets. Integrated RentCast AVM API to query real-time property value estimates using street addresses. Added a RentCast API key input field under Settings integrations.
 - [x] **Project Standards Compliance Audit & Diagnostic Tooling (v2.24.2)**: Completed full audit against global standards. Implemented a workspace diagnostic utility (`scripts/doctor.ts`) with prisma migration validation, network loop verification, and SimpleFIN/AI integration diagnostics. Formulated a dynamic route scanner test (`src/app/routeScanner.test.ts`) utilizing Vitest to perform GET response sanity checks. Refactored server-side files to standardize logging under the centralized structured logger.
 - [x] **Workspace Standards Sync & Category Page Mobile Responsiveness (v2.24.1)**: Synchronized local rules files (AGENTS.md, CLAUDE.md, .cursorrules, .windsurfrules) with updated global standard templates. Resolved mobile styling regressions on dynamic Category Details views (/categories/[id]) by implementing stacked vertical details lists, stacked form inputs, and responsive layout wraps.
@@ -45,6 +46,14 @@
 - [x] **Subscription Detective Alignment (v2.10.0)**: Corrected unmapped keys (`monthlyCost`, `reason`) and wrapped the JSON response array inside an object matching frontend specifications.
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
+
+## Recent Fixes & Features (v2.25.1)
+- **Manual Home Valuation Isolation**:
+  - Added `manualHomeValue` Decimal field to `MortgageDetail` model and created database migration.
+  - Updated `updateMortgageDetails` server action to write manual inputs to `manualHomeValue` instead of overwriting synced averages.
+  - Refactored `netWorthService.ts` to sum the effective home value (`manualHomeValue ?? homeValue`) across all active mortgages.
+  - Updated `MortgageClient.tsx` state and forms to use `manualHomeValue`.
+  - Refactored UI cards and progress bars to show manual valuations as the primary display when set, while displaying the synced averages in the subtext for comparison.
 
 ## Recent Fixes & Features (v2.25.0)
 - **Multi-Mortgage Support**:

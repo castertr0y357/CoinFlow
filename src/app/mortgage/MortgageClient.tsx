@@ -23,6 +23,7 @@ interface MortgageDetailData {
   startDate: string | Date;
   termMonths: number;
   homeValue: number | null;
+  manualHomeValue: number | null;
   originalBalance: number | null;
   currentBalance: number;
   address: string;
@@ -87,7 +88,7 @@ export default function MortgageClient({ initialMortgages, accounts, hasRentcast
     monthlyPayment: activeMortgage?.monthlyPayment || 2000,
     startDate: formatInitialDate(activeMortgage?.startDate),
     termMonths: activeMortgage?.termMonths || 360,
-    homeValue: activeMortgage?.homeValue || 400000,
+    manualHomeValue: activeMortgage?.manualHomeValue !== null && activeMortgage?.manualHomeValue !== undefined ? activeMortgage.manualHomeValue : "",
     originalBalance: activeMortgage?.originalBalance || "",
     address: activeMortgage?.address || "",
   });
@@ -119,7 +120,7 @@ export default function MortgageClient({ initialMortgages, accounts, hasRentcast
         monthlyPayment: activeMortgage.monthlyPayment,
         startDate: formatInitialDate(activeMortgage.startDate),
         termMonths: activeMortgage.termMonths,
-        homeValue: activeMortgage.homeValue || 400000,
+        manualHomeValue: activeMortgage.manualHomeValue !== null ? activeMortgage.manualHomeValue : "",
         originalBalance: activeMortgage.originalBalance || "",
         address: activeMortgage.address || "",
       });
@@ -135,6 +136,7 @@ export default function MortgageClient({ initialMortgages, accounts, hasRentcast
     try {
       await updateMortgageDetails({
         ...formData,
+        manualHomeValue: formData.manualHomeValue !== "" ? Number(formData.manualHomeValue) : undefined,
         originalBalance: formData.originalBalance ? Number(formData.originalBalance) : undefined,
       });
       setIsEditing(false);
@@ -340,7 +342,7 @@ export default function MortgageClient({ initialMortgages, accounts, hasRentcast
   }, [optimizedSchedule]);
 
   // Find Equity Milestones (20% and 50% Equity based on current Home Value)
-  const homeValue = activeMortgage?.homeValue || 0;
+  const homeValue = activeMortgage ? (activeMortgage.manualHomeValue ?? activeMortgage.homeValue ?? 0) : 0;
   const equityThreshold20 = homeValue * 0.8;
   const equityThreshold50 = homeValue * 0.5;
 
@@ -553,7 +555,7 @@ export default function MortgageClient({ initialMortgages, accounts, hasRentcast
                 monthlyPayment: 2000,
                 startDate: new Date().toISOString().split('T')[0],
                 termMonths: 360,
-                homeValue: 400000,
+                manualHomeValue: 400000,
                 originalBalance: "",
                 address: "",
               });
@@ -602,8 +604,8 @@ export default function MortgageClient({ initialMortgages, accounts, hasRentcast
                 <input type="number" value={formData.originalBalance} onChange={e => setFormData({...formData, originalBalance: e.target.value ? Number(e.target.value) : ""})} placeholder="e.g. 400000" />
               </div>
               <div className="form-group">
-                <label>Manual Home Value (Fallback)</label>
-                <input type="number" value={formData.homeValue} onChange={e => setFormData({...formData, homeValue: Number(e.target.value)})} />
+                <label>Manual Home Value</label>
+                <input type="number" value={formData.manualHomeValue} onChange={e => setFormData({...formData, manualHomeValue: e.target.value ? Number(e.target.value) : ""})} placeholder="Leave blank to use synced average" />
               </div>
             </div>
             <div className="form-group">
@@ -643,7 +645,7 @@ export default function MortgageClient({ initialMortgages, accounts, hasRentcast
                     monthlyPayment: activeMortgage.monthlyPayment,
                     startDate: formatInitialDate(activeMortgage.startDate),
                     termMonths: activeMortgage.termMonths,
-                    homeValue: activeMortgage.homeValue || 400000,
+                    manualHomeValue: activeMortgage.manualHomeValue !== null ? activeMortgage.manualHomeValue : "",
                     originalBalance: activeMortgage.originalBalance || "",
                     address: activeMortgage.address || "",
                   });
@@ -662,13 +664,17 @@ export default function MortgageClient({ initialMortgages, accounts, hasRentcast
         <Card className="stat-card accent" animate={true}>
           <span className="stat-label">Current Balance</span>
           <div className="stat-value">${activeMortgage.currentBalance.toLocaleString()}</div>
-          <span className="stat-sub">Estimated Equity: ${Math.max(0, (activeMortgage.homeValue || 0) - activeMortgage.currentBalance).toLocaleString()}</span>
+          <span className="stat-sub">Estimated Equity: ${Math.max(0, homeValue - activeMortgage.currentBalance).toLocaleString()}</span>
         </Card>
         
         <Card className="stat-card secondary" animate={true} delay="0.1s">
-          <span className="stat-label">Avg. Home Value</span>
-          <div className="stat-value">${(activeMortgage.homeValue || 0).toLocaleString()}</div>
-          <span className="stat-sub">From {activeMortgage.providers?.length || 0} Sources</span>
+          <span className="stat-label">{activeMortgage.manualHomeValue !== null ? "Home Value (Manual)" : "Avg. Home Value"}</span>
+          <div className="stat-value">${homeValue.toLocaleString()}</div>
+          <span className="stat-sub">
+            {activeMortgage.manualHomeValue !== null 
+              ? `Synced average: $${(activeMortgage.homeValue || 0).toLocaleString()}` 
+              : `From ${activeMortgage.providers?.length || 0} Sources`}
+          </span>
         </Card>
         
         <Card className="stat-card danger" animate={true} delay="0.2s">
@@ -1048,11 +1054,11 @@ export default function MortgageClient({ initialMortgages, accounts, hasRentcast
             <p className="text-muted text-xs mb-4">Visual representation of outstanding debt vs home equity</p>
             <div className="equity-bar-container">
                <div className="equity-bar">
-                  <div className="bar-fill principal" style={{ width: `${(activeMortgage.currentBalance / (activeMortgage.homeValue || 1)) * 100}%` }}></div>
+                  <div className="bar-fill principal" style={{ width: `${(activeMortgage.currentBalance / (homeValue || 1)) * 100}%` }}></div>
                </div>
                <div className="bar-labels mt-2 text-xs font-semibold flex justify-between">
-                  <span className="text-danger">Debt: {((activeMortgage.currentBalance / (activeMortgage.homeValue || 1)) * 100).toFixed(1)}% (${activeMortgage.currentBalance.toLocaleString()})</span>
-                  <span className="text-success">Equity: {(((activeMortgage.homeValue || 0) - activeMortgage.currentBalance) / (activeMortgage.homeValue || 1) * 100).toFixed(1)}% (${Math.max(0, (activeMortgage.homeValue || 0) - activeMortgage.currentBalance).toLocaleString()})</span>
+                  <span className="text-danger">Debt: {((activeMortgage.currentBalance / (homeValue || 1)) * 100).toFixed(1)}% (${activeMortgage.currentBalance.toLocaleString()})</span>
+                  <span className="text-success">Equity: {((Math.max(0, homeValue - activeMortgage.currentBalance) / (homeValue || 1)) * 100).toFixed(1)}% (${Math.max(0, homeValue - activeMortgage.currentBalance).toLocaleString()})</span>
                </div>
             </div>
             <div className="mt-6">

@@ -10,7 +10,7 @@ export async function updateMortgageDetails(data: {
   monthlyPayment: number;
   startDate: string;
   termMonths: number;
-  homeValue?: number;
+  manualHomeValue?: number;
   originalBalance?: number;
   address?: string;
 }) {
@@ -21,7 +21,7 @@ export async function updateMortgageDetails(data: {
       monthlyPayment: data.monthlyPayment,
       startDate: new Date(data.startDate),
       termMonths: data.termMonths,
-      homeValue: data.homeValue,
+      manualHomeValue: data.manualHomeValue ?? null,
       originalBalance: data.originalBalance,
       address: data.address || null,
     },
@@ -31,7 +31,7 @@ export async function updateMortgageDetails(data: {
       monthlyPayment: data.monthlyPayment,
       startDate: new Date(data.startDate),
       termMonths: data.termMonths,
-      homeValue: data.homeValue,
+      manualHomeValue: data.manualHomeValue ?? null,
       originalBalance: data.originalBalance,
       address: data.address || null,
     },
