@@ -37,6 +37,7 @@ model MortgageDetail {
   termMonths     Int                 @default(360)
   homeValue      Decimal?
   originalBalance Decimal?
+  address        String?
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
   providers      HomeValueProvider[]
@@ -203,6 +204,7 @@ model Settings {
   paycheckAmount        Decimal   @default(0.00)
   paycheckFrequency     String    @default("BI_WEEKLY")
   paycheckNextDate      DateTime?
+  rentcastApiKey        String?
 }
 
 model Commitment {

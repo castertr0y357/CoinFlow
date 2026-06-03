@@ -127,16 +127,66 @@ export async function scrapeHomeValue(url: string, provider: string): Promise<nu
   }
 }
 
+export async function fetchRentCastValue(address: string, apiKey: string): Promise<number | null> {
+  try {
+    const url = `https://api.rentcast.io/v1/avm/value?address=${encodeURIComponent(address)}`;
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+        'X-Api-Key': apiKey
+      },
+      signal: AbortSignal.timeout(10000)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.error("Valuation/RentCast", `HTTP error! status: ${response.status} message: ${errorText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    if (data && typeof data.price === 'number') {
+      return data.price;
+    }
+
+    logger.warn("Valuation/RentCast", `No price returned in RentCast response: ${JSON.stringify(data)}`);
+    return null;
+  } catch (error) {
+    logger.error("Valuation/RentCast", "Error fetching RentCast valuation", error);
+    return null;
+  }
+}
+
 export async function syncAllValuations(mortgageId: string) {
-  const providers = await prisma.homeValueProvider.findMany({
-    where: { mortgageId }
+  const mortgage = await prisma.mortgageDetail.findUnique({
+    where: { id: mortgageId },
+    include: { providers: true }
   });
+
+  if (!mortgage) return null;
+
+  const settings = await prisma.settings.findUnique({ where: { id: 'global' } });
+  const rentcastApiKey = settings?.rentcastApiKey || process.env.RENTCAST_API_KEY;
 
   let total = 0;
   let count = 0;
 
-  for (const provider of providers) {
-    const value = await scrapeHomeValue(provider.url, provider.name);
+  for (const provider of mortgage.providers) {
+    let value: number | null = null;
+
+    if (provider.name.toLowerCase() === "rentcast") {
+      if (mortgage.address && rentcastApiKey) {
+        value = await fetchRentCastValue(mortgage.address, rentcastApiKey);
+      } else {
+        logger.warn(
+          "Valuation/RentCast", 
+          `Skipping RentCast sync: missing address (hasAddress: ${!!mortgage.address}) or API key (hasApiKey: ${!!rentcastApiKey})`
+        );
+      }
+    } else {
+      value = await scrapeHomeValue(provider.url, provider.name);
+    }
+
     if (value) {
       await prisma.homeValueProvider.update({
         where: { id: provider.id },

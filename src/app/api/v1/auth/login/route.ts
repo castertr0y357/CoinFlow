@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     if (result) {
       const { session, expiresAt } = result;
       const response = NextResponse.json({ success: true });
-      
+
       // Explicitly set the cookie on the response object
       response.cookies.set({
         name: "session",

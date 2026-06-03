@@ -1,6 +1,7 @@
-# Project Status: CoinFlow Browser Extension (v2.24.2)
+# Project Status: CoinFlow Browser Extension (v2.25.0)
 
 ## Current Progress
+- [x] **RentCast Integration & Multi-Mortgage Selection (v2.25.0)**: Added support for tracking multiple mortgages and properties. Refactored the backend loader to fetch all mortgage details. Added a dynamic dropdown selector in the header to switch active property datasets. Integrated RentCast AVM API to query real-time property value estimates using street addresses. Added a RentCast API key input field under Settings integrations.
 - [x] **Project Standards Compliance Audit & Diagnostic Tooling (v2.24.2)**: Completed full audit against global standards. Implemented a workspace diagnostic utility (`scripts/doctor.ts`) with prisma migration validation, network loop verification, and SimpleFIN/AI integration diagnostics. Formulated a dynamic route scanner test (`src/app/routeScanner.test.ts`) utilizing Vitest to perform GET response sanity checks. Refactored server-side files to standardize logging under the centralized structured logger.
 - [x] **Workspace Standards Sync & Category Page Mobile Responsiveness (v2.24.1)**: Synchronized local rules files (AGENTS.md, CLAUDE.md, .cursorrules, .windsurfrules) with updated global standard templates. Resolved mobile styling regressions on dynamic Category Details views (/categories/[id]) by implementing stacked vertical details lists, stacked form inputs, and responsive layout wraps.
 - [x] **Premium Mobile Viewport Responsiveness (v2.24.0)**: Enhanced mobile browser experience by refactoring layouts and styles. Replaced the hidden sidebar on mobile with a collapsible sliding glassmorphic drawer toggled via a new fixed top header bar. Restructured transaction ledger row contents into stacked grid layouts (checkbox/date/amount on first tier, payee on second, category dropdowns occupying full width below) to eliminate content cutoff. Configured cash health calculator layouts to wrap vertically on narrow viewports with rotated formula symbols.
@@ -44,6 +45,18 @@
 - [x] **Subscription Detective Alignment (v2.10.0)**: Corrected unmapped keys (`monthlyCost`, `reason`) and wrapped the JSON response array inside an object matching frontend specifications.
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
+
+## Recent Fixes & Features (v2.25.0)
+- **Multi-Mortgage Support**:
+  - Refactored `src/app/mortgage/page.tsx` page loader to retrieve all mortgages.
+  - Implemented dropdown select dropdown in the `MortgageClient.tsx` header for switching active mortgages.
+  - Reset payoff extra payment variables and lump sums when switching active mortgages to keep calculations clean.
+  - Added a `➕ Add Mortgage` button to toggle the setup card and select new accounts.
+- **RentCast API Integration**:
+  - Implemented `fetchRentCastValue` in `src/lib/services/valuationService.ts` querying the RentCast AVM value endpoint with street addresses.
+  - Added password input field for `rentcastApiKey` in general settings page (`src/app/settings/general/page.tsx`).
+  - Added `address` street address field to `MortgageDetail` model and setup form.
+  - Automatically seed a `"RentCast"` provider in the `HomeValueProvider` table when saving a mortgage details card with a street address.
 
 ## Recent Fixes & Features (v2.24.2)
 - **Workspace Diagnostics**:
@@ -162,8 +175,14 @@
 - [ ] Test the newly added Realtor.com scraper with a live active-listing URL.
 
 ## Technical Details
-- **Version**: 2.24.2
+- **Version**: 2.25.0
 - **Core Files**:
+  - `src/lib/services/valuationService.ts`: RentCast AVM fetcher and sync loop overrides.
+  - `src/app/mortgage/page.tsx`: Load all property mortgages.
+  - `src/app/mortgage/actions.ts`: Support address mapping and RentCast auto-seeding.
+  - `src/app/mortgage/MortgageClient.tsx`: Multi-mortgage selectors, address setup form controls.
+  - `src/app/settings/general/page.tsx`: Settings UI input field for RentCast API Key.
+  - `prisma/schema.prisma`: Added address to MortgageDetail and rentcastApiKey to Settings.
   - `scripts/doctor.ts`: Workspace diagnostic script executing checks in sequence.
   - `src/app/routeScanner.test.ts`: Vitest API route sanity checking suite.
   - `vitest.config.ts`: Vitest path alias resolution mapping setup.

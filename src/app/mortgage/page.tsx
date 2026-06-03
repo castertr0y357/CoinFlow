@@ -6,10 +6,15 @@ export const metadata = {
 };
 
 export default async function MortgagePage() {
-  const mortgage = await prisma.mortgageDetail.findFirst({
+  const mortgages = await prisma.mortgageDetail.findMany({
     include: { 
       account: true,
       providers: true
+    },
+    orderBy: {
+      account: {
+        name: 'asc'
+      }
     }
   });
 
@@ -17,25 +22,30 @@ export default async function MortgagePage() {
     orderBy: { name: 'asc' }
   });
 
-  const mortgageData = mortgage ? {
+  const mortgagesData = mortgages.map(mortgage => ({
     ...mortgage,
     currentBalance: Math.abs(Number(mortgage.account.balance || 0)),
     interestRate: Number(mortgage.interestRate),
     monthlyPayment: Number(mortgage.monthlyPayment),
     homeValue: mortgage.homeValue ? Number(mortgage.homeValue) : null,
     originalBalance: mortgage.originalBalance ? Number(mortgage.originalBalance) : null,
+    address: mortgage.address || "",
     providers: mortgage.providers.map(p => ({
       ...p,
       lastValue: p.lastValue ? Number(p.lastValue) : null,
       lastSync: p.lastSync ? p.lastSync.toISOString() : null,
     })),
-  } : null;
+  }));
+
+  const settings = await prisma.settings.findUnique({ where: { id: "global" } });
+  const hasRentcastApiKey = !!(settings?.rentcastApiKey || process.env.RENTCAST_API_KEY);
 
   return (
     <div className="mortgage-page container animate-fade-in">
       <MortgageClient 
-        initialData={mortgageData} 
+        initialMortgages={mortgagesData} 
         accounts={accounts.map(a => ({ id: a.id, name: a.name }))} 
+        hasRentcastApiKey={hasRentcastApiKey}
       />
     </div>
   );

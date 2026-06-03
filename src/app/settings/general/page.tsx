@@ -23,6 +23,7 @@ export default async function GeneralSettingsPage() {
     const retention = parseInt(formData.get("backupRetentionDays") as string);
     const savingsCategoryId = formData.get("savingsCategoryId") as string;
     let token = formData.get("simpleFinToken") as string;
+    const rentcastApiKey = formData.get("rentcastApiKey") as string;
 
     const paycheckEnabled = formData.get("paycheckEnabled") === "on";
     const paycheckFrequency = formData.get("paycheckFrequency") as string;
@@ -66,6 +67,7 @@ export default async function GeneralSettingsPage() {
         paycheckFrequency: paycheckFrequency || "BI_WEEKLY",
         paycheckAmount: isNaN(paycheckAmount) ? 0 : paycheckAmount,
         paycheckNextDate,
+        rentcastApiKey: rentcastApiKey || null,
       },
       create: {
         id: 'global',
@@ -78,6 +80,7 @@ export default async function GeneralSettingsPage() {
         paycheckFrequency: paycheckFrequency || "BI_WEEKLY",
         paycheckAmount: isNaN(paycheckAmount) ? 0 : paycheckAmount,
         paycheckNextDate,
+        rentcastApiKey: rentcastApiKey || null,
       }
     });
 
@@ -218,6 +221,16 @@ export default async function GeneralSettingsPage() {
               defaultValue={settings?.simpleFinToken || ""} 
               placeholder="https://beta-bridge.simplefin.org/simplefin/claim/..." 
               helpText="Your access URL to sync bank transactions securely."
+            />
+            
+            <Input 
+              label="RentCast API Key"
+              type="password" 
+              id="rentcastApiKey" 
+              name="rentcastApiKey" 
+              defaultValue={settings?.rentcastApiKey || ""} 
+              placeholder="Enter your RentCast API Key..." 
+              helpText="Get a free API key at developers.rentcast.io to sync property values."
             />
             
             <div className="integration-help">

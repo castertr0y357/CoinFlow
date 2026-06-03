@@ -12,8 +12,9 @@ export async function updateMortgageDetails(data: {
   termMonths: number;
   homeValue?: number;
   originalBalance?: number;
+  address?: string;
 }) {
-  await prisma.mortgageDetail.upsert({
+  const mortgage = await prisma.mortgageDetail.upsert({
     where: { accountId: data.accountId },
     update: {
       interestRate: data.interestRate,
@@ -22,6 +23,7 @@ export async function updateMortgageDetails(data: {
       termMonths: data.termMonths,
       homeValue: data.homeValue,
       originalBalance: data.originalBalance,
+      address: data.address || null,
     },
     create: {
       accountId: data.accountId,
@@ -31,8 +33,28 @@ export async function updateMortgageDetails(data: {
       termMonths: data.termMonths,
       homeValue: data.homeValue,
       originalBalance: data.originalBalance,
+      address: data.address || null,
     },
   });
+
+  if (data.address) {
+    const existingRentCastProvider = await prisma.homeValueProvider.findFirst({
+      where: {
+        mortgageId: mortgage.id,
+        name: "RentCast"
+      }
+    });
+
+    if (!existingRentCastProvider) {
+      await prisma.homeValueProvider.create({
+        data: {
+          mortgageId: mortgage.id,
+          name: "RentCast",
+          url: "https://api.rentcast.io/v1/avm/value"
+        }
+      });
+    }
+  }
 
   revalidatePath("/mortgage");
   revalidatePath("/");

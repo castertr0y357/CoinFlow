@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import { calculateAmortization, AmortizationRow } from "@/lib/services/mortgageService";
@@ -25,12 +25,18 @@ interface MortgageDetailData {
   homeValue: number | null;
   originalBalance: number | null;
   currentBalance: number;
+  address: string;
   providers: MortgageProvider[];
+  account: {
+    id: string;
+    name: string;
+  };
 }
 
 interface MortgageClientProps {
-  initialData: MortgageDetailData | null;
+  initialMortgages: MortgageDetailData[];
   accounts: { id: string, name: string }[];
+  hasRentcastApiKey: boolean;
 }
 
 interface OneTimePayment {
@@ -40,11 +46,20 @@ interface OneTimePayment {
   amount: number;
 }
 
-export default function MortgageClient({ initialData, accounts }: MortgageClientProps) {
+export default function MortgageClient({ initialMortgages, accounts, hasRentcastApiKey }: MortgageClientProps) {
+  const [mortgages, setMortgages] = useState<MortgageDetailData[]>(initialMortgages);
+  const [activeMortgageId, setActiveMortgageId] = useState<string | null>(
+    mortgages.length > 0 ? mortgages[0].id : null
+  );
+
+  const activeMortgage = useMemo(() => {
+    return mortgages.find(m => m.id === activeMortgageId) || null;
+  }, [mortgages, activeMortgageId]);
+
   const [extraPayment, setExtraPayment] = useState(0);
   const [annualExtra, setAnnualExtra] = useState(0);
   const [oneTimePayments, setOneTimePayments] = useState<OneTimePayment[]>([]);
-  const [isEditing, setIsEditing] = useState(!initialData);
+  const [isEditing, setIsEditing] = useState(mortgages.length === 0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
@@ -67,16 +82,52 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
   };
 
   const [formData, setFormData] = useState({
-    accountId: initialData?.accountId || "",
-    interestRate: initialData?.interestRate || 6.5,
-    monthlyPayment: initialData?.monthlyPayment || 2000,
-    startDate: formatInitialDate(initialData?.startDate),
-    termMonths: initialData?.termMonths || 360,
-    homeValue: initialData?.homeValue || 400000,
-    originalBalance: initialData?.originalBalance || "",
+    accountId: activeMortgage?.accountId || "",
+    interestRate: activeMortgage?.interestRate || 6.5,
+    monthlyPayment: activeMortgage?.monthlyPayment || 2000,
+    startDate: formatInitialDate(activeMortgage?.startDate),
+    termMonths: activeMortgage?.termMonths || 360,
+    homeValue: activeMortgage?.homeValue || 400000,
+    originalBalance: activeMortgage?.originalBalance || "",
+    address: activeMortgage?.address || "",
   });
 
   const [newProvider, setNewProvider] = useState({ name: "Zillow", url: "" });
+
+  // Sync state if initialMortgages prop changes
+  useEffect(() => {
+    setMortgages(initialMortgages);
+    if (initialMortgages.length > 0) {
+      if (!activeMortgageId || !initialMortgages.some(m => m.id === activeMortgageId)) {
+        setActiveMortgageId(initialMortgages[0].id);
+      }
+    } else {
+      setActiveMortgageId(null);
+      setIsEditing(true);
+    }
+  }, [initialMortgages]);
+
+  // Reset calculator states and form data when active mortgage changes
+  useEffect(() => {
+    setExtraPayment(0);
+    setAnnualExtra(0);
+    setOneTimePayments([]);
+    if (activeMortgage) {
+      setFormData({
+        accountId: activeMortgage.accountId,
+        interestRate: activeMortgage.interestRate,
+        monthlyPayment: activeMortgage.monthlyPayment,
+        startDate: formatInitialDate(activeMortgage.startDate),
+        termMonths: activeMortgage.termMonths,
+        homeValue: activeMortgage.homeValue || 400000,
+        originalBalance: activeMortgage.originalBalance || "",
+        address: activeMortgage.address || "",
+      });
+      setIsEditing(false);
+    } else {
+      setIsEditing(true);
+    }
+  }, [activeMortgageId]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,10 +146,10 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
   };
 
   const handleAddProvider = async () => {
-    if (!newProvider.url || !initialData) return;
+    if (!newProvider.url || !activeMortgage) return;
     setIsSaving(true);
     try {
-      await addValuationProvider(initialData.id, newProvider.name, newProvider.url);
+      await addValuationProvider(activeMortgage.id, newProvider.name, newProvider.url);
       setNewProvider({ ...newProvider, url: "" });
     } catch {
       alert("Failed to add provider.");
@@ -120,10 +171,10 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
   };
 
   const handleSyncValuations = async () => {
-    if (!initialData) return;
+    if (!activeMortgage) return;
     setIsSyncing(true);
     try {
-      await syncValuations(initialData.id);
+      await syncValuations(activeMortgage.id);
     } catch {
       alert("Failed to sync valuations.");
     } finally {
@@ -164,7 +215,7 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
 
   // Amortization Schedules (Combined History & Future)
   const { schedule, optimizedSchedule, historyLength } = useMemo(() => {
-    if (!initialData) {
+    if (!activeMortgage) {
       return {
         schedule: [],
         optimizedSchedule: [],
@@ -175,7 +226,7 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
       };
     }
 
-    const start = new Date(initialData.startDate);
+    const start = new Date(activeMortgage.startDate);
     const now = new Date();
     
     // Calculate calendar months elapsed between startDate and today
@@ -186,11 +237,11 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
 
     // 1. Historical amortization slice (Standard only, no extra payments in the past)
     let historyStd: AmortizationRow[] = [];
-    if (initialData.originalBalance && elapsedMonths > 0) {
+    if (activeMortgage.originalBalance && elapsedMonths > 0) {
       const fullHistory = calculateAmortization(
-        initialData.originalBalance,
-        initialData.interestRate,
-        initialData.monthlyPayment,
+        activeMortgage.originalBalance,
+        activeMortgage.interestRate,
+        activeMortgage.monthlyPayment,
         0,
         0,
         [],
@@ -201,9 +252,9 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
 
     // 2. Future standard schedule starting today
     const futureStd = calculateAmortization(
-      initialData.currentBalance,
-      initialData.interestRate,
-      initialData.monthlyPayment,
+      activeMortgage.currentBalance,
+      activeMortgage.interestRate,
+      activeMortgage.monthlyPayment,
       0,
       0,
       [],
@@ -212,9 +263,9 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
 
     // 3. Future accelerated schedule starting today
     const futureOpt = calculateAmortization(
-      initialData.currentBalance,
-      initialData.interestRate,
-      initialData.monthlyPayment,
+      activeMortgage.currentBalance,
+      activeMortgage.interestRate,
+      activeMortgage.monthlyPayment,
       extraPayment,
       annualExtra,
       oneTimePayments.map(p => ({ monthIndex: p.monthIndex, amount: p.amount })),
@@ -253,7 +304,7 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
       acceleratedFutureInterest: optFutureInterest,
       historyLength: historyStd.length,
     };
-  }, [initialData, extraPayment, annualExtra, oneTimePayments]);
+  }, [activeMortgage, extraPayment, annualExtra, oneTimePayments]);
 
   // Formatted date values
   const formatDateString = (date: Date) => {
@@ -276,8 +327,8 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
   const interestSaved = baseTotalInterest - optimizedTotalInterest;
   const monthsSaved = schedule.length - optimizedSchedule.length;
 
-  const standardTotalCost = initialData ? (initialData.originalBalance || initialData.currentBalance) + baseTotalInterest : 0;
-  const optimizedTotalCost = initialData ? (initialData.originalBalance || initialData.currentBalance) + optimizedTotalInterest : 0;
+  const standardTotalCost = activeMortgage ? (activeMortgage.originalBalance || activeMortgage.currentBalance) + baseTotalInterest : 0;
+  const optimizedTotalCost = activeMortgage ? (activeMortgage.originalBalance || activeMortgage.currentBalance) + optimizedTotalInterest : 0;
 
   // Find Tipping Points (where Principal Paid > Interest Paid in a single month)
   const standardTippingPoint = useMemo(() => {
@@ -289,7 +340,7 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
   }, [optimizedSchedule]);
 
   // Find Equity Milestones (20% and 50% Equity based on current Home Value)
-  const homeValue = initialData?.homeValue || 0;
+  const homeValue = activeMortgage?.homeValue || 0;
   const equityThreshold20 = homeValue * 0.8;
   const equityThreshold50 = homeValue * 0.5;
 
@@ -385,7 +436,7 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
   const plotWidth = chartWidth - paddingLeft - paddingRight;
   const plotHeight = chartHeight - paddingTop - paddingBottom;
 
-  const maxBalance = initialData?.originalBalance || initialData?.currentBalance || 100000;
+  const maxBalance = activeMortgage ? (activeMortgage.originalBalance || activeMortgage.currentBalance || 100000) : 100000;
   
   const standardPoints = useMemo(() => {
     if (schedule.length === 0) return [];
@@ -469,20 +520,54 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
   return (
     <div className="mortgage-dashboard">
       <header className="page-header-flex">
-        <div>
-          <h1>Mortgage Mastery</h1>
-          <p className="text-muted">Track equity and optimize your payoff strategy.</p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h1>Mortgage Mastery</h1>
+            <p className="text-muted">Track equity and optimize your payoff strategy.</p>
+          </div>
+          {mortgages.length > 1 && (
+            <select 
+              value={activeMortgageId || ""} 
+              onChange={e => setActiveMortgageId(e.target.value)}
+              className="bg-black/40 border border-glass-border text-white font-semibold text-sm rounded px-3 py-1.5 outline-none cursor-pointer transition hover:bg-black/60"
+            >
+              {mortgages.map(m => (
+                <option key={m.id} value={m.id} className="bg-neutral-900">
+                  🏠 {m.account.name}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
-        {initialData && !isEditing && (
-          <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)}>
-            ⚙️ Edit Core Details
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {activeMortgage && !isEditing && (
+            <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)}>
+              ⚙️ Edit Details
+            </Button>
+          )}
+          {!isEditing && (
+            <Button variant="primary" size="sm" onClick={() => {
+              setFormData({
+                accountId: "",
+                interestRate: 6.5,
+                monthlyPayment: 2000,
+                startDate: new Date().toISOString().split('T')[0],
+                termMonths: 360,
+                homeValue: 400000,
+                originalBalance: "",
+                address: "",
+              });
+              setIsEditing(true);
+            }}>
+              ➕ Add Mortgage
+            </Button>
+          )}
+        </div>
       </header>
 
       {isEditing ? (
         <Card className="mortgage-setup glass">
-          <h2>{initialData ? "Edit Mortgage Details" : "Mortgage Setup"}</h2>
+          <h2>{activeMortgage && mortgages.some(m => m.accountId === formData.accountId) ? "Edit Mortgage Details" : "Mortgage Setup"}</h2>
           <form onSubmit={handleSave} className="setup-form">
             <div className="form-group">
               <label>Linked Account</label>
@@ -521,30 +606,71 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
                 <input type="number" value={formData.homeValue} onChange={e => setFormData({...formData, homeValue: Number(e.target.value)})} />
               </div>
             </div>
+            <div className="form-group">
+              <label>Property Street Address</label>
+              <input 
+                type="text" 
+                placeholder="e.g. 123 Main St, Springfield, IL 62704" 
+                value={formData.address} 
+                onChange={e => setFormData({...formData, address: e.target.value})} 
+                className="bg-black/20 border border-glass-border text-white text-sm rounded p-2 w-full"
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  borderRadius: '8px',
+                  border: '1px solid var(--glass-border)',
+                  background: 'var(--glass-bg)',
+                  color: 'var(--text-main)',
+                  outline: 'none',
+                  fontFamily: 'inherit'
+                }}
+              />
+              <p className="help-text text-xs text-muted mt-1">
+                {hasRentcastApiKey 
+                  ? "Required for automatic RentCast property value tracking."
+                  : "Configure your RentCast API Key in Settings to enable automatic home value tracking."}
+              </p>
+            </div>
             <div className="form-actions mt-4">
               <Button type="submit" variant="primary" disabled={isSaving}>
                 {isSaving ? "Saving..." : "Save Mortgage Details"}
               </Button>
-              {initialData && <Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>}
+              {activeMortgage && (
+                <Button type="button" variant="ghost" onClick={() => {
+                  setFormData({
+                    accountId: activeMortgage.accountId,
+                    interestRate: activeMortgage.interestRate,
+                    monthlyPayment: activeMortgage.monthlyPayment,
+                    startDate: formatInitialDate(activeMortgage.startDate),
+                    termMonths: activeMortgage.termMonths,
+                    homeValue: activeMortgage.homeValue || 400000,
+                    originalBalance: activeMortgage.originalBalance || "",
+                    address: activeMortgage.address || "",
+                  });
+                  setIsEditing(false);
+                }}>
+                  Cancel
+                </Button>
+              )}
             </div>
           </form>
         </Card>
-      ) : initialData ? (
+      ) : activeMortgage ? (
         <>
       {/* Stat Cards */}
       <div className="mortgage-stats-grid">
         <Card className="stat-card accent" animate={true}>
           <span className="stat-label">Current Balance</span>
-          <div className="stat-value">${initialData.currentBalance.toLocaleString()}</div>
-          <span className="stat-sub">Estimated Equity: ${Math.max(0, (initialData.homeValue || 0) - initialData.currentBalance).toLocaleString()}</span>
+          <div className="stat-value">${activeMortgage.currentBalance.toLocaleString()}</div>
+          <span className="stat-sub">Estimated Equity: ${Math.max(0, (activeMortgage.homeValue || 0) - activeMortgage.currentBalance).toLocaleString()}</span>
         </Card>
         
         <Card className="stat-card secondary" animate={true} delay="0.1s">
           <span className="stat-label">Avg. Home Value</span>
-          <div className="stat-value">${(initialData.homeValue || 0).toLocaleString()}</div>
-          <span className="stat-sub">From {initialData.providers?.length || 0} Sources</span>
+          <div className="stat-value">${(activeMortgage.homeValue || 0).toLocaleString()}</div>
+          <span className="stat-sub">From {activeMortgage.providers?.length || 0} Sources</span>
         </Card>
-
+        
         <Card className="stat-card danger" animate={true} delay="0.2s">
           <span className="stat-label">Accelerated Payoff Savings</span>
           <div className="stat-value text-accent">${interestSaved.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
@@ -636,7 +762,7 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
                   className="today-value-label font-bold text-xs" 
                   fill="var(--accent)"
                 >
-                  ${initialData.currentBalance.toLocaleString()}
+                  ${activeMortgage.currentBalance.toLocaleString()}
                 </text>
               </g>
             )}
@@ -922,15 +1048,15 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
             <p className="text-muted text-xs mb-4">Visual representation of outstanding debt vs home equity</p>
             <div className="equity-bar-container">
                <div className="equity-bar">
-                  <div className="bar-fill principal" style={{ width: `${(initialData.currentBalance / (initialData.homeValue || 1)) * 100}%` }}></div>
+                  <div className="bar-fill principal" style={{ width: `${(activeMortgage.currentBalance / (activeMortgage.homeValue || 1)) * 100}%` }}></div>
                </div>
                <div className="bar-labels mt-2 text-xs font-semibold flex justify-between">
-                  <span className="text-danger">Debt: {((initialData.currentBalance / (initialData.homeValue || 1)) * 100).toFixed(1)}% (${initialData.currentBalance.toLocaleString()})</span>
-                  <span className="text-success">Equity: {(((initialData.homeValue || 0) - initialData.currentBalance) / (initialData.homeValue || 1) * 100).toFixed(1)}% (${Math.max(0, (initialData.homeValue || 0) - initialData.currentBalance).toLocaleString()})</span>
+                  <span className="text-danger">Debt: {((activeMortgage.currentBalance / (activeMortgage.homeValue || 1)) * 100).toFixed(1)}% (${activeMortgage.currentBalance.toLocaleString()})</span>
+                  <span className="text-success">Equity: {(((activeMortgage.homeValue || 0) - activeMortgage.currentBalance) / (activeMortgage.homeValue || 1) * 100).toFixed(1)}% (${Math.max(0, (activeMortgage.homeValue || 0) - activeMortgage.currentBalance).toLocaleString()})</span>
                </div>
             </div>
             <div className="mt-6">
-              <Button variant="ghost" size="sm" onClick={handleSyncValuations} disabled={isSyncing || initialData.providers?.length === 0} style={{ width: "100%" }}>
+              <Button variant="ghost" size="sm" onClick={handleSyncValuations} disabled={isSyncing || activeMortgage.providers?.length === 0} style={{ width: "100%" }}>
                 {isSyncing ? "⏳ Syncing..." : "🔄 Sync Live Values"}
               </Button>
             </div>
@@ -942,10 +1068,10 @@ export default function MortgageClient({ initialData, accounts }: MortgageClient
             <p className="text-muted text-xs">Link Zillow, Redfin, or Realtor listing pages to automatically pull estimates.</p>
             
             <div className="providers-list mt-4">
-              {initialData.providers?.length === 0 ? (
+              {activeMortgage.providers?.length === 0 ? (
                 <p className="text-muted py-4 text-center text-xs">No live sources linked. Paste a property URL below.</p>
               ) : (
-                initialData.providers?.map((p: MortgageProvider) => (
+                activeMortgage.providers?.map((p: MortgageProvider) => (
                   <div key={p.id} className="provider-item">
                     <div className="provider-header">
                       <span className="provider-name">{p.name}</span>
