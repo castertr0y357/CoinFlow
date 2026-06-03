@@ -179,6 +179,12 @@ export async function fetchRentCastTaxValue(address: string, apiKey: string): Pr
       const property = data[0];
       if (property.taxAssessment && typeof property.taxAssessment.totalValue === 'number') {
         return property.taxAssessment.totalValue;
+      } else if (typeof property.lastSalePrice === 'number') {
+        logger.info(
+          "Valuation/RentCastTax", 
+          `Tax assessment missing. Falling back to lastSalePrice: ${property.lastSalePrice}`
+        );
+        return property.lastSalePrice;
       }
     }
 
