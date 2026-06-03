@@ -157,6 +157,39 @@ export async function fetchRentCastValue(address: string, apiKey: string): Promi
   }
 }
 
+export async function fetchRentCastTaxValue(address: string, apiKey: string): Promise<number | null> {
+  try {
+    const url = `https://api.rentcast.io/v1/properties?address=${encodeURIComponent(address)}`;
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+        'X-Api-Key': apiKey
+      },
+      signal: AbortSignal.timeout(10000)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.error("Valuation/RentCastTax", `HTTP error! status: ${response.status} message: ${errorText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    if (Array.isArray(data) && data.length > 0) {
+      const property = data[0];
+      if (property.taxAssessment && typeof property.taxAssessment.totalValue === 'number') {
+        return property.taxAssessment.totalValue;
+      }
+    }
+
+    logger.warn("Valuation/RentCastTax", `No tax assessment value returned in RentCast response: ${JSON.stringify(data)}`);
+    return null;
+  } catch (error) {
+    logger.error("Valuation/RentCastTax", "Error fetching RentCast tax valuation", error);
+    return null;
+  }
+}
+
 export async function syncAllValuations(mortgageId: string) {
   const mortgage = await prisma.mortgageDetail.findUnique({
     where: { id: mortgageId },
@@ -181,6 +214,15 @@ export async function syncAllValuations(mortgageId: string) {
         logger.warn(
           "Valuation/RentCast", 
           `Skipping RentCast sync: missing address (hasAddress: ${!!mortgage.address}) or API key (hasApiKey: ${!!rentcastApiKey})`
+        );
+      }
+    } else if (provider.name.toLowerCase() === "rentcast tax assessment") {
+      if (mortgage.address && rentcastApiKey) {
+        value = await fetchRentCastTaxValue(mortgage.address, rentcastApiKey);
+      } else {
+        logger.warn(
+          "Valuation/RentCastTax", 
+          `Skipping RentCast Tax sync: missing address (hasAddress: ${!!mortgage.address}) or API key (hasApiKey: ${!!rentcastApiKey})`
         );
       }
     } else {

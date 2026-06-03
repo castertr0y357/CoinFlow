@@ -54,6 +54,23 @@ export async function updateMortgageDetails(data: {
         }
       });
     }
+
+    const existingTaxProvider = await prisma.homeValueProvider.findFirst({
+      where: {
+        mortgageId: mortgage.id,
+        name: "RentCast Tax Assessment"
+      }
+    });
+
+    if (!existingTaxProvider) {
+      await prisma.homeValueProvider.create({
+        data: {
+          mortgageId: mortgage.id,
+          name: "RentCast Tax Assessment",
+          url: "https://api.rentcast.io/v1/properties"
+        }
+      });
+    }
   }
 
   revalidatePath("/mortgage");

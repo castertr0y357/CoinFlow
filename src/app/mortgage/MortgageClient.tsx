@@ -1106,6 +1106,8 @@ export default function MortgageClient({ initialMortgages, accounts, hasRentcast
                   <option>Zillow</option>
                   <option>Redfin</option>
                   <option>Realtor</option>
+                  <option>RentCast</option>
+                  <option>RentCast Tax Assessment</option>
                 </select>
                 <input 
                   type="text" 
