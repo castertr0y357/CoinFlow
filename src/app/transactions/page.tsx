@@ -7,6 +7,10 @@ export default async function TransactionsPage() {
     orderBy: { name: 'asc' },
   });
 
+  const settings = await prisma.settings.findUnique({
+    where: { id: "global" }
+  });
+
   return (
     <div className="transactions-container">
       <header className="page-header">
@@ -16,7 +20,10 @@ export default async function TransactionsPage() {
         </p>
       </header>
 
-      <TransactionsClient categories={categories} />
+      <TransactionsClient 
+        categories={categories} 
+        aiEnabled={settings?.aiEnabled ?? false} 
+      />
     </div>
   );
 }

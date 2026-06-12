@@ -13,6 +13,7 @@ interface TransactionListProps {
   sortBy?: 'date' | 'amount' | 'payee';
   sortOrder?: 'asc' | 'desc';
   onSort?: (field: 'date' | 'amount' | 'payee') => void;
+  aiEnabled?: boolean;
 }
 
 function SortIcon({ field, sortBy, sortOrder }: { field: 'date' | 'amount' | 'payee'; sortBy?: 'date' | 'amount' | 'payee'; sortOrder?: 'asc' | 'desc' }) {
@@ -30,7 +31,8 @@ export default function TransactionList({
   onSelectAll,
   sortBy,
   sortOrder,
-  onSort
+  onSort,
+  aiEnabled = false
 }: TransactionListProps) {
   const allSelected = transactions.length > 0 && transactions.every(tx => selectedIds.has(tx.id));
 
@@ -88,6 +90,7 @@ export default function TransactionList({
               onCategorized={onCategorized}
               isSelected={selectedIds.has(tx.id)}
               onSelectionToggle={onSelectionToggle}
+              aiEnabled={aiEnabled}
             />
           ))}
         </div>

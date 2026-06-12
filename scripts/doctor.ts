@@ -159,9 +159,31 @@ async function checkNetworkLoops() {
 async function checkExternalIntegrations() {
   logHeader('External Integrations Diagnostics');
 
-  const baseAIUrl = process.env.OPENAI_BASE_URL;
+  const prisma = new PrismaClient();
+  let baseAIUrl = process.env.OPENAI_BASE_URL;
+  let aiEnabled = true;
+
+  try {
+    const settings = await prisma.settings.findFirst();
+    if (settings) {
+      aiEnabled = settings.aiEnabled;
+      if (settings.aiBaseUrl) {
+        baseAIUrl = settings.aiBaseUrl;
+      }
+    }
+  } catch (error) {
+    logWarning('Could not read settings from database, falling back to environment variables.');
+  } finally {
+    await prisma.$disconnect();
+  }
+
+  if (!aiEnabled) {
+    logWarning('AI features are disabled in Settings. Skipping AI integrations check.');
+    return;
+  }
+
   if (!baseAIUrl) {
-    logWarning('AI config is not configured, skipping AI integrations check.');
+    logWarning('AI base URL is not configured (neither in Settings nor environment variables), skipping AI integrations check.');
     return;
   }
 

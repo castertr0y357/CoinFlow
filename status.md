@@ -1,6 +1,7 @@
-# Project Status: CoinFlow Browser Extension (v2.25.1)
+# Project Status: CoinFlow Browser Extension (v2.25.2)
 
 ## Current Progress
+- [x] **Dynamic AI Settings Integration (v2.25.2)**: Migrated AI configuration settings from static environment variables to the database Settings table. Exposed settings controls on the General Settings page to allow enabling/disabling AI features, enabling/disabling thinking, and adjusting thinking effort level. Implemented conditional visibility across the Transactions page, Tools page, and Reports page to hide all AI buttons and sections when AI is turned off. Updated `aiService.ts` and `doctor.ts` to support database-driven settings with safe fallback structures.
 - [x] **Manual Home Valuation Isolation (v2.25.1)**: Added a dedicated `manualHomeValue` database field to the `MortgageDetail` model to separate user-configured values from synced provider averages. Updated the Net Worth calculation and mortgage page UI to calculate equity and render trajectories using `manualHomeValue` when configured, preventing RentCast or scraped AVM updates from overwriting manual entries.
 - [x] **RentCast Integration & Multi-Mortgage Selection (v2.25.0)**: Added support for tracking multiple mortgages and properties. Refactored the backend loader to fetch all mortgage details. Added a dynamic dropdown selector in the header to switch active property datasets. Integrated RentCast AVM API to query real-time property value estimates using street addresses. Added a RentCast API key input field under Settings integrations.
 - [x] **Project Standards Compliance Audit & Diagnostic Tooling (v2.24.2)**: Completed full audit against global standards. Implemented a workspace diagnostic utility (`scripts/doctor.ts`) with prisma migration validation, network loop verification, and SimpleFIN/AI integration diagnostics. Formulated a dynamic route scanner test (`src/app/routeScanner.test.ts`) utilizing Vitest to perform GET response sanity checks. Refactored server-side files to standardize logging under the centralized structured logger.
@@ -46,6 +47,14 @@
 - [x] **Subscription Detective Alignment (v2.10.0)**: Corrected unmapped keys (`monthlyCost`, `reason`) and wrapped the JSON response array inside an object matching frontend specifications.
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
+
+## Recent Fixes & Features (v2.25.2)
+- **Dynamic AI Settings & Visibility Toggle**:
+  - Added AI settings fields (`aiEnabled`, `aiBaseUrl`, `aiApiKey`, `aiModel`, `aiChatId`, `aiThinkingEnabled`, `aiThinkingEffort`) to Settings schema and executed PostgreSQL migration.
+  - Updated `aiService.ts` to retrieve and build AI configuration dynamically, verifying `aiEnabled` status to disable API requests if toggle is off.
+  - Implemented form inputs and persistence inside Settings General page.
+  - Implemented prop-driven conditional rendering for AI buttons on Transactions page, Tools settings view, and Reports dashboard, completely hiding all AI options when disabled.
+  - Refactored `scripts/doctor.ts` to retrieve database settings for AI health checks.
 
 ## Recent Fixes & Features (v2.25.1)
 - **Manual Home Valuation Isolation**:
@@ -184,19 +193,16 @@
 - [ ] Test the newly added Realtor.com scraper with a live active-listing URL.
 
 ## Technical Details
-- **Version**: 2.25.0
+- **Version**: 2.25.2
 - **Core Files**:
-  - `src/lib/services/valuationService.ts`: RentCast AVM fetcher and sync loop overrides.
-  - `src/app/mortgage/page.tsx`: Load all property mortgages.
-  - `src/app/mortgage/actions.ts`: Support address mapping and RentCast auto-seeding.
-  - `src/app/mortgage/MortgageClient.tsx`: Multi-mortgage selectors, address setup form controls.
-  - `src/app/settings/general/page.tsx`: Settings UI input field for RentCast API Key.
-  - `prisma/schema.prisma`: Added address to MortgageDetail and rentcastApiKey to Settings.
-  - `scripts/doctor.ts`: Workspace diagnostic script executing checks in sequence.
-  - `src/app/routeScanner.test.ts`: Vitest API route sanity checking suite.
-  - `vitest.config.ts`: Vitest path alias resolution mapping setup.
-  - `Dockerfile`: Runner stage modified to copy scripts directory and vitest configuration.
-  - `package.json`: Doctor npm command hook.
+  - `src/lib/services/aiService.ts`: Central completions loader and wrapper supporting settings toggles and fallback modes.
+  - `src/app/settings/general/page.tsx`: General settings page displaying and saving AI settings.
+  - `src/app/transactions/page.tsx`: Transactions page retrieving and passing active AI state.
+  - `src/components/transactions/TransactionsClient.tsx`, `TransactionList.tsx`, `TransactionRow.tsx`: Prop-driven AI button rendering.
+  - `src/app/settings/tools/page.tsx`: Settings tools view conditionally rendering AI-dependent features.
+  - `src/app/reports/page.tsx` and `ReportsClient.tsx`: Insight reports view conditionally showing analysis options.
+  - `scripts/doctor.ts`: Diagnostic runner utilizing DB settings.
+  - `prisma/schema.prisma`: Config schema containing AI attributes.
   - `src/lib/services/scrapingService.ts`: Standardized logging.
   - `src/lib/api-utils.ts`: Standardized logging.
   - `src/app/api/v1/external-orders/sync/route.ts`: Standardized logging.

@@ -18,9 +18,10 @@ interface Category {
 interface ReportsClientProps {
   availableYears: number[];
   initialCategories: Category[];
+  aiEnabled: boolean;
 }
 
-export default function ReportsClient({ availableYears, initialCategories }: ReportsClientProps) {
+export default function ReportsClient({ availableYears, initialCategories, aiEnabled }: ReportsClientProps) {
   const [selectedYear, setSelectedYear] = useState(availableYears[0] || new Date().getFullYear());
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
@@ -47,9 +48,11 @@ export default function ReportsClient({ availableYears, initialCategories }: Rep
             )}
           </select>
         </div>
-        <Button variant="primary" onClick={handleRunAnalysis} disabled={isAnalyzing}>
-          {isAnalyzing ? "✨ Analyzing Data..." : "✨ Generate AI Analysis"}
-        </Button>
+        {aiEnabled && (
+          <Button variant="primary" onClick={handleRunAnalysis} disabled={isAnalyzing}>
+            {isAnalyzing ? "✨ Analyzing Data..." : "✨ Generate AI Analysis"}
+          </Button>
+        )}
       </div>
 
       <div className="reports-grid">

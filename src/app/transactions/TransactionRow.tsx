@@ -27,7 +27,8 @@ export default function TransactionRow({
   suggestion,
   onCategorized,
   isSelected,
-  onSelectionToggle
+  onSelectionToggle,
+  aiEnabled = false
 }: { 
   tx: Transaction; 
   categories: Category[];
@@ -35,6 +36,7 @@ export default function TransactionRow({
   onCategorized?: () => void;
   isSelected?: boolean;
   onSelectionToggle?: (id: string, selected: boolean) => void;
+  aiEnabled?: boolean;
 }) {
   const [isPending, setIsPending] = useState(false);
   const [isAiSplitting, setIsAiSplitting] = useState(false);
@@ -224,15 +226,17 @@ export default function TransactionRow({
                 {tx.externalOrderId && (
                   <div onClick={(e) => e.stopPropagation()} style={{ display: 'inline-block' }}>
                     <div className="external-order-info">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="smart-split-btn"
-                        onClick={() => handleSmartSplit()}
-                        disabled={isAiSplitting || isPending}
-                      >
-                        {isAiSplitting ? "✨ Analyzing..." : "✨ Smart Split"}
-                      </Button>
+                      {aiEnabled && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="smart-split-btn"
+                          onClick={() => handleSmartSplit()}
+                          disabled={isAiSplitting || isPending}
+                        >
+                          {isAiSplitting ? "✨ Analyzing..." : "✨ Smart Split"}
+                        </Button>
+                      )}
                       {!!tx.externalOrder && (
                         <div className="order-details-popover glass">
                           <div className="order-header">
@@ -266,7 +270,7 @@ export default function TransactionRow({
               )}
             </div>
 
-            {suggestion && !tx.splits.every(s => s.categoryId) && (
+            {aiEnabled && suggestion && !tx.splits.every(s => s.categoryId) && (
               <span className="ai-badge animate-pulse" style={{ marginTop: '0.25rem' }}>✨ AI Suggested: {suggestedCategory?.name}</span>
             )}
           </div>
@@ -299,6 +303,7 @@ export default function TransactionRow({
                 onDeleteSplit={() => handleDeleteSplit(split.id)}
                 showDelete={tx.splits.length > 1}
                 showAmount={tx.splits.length > 1}
+                aiEnabled={aiEnabled}
               />
             ))}
             <button 
@@ -411,6 +416,7 @@ interface SplitItemProps {
   onDeleteSplit: () => void;
   showDelete: boolean;
   showAmount: boolean;
+  aiEnabled?: boolean;
 }
 
 function SplitItem({
@@ -421,7 +427,8 @@ function SplitItem({
   onCategoryChange,
   onDeleteSplit,
   showDelete,
-  showAmount
+  showAmount,
+  aiEnabled = false
 }: SplitItemProps) {
   return (
     <div className="tx-split">
@@ -433,7 +440,7 @@ function SplitItem({
       )}
       
       <select 
-        className={`split-category-select ${suggestion && !split.categoryId ? 'suggested' : ''}`}
+        className={`split-category-select ${aiEnabled && suggestion && !split.categoryId ? 'suggested' : ''}`}
         value={split.categoryId || "floating"}
         onChange={(e) => onCategoryChange(e.target.value)}
         disabled={isPending}
@@ -441,7 +448,7 @@ function SplitItem({
         <option value="floating">🌊 Floating (Uncategorized)</option>
         {categories.map(cat => (
           <option key={cat.id} value={cat.id}>
-            {cat.id === suggestion ? `✨ ${cat.name}` : cat.name}
+            {aiEnabled && cat.id === suggestion ? `✨ ${cat.name}` : cat.name}
           </option>
         ))}
       </select>

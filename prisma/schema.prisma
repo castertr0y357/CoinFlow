@@ -206,6 +206,13 @@ model Settings {
   paycheckFrequency     String    @default("BI_WEEKLY")
   paycheckNextDate      DateTime?
   rentcastApiKey        String?
+  aiEnabled             Boolean   @default(false)
+  aiBaseUrl             String?
+  aiApiKey              String?
+  aiModel               String?
+  aiChatId              String?
+  aiThinkingEnabled     Boolean   @default(false)
+  aiThinkingEffort      String?
 }
 
 model Commitment {

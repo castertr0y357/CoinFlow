@@ -7,7 +7,13 @@ import Button from "@/components/ui/Button";
 import { Category, Transaction } from "@/types";
 import { applyTransactionSplits, bulkCategorizeTransactions } from "@/app/transactions/actions";
 
-export default function TransactionsClient({ categories }: { categories: Category[] }) {
+export default function TransactionsClient({ 
+  categories, 
+  aiEnabled 
+}: { 
+  categories: Category[]; 
+  aiEnabled: boolean; 
+}) {
   const [view, setView] = useState<'inbox' | 'all' | 'hidden'>('inbox');
   const { transactions, isLoading, refresh } = useTransactions(
     view === 'inbox', 
@@ -220,7 +226,7 @@ export default function TransactionsClient({ categories }: { categories: Categor
             👁️ Hidden
           </Button>
           
-          {Object.keys(suggestions).length > 0 && (
+          {aiEnabled && Object.keys(suggestions).length > 0 && (
             <Button 
               variant="glass" 
               onClick={handleApplyAllSuggestions}
@@ -229,20 +235,24 @@ export default function TransactionsClient({ categories }: { categories: Categor
               {isBulkLoading ? "✅ Applying..." : "✅ Apply All AI"}
             </Button>
           )}
-          <Button 
-            variant="glass" 
-            onClick={handleNormalizePayees} 
-            disabled={isNormalizeLoading || isLoading}
-          >
-            {isNormalizeLoading ? "🧹 Normalizing..." : "🧹 Normalize Payees"}
-          </Button>
-          <Button 
-            variant="glass" 
-            onClick={handleAiCategorize} 
-            disabled={isAiLoading || isLoading}
-          >
-            {isAiLoading ? "✨ Thinking..." : "✨ Suggest Categories"}
-          </Button>
+          {aiEnabled && (
+            <Button 
+              variant="glass" 
+              onClick={handleNormalizePayees} 
+              disabled={isNormalizeLoading || isLoading}
+            >
+              {isNormalizeLoading ? "🧹 Normalizing..." : "🧹 Normalize Payees"}
+            </Button>
+          )}
+          {aiEnabled && (
+            <Button 
+              variant="glass" 
+              onClick={handleAiCategorize} 
+              disabled={isAiLoading || isLoading}
+            >
+              {isAiLoading ? "✨ Thinking..." : "✨ Suggest Categories"}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -295,6 +305,7 @@ export default function TransactionsClient({ categories }: { categories: Categor
           sortBy={sortBy}
           sortOrder={sortOrder}
           onSort={handleSort}
+          aiEnabled={aiEnabled}
         />
       )}
     </>

@@ -10,22 +10,31 @@ export default async function ToolsSettingsPage() {
     orderBy: { year: 'desc' }
   });
 
+  const settings = await prisma.settings.findUnique({
+    where: { id: 'global' }
+  });
+  const aiEnabled = settings?.aiEnabled ?? false;
+
   return (
     <div className="subpage-container animate-fade-in">
-      <Card className="settings-form">
-        <div className="form-section">
-          <h2>Subscription Detective</h2>
-          <SubscriptionDetective />
-        </div>
-      </Card>
+      {aiEnabled && (
+        <Card className="settings-form">
+          <div className="form-section">
+            <h2>Subscription Detective</h2>
+            <SubscriptionDetective />
+          </div>
+        </Card>
+      )}
 
-      <Card className="settings-form">
-        <div className="form-section">
-          <h2>Historical XLSX Import</h2>
-          <p className="text-muted">Ingest data from previous years. AI will help map your spreadsheet sheets to categories.</p>
-          <HistoricalImporter />
-        </div>
-      </Card>
+      {aiEnabled && (
+        <Card className="settings-form">
+          <div className="form-section">
+            <h2>Historical XLSX Import</h2>
+            <p className="text-muted">Ingest data from previous years. AI will help map your spreadsheet sheets to categories.</p>
+            <HistoricalImporter />
+          </div>
+        </Card>
+      )}
 
       <Card className="settings-form">
         <div className="form-section">

@@ -2,39 +2,54 @@ import OpenAI from "openai";
 import { Category, Prisma } from "@prisma/client";
 import { logger } from "../logger";
 
-let baseURL = process.env.OPENAI_BASE_URL || "http://localhost:11434/v1";
-
-// Auto-upgrade remote non-localhost endpoints to HTTPS to avoid HTTP-to-HTTPS redirects breaking POST requests
-if (baseURL.startsWith("http://") && 
-    !baseURL.includes("localhost") && 
-    !baseURL.includes("127.0.0.1") && 
-    !baseURL.includes("192.168.") && 
-    !baseURL.includes("10.") && 
-    !baseURL.includes("::1")) {
-  const hostname = baseURL.replace("http://", "").split("/")[0].split(":")[0];
-  if (hostname.includes(".")) {
-    baseURL = baseURL.replace("http://", "https://");
-  }
-}
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || "sk-placeholder",
-  baseURL,
-});
-
-const MODEL = process.env.AI_MODEL || "gemma4:e4b";
-
-const CHAT_ID = process.env.OPENAI_CHAT_ID || process.env.AI_CHAT_ID || (
-  (baseURL.includes("webui") || baseURL.includes("ollama")) ? "webbudget-session-id" : undefined
-);
+import prisma from "@/lib/prisma";
 
 let isChatIdSupported = true;
 
-logger.info("AI", `Initialized with baseURL=${baseURL}, MODEL=${MODEL}, CHAT_ID=${CHAT_ID}`);
-
 type CustomChatCompletionCreateParams = OpenAI.Chat.ChatCompletionCreateParams & {
   chat_id?: string;
+  reasoning_effort?: "low" | "medium" | "high";
 };
+
+async function getAiConfig() {
+  const settings = await prisma.settings.findUnique({ where: { id: "global" } });
+  
+  if (!settings || !settings.aiEnabled) {
+    return null;
+  }
+
+  let baseURL = settings.aiBaseUrl || process.env.OPENAI_BASE_URL || "http://localhost:11434/v1";
+  
+  if (baseURL.startsWith("http://") && 
+      !baseURL.includes("localhost") && 
+      !baseURL.includes("127.0.0.1") && 
+      !baseURL.includes("192.168.") && 
+      !baseURL.includes("10.") && 
+      !baseURL.includes("::1")) {
+    const hostname = baseURL.replace("http://", "").split("/")[0].split(":")[0];
+    if (hostname.includes(".")) {
+      baseURL = baseURL.replace("http://", "https://");
+    }
+  }
+
+  const apiKey = settings.aiApiKey || process.env.OPENAI_API_KEY || "sk-placeholder";
+  const model = settings.aiModel || process.env.AI_MODEL || "gemma4:e4b";
+  const chatId = settings.aiChatId || process.env.OPENAI_CHAT_ID || process.env.AI_CHAT_ID || (
+    (baseURL.includes("webui") || baseURL.includes("ollama")) ? "webbudget-session-id" : undefined
+  );
+  
+  const thinkingEnabled = settings.aiThinkingEnabled || false;
+  const thinkingEffort = settings.aiThinkingEffort || null;
+
+  return {
+    baseURL,
+    apiKey,
+    model,
+    chatId,
+    thinkingEnabled,
+    thinkingEffort,
+  };
+}
 
 export interface SubscriptionTxInput {
   date: Date | string;
@@ -69,15 +84,29 @@ export interface MerchantCleanExample {
  * Helper to call openai.chat.completions.create with centralized chat_id and model configuration.
  */
 async function createChatCompletion(messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[], jsonMode = true) {
+  const config = await getAiConfig();
+  if (!config) {
+    throw new Error("AI is disabled");
+  }
+
+  const openai = new OpenAI({
+    apiKey: config.apiKey,
+    baseURL: config.baseURL,
+  });
+
   const params: CustomChatCompletionCreateParams = {
-    model: MODEL,
+    model: config.model,
     messages,
     ...(jsonMode ? { response_format: { type: "json_object" as const } } : {}),
   };
 
   // Only pass chat_id if it is explicitly configured (for Open WebUI custom domains) or implicitly detected
-  if (CHAT_ID && isChatIdSupported) {
-    params.chat_id = CHAT_ID;
+  if (config.chatId && isChatIdSupported) {
+    params.chat_id = config.chatId;
+  }
+
+  if (config.thinkingEnabled && config.thinkingEffort) {
+    params.reasoning_effort = config.thinkingEffort as "low" | "medium" | "high";
   }
 
   try {
@@ -97,7 +126,7 @@ async function createChatCompletion(messages: OpenAI.Chat.Completions.ChatComple
        errorMessage.toLowerCase().includes("invalid parameter"));
 
     if (params.chat_id && isParamError) {
-      logger.warn("AI", `Provider at ${baseURL} rejected 'chat_id' parameter. Retrying without it and disabling it for this session...`);
+      logger.warn("AI", `Provider at ${config.baseURL} rejected 'chat_id' parameter. Retrying without it and disabling it for this session...`);
       isChatIdSupported = false;
       const cleanParams = { ...params };
       delete cleanParams.chat_id;
@@ -122,6 +151,11 @@ function cleanJsonContent(content: string): string {
  */
 export async function normalizeItemNames(titles: string[]): Promise<Record<string, string>> {
   if (titles.length === 0) return {};
+
+  const config = await getAiConfig();
+  if (!config) {
+    return titles.reduce((acc, title) => ({ ...acc, [title]: title }), {});
+  }
 
   const prompt = `
 Normalize the following Amazon/retail item titles into clean, concise, and descriptive product names.
@@ -164,6 +198,8 @@ Format the response as valid JSON only.
  * Detects recurring subscriptions from a list of transactions.
  */
 export async function detectSubscriptions(transactions: SubscriptionTxInput[]): Promise<SubscriptionResult[]> {
+  const config = await getAiConfig();
+  if (!config) return [];
   const prompt = `
 Analyze the following financial transactions and identify potential recurring subscriptions.
 Return a JSON array of objects, each with 'name', 'monthlyCost', 'confidence', and 'reason'.
@@ -193,6 +229,9 @@ Format the response as valid JSON only.
  */
 export async function getCategorySuggestions(transactions: CategorizeTxInput[], categories: Category[], examples: CategorizeExampleInput[] = []): Promise<Record<string, string>> {
   if (transactions.length === 0) return {};
+
+  const config = await getAiConfig();
+  if (!config) return {};
 
   const CHUNK_SIZE = 15;
   const chunks: CategorizeTxInput[][] = [];
@@ -247,6 +286,8 @@ Format the response as valid JSON only.
  * Cleans a raw merchant name from bank data into a human-readable payee name.
  */
 export async function getCleanMerchantName(rawPayee: string, examples: MerchantCleanExample[] = []): Promise<string> {
+  const config = await getAiConfig();
+  if (!config) return rawPayee;
   const prompt = `
 Clean this raw merchant name into a human-readable payee name (e.g., "AMZN Mktp US*123" -> "Amazon").
 Return a JSON object with a single key 'cleanName'.
@@ -278,6 +319,11 @@ Format the response as valid JSON only.
  */
 export async function getCleanMerchantNamesBatch(rawPayees: string[], examples: MerchantCleanExample[] = []): Promise<Record<string, string>> {
   if (rawPayees.length === 0) return {};
+
+  const config = await getAiConfig();
+  if (!config) {
+    return rawPayees.reduce((acc, p) => ({ ...acc, [p]: p }), {});
+  }
 
   // Deduplicate raw payees to avoid redundant translation
   const uniqueRawPayees = Array.from(new Set(rawPayees));
@@ -323,6 +369,8 @@ export async function getSplitSuggestions(
   items: { title: string, price: number }[],
   categories: Category[]
 ): Promise<{ splits: { title: string, price: number, categoryName: string }[] }> {
+  const config = await getAiConfig();
+  if (!config) return { splits: [] };
   const prompt = `
 Suggest budget categories for each item in this order to split the transaction.
 Return a JSON object with 'splits', which is an array of { title, price, categoryName }.
@@ -356,6 +404,8 @@ export async function suggestHistoricalMapping(
   sheetInfo: Record<string, unknown>[],
   categories: Category[]
 ): Promise<{ mappings: { sheetName: string; categoryMappings: Record<string, string> }[] }> {
+  const config = await getAiConfig();
+  if (!config) return { mappings: [] };
   const prompt = `
 Analyze these spreadsheet headers and samples to suggest which sheet contains transactions and how to map its columns.
 Return a JSON object with 'mappings', which is an array of mapping objects.
