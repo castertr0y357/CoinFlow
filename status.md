@@ -1,6 +1,7 @@
-# Project Status: CoinFlow Browser Extension (v2.25.3)
+# Project Status: CoinFlow Browser Extension (v2.25.4)
 
 ## Current Progress
+- [x] **Logo Image Optimization & Rules Sync (v2.25.4)**: Fixed the `400 (Bad Request)` error when loading the CoinFlow logo image by adding the `unoptimized` prop to the Next.js `Image` component. Synchronized local workspace rules files with the latest global developer standards.
 - [x] **Isolated AI Settings Tab (v2.25.3)**: Separated the AI configuration settings into a dedicated "AI Assistant" settings tab page at `/settings/ai`, cleaning up the general settings page inputs and updating settings navigation links accordingly.
 - [x] **Dynamic AI Settings Integration (v2.25.2)**: Migrated AI configuration settings from static environment variables to the database Settings table. Exposed settings controls on the General Settings page to allow enabling/disabling AI features, enabling/disabling thinking, and adjusting thinking effort level. Implemented conditional visibility across the Transactions page, Tools page, and Reports page to hide all AI buttons and sections when AI is turned off. Updated `aiService.ts` and `doctor.ts` to support database-driven settings with safe fallback structures.
 - [x] **Manual Home Valuation Isolation (v2.25.1)**: Added a dedicated `manualHomeValue` database field to the `MortgageDetail` model to separate user-configured values from synced provider averages. Updated the Net Worth calculation and mortgage page UI to calculate equity and render trajectories using `manualHomeValue` when configured, preventing RentCast or scraped AVM updates from overwriting manual entries.
@@ -48,6 +49,13 @@
 - [x] **Subscription Detective Alignment (v2.10.0)**: Corrected unmapped keys (`monthlyCost`, `reason`) and wrapped the JSON response array inside an object matching frontend specifications.
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
+
+## Recent Fixes & Features (v2.25.4)
+- **Logo Image Optimization Fix**:
+  - Added the `unoptimized` prop to Next.js `Image` components in `Sidebar.tsx` to fix `400 (Bad Request)` error.
+  - Resolved loading failure caused by Next.js standalone server failing to run image optimization in Docker without native `sharp` binary dependencies.
+- **Workspace Rules Synchronization**:
+  - Synchronized rules in `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, and `.windsurfrules` with the latest global project rules template, adding guidelines for SPA UX, Coolify production volume mounts, and reverse-proxy CSRF/SSL termination.
 
 ## Recent Fixes & Features (v2.25.3)
 - **AI Settings Dedicated Tab**:
@@ -200,7 +208,7 @@
 - [ ] Test the newly added Realtor.com scraper with a live active-listing URL.
 
 ## Technical Details
-- **Version**: 2.25.3
+- **Version**: 2.25.4
 - **Core Files**:
   - `src/lib/services/aiService.ts`: Central completions loader and wrapper supporting settings toggles and fallback modes.
   - `src/app/settings/ai/page.tsx`: Isolated AI Assistant settings page.

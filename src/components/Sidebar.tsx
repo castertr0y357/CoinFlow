@@ -109,7 +109,7 @@ export default function Sidebar({ accounts }: SidebarProps) {
           {isOpen ? "✕" : "☰"}
         </button>
         <div className="mobile-logo">
-          <Image src="/logo.png" alt="CoinFlow Logo" width={24} height={24} className="logo-icon" />
+          <Image src="/logo.png" alt="CoinFlow Logo" width={24} height={24} className="logo-icon" unoptimized />
           <span className="logo-text">CoinFlow</span>
         </div>
         <div style={{ width: '40px' }} /> {/* Spacer to balance the flex layout */}
@@ -123,7 +123,7 @@ export default function Sidebar({ accounts }: SidebarProps) {
       <div className={`sidebar-container glass ${isOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
           <Link href="/" className="logo-container" onClick={() => setIsOpen(false)}>
-            <Image src="/logo.png" alt="CoinFlow Logo" className="logo-icon" width={32} height={32} />
+            <Image src="/logo.png" alt="CoinFlow Logo" className="logo-icon" width={32} height={32} unoptimized />
             <span className="logo-text">CoinFlow</span>
           </Link>
         </div>
