@@ -1,6 +1,6 @@
-const { PrismaClient } = require('@prisma/client');
-const { execSync } = require('child_process');
-const net = require('net');
+import { PrismaClient } from '@prisma/client';
+import { execSync } from 'child_process';
+import * as net from 'net';
 
 const GREEN = '\x1b[32m';
 const RED = '\x1b[31m';
@@ -73,8 +73,9 @@ async function checkDatabase() {
     } else {
       logWarning('SimpleFIN token is not configured in database Settings.');
     }
-  } catch (error: any) {
-    logFailure(`Database connection failed: ${error.message || error}`);
+  } catch (error: unknown) {
+    const err = error as Error;
+    logFailure(`Database connection failed: ${err.message || String(error)}`);
     throw error;
   } finally {
     await prisma.$disconnect();
@@ -91,9 +92,10 @@ async function checkMigrations() {
     } else {
       logWarning('Prisma migrate status reports potential drift or pending migrations.');
     }
-  } catch (error: any) {
-    logFailure(`Could not execute migration check: ${error.message || error}`);
-    const stderr = error.stderr ? error.stderr.toString() : '';
+  } catch (error: unknown) {
+    const err = error as { message?: string; stderr?: Buffer };
+    logFailure(`Could not execute migration check: ${err.message || String(error)}`);
+    const stderr = err.stderr ? err.stderr.toString() : '';
     if (stderr) console.error(stderr);
     throw error;
   }
@@ -171,7 +173,7 @@ async function checkExternalIntegrations() {
         baseAIUrl = settings.aiBaseUrl;
       }
     }
-  } catch (error) {
+  } catch {
     logWarning('Could not read settings from database, falling back to environment variables.');
   } finally {
     await prisma.$disconnect();
@@ -200,8 +202,9 @@ async function checkExternalIntegrations() {
     } else {
       logFailure(`AI endpoint host '${host}:${port}' is unreachable.`);
     }
-  } catch (error: any) {
-    logFailure(`Invalid AI Base URL format: ${error.message || error}`);
+  } catch (error: unknown) {
+    const err = error as Error;
+    logFailure(`Invalid AI Base URL format: ${err.message || String(error)}`);
   }
 }
 

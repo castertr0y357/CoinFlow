@@ -1,5 +1,14 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
+    // Validate required environment variables
+    const requiredEnv = ['DATABASE_URL', 'APP_PASSWORD', 'NEXTAUTH_SECRET'];
+    const missingEnv = requiredEnv.filter(envVar => !process.env[envVar]);
+    
+    if (missingEnv.length > 0) {
+      console.error(`[Startup] - Error - Missing required environment variables: ${missingEnv.join(', ')}`);
+      process.exit(1);
+    }
+
     // We only want to run this in the Node.js environment, not Edge
     const { syncSimpleFin } = await import('@/lib/services/syncService');
     

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, vi, beforeAll, afterAll, type MockInstance } from "vitest";
 import { NextRequest } from "next/server";
 import { GET as getBackgroundSync } from "./api/v1/sync/background/route";
 import { GET as getRefundMatches } from "./api/v1/transactions/refund-matches/route";
@@ -15,7 +15,7 @@ vi.mock("next/headers", () => {
 });
 
 describe("Route Scanner - API Sanity Checks", () => {
-  let consoleErrorSpy: any;
+  let consoleErrorSpy: MockInstance;
 
   beforeAll(() => {
     // Capture console.error to check for unexpected failures or standard violations

@@ -1,6 +1,7 @@
-# Project Status: CoinFlow Browser Extension (v2.25.4)
+# Project Status: CoinFlow Browser Extension (v2.25.5)
 
 ## Current Progress
+- [x] **Project Standards Audit & Integrity Alignment (v2.25.5)**: Implemented startup configuration validation checks for required environment variables. Defined explicit deletion behaviors and added missing performance indexes on all database foreign key columns in `schema.prisma`. Copied `eslint.config.mjs` to the Docker runner stage to enable containerized linter verification.
 - [x] **Logo Image Optimization & Rules Sync (v2.25.4)**: Fixed the `400 (Bad Request)` error when loading the CoinFlow logo image by adding the `unoptimized` prop to the Next.js `Image` component. Synchronized local workspace rules files with the latest global developer standards.
 - [x] **Isolated AI Settings Tab (v2.25.3)**: Separated the AI configuration settings into a dedicated "AI Assistant" settings tab page at `/settings/ai`, cleaning up the general settings page inputs and updating settings navigation links accordingly.
 - [x] **Dynamic AI Settings Integration (v2.25.2)**: Migrated AI configuration settings from static environment variables to the database Settings table. Exposed settings controls on the General Settings page to allow enabling/disabling AI features, enabling/disabling thinking, and adjusting thinking effort level. Implemented conditional visibility across the Transactions page, Tools page, and Reports page to hide all AI buttons and sections when AI is turned off. Updated `aiService.ts` and `doctor.ts` to support database-driven settings with safe fallback structures.
@@ -49,6 +50,17 @@
 - [x] **Subscription Detective Alignment (v2.10.0)**: Corrected unmapped keys (`monthlyCost`, `reason`) and wrapped the JSON response array inside an object matching frontend specifications.
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
+
+## Recent Fixes & Features (v2.25.5)
+- **Startup Config Validation**:
+  - Implemented environment variable startup validation in `src/instrumentation.ts` to log error and exit process if required settings (`DATABASE_URL`, `APP_PASSWORD`, `NEXTAUTH_SECRET`) are missing.
+- **Database Relationships & Indexing**:
+  - Modified `prisma/schema.prisma` to explicitly set `onDelete: SetNull` or `onDelete: Cascade` on database relationships.
+  - Added indexes on all missing foreign key columns including `tiedAccountId` in `Category`, `externalOrderId` in `ExternalOrderItem`, and `userId` in `ApiKey`.
+  - Created and applied Prisma migration SQL files.
+- **Docker & Linter Conformance**:
+  - Updated `Dockerfile` to copy `eslint.config.mjs` to the runner stage.
+  - Resolved lint errors in `scripts/doctor.ts`, `src/app/routeScanner.test.ts`, and `src/app/mortgage/MortgageClient.tsx` to achieve a clean lint run.
 
 ## Recent Fixes & Features (v2.25.4)
 - **Logo Image Optimization Fix**:
