@@ -449,6 +449,7 @@ function SplitItem({
         {categories.map(cat => (
           <option key={cat.id} value={cat.id}>
             {aiEnabled && cat.id === suggestion ? `✨ ${cat.name}` : cat.name}
+            {cat.balance !== undefined ? ` ($${cat.balance < 0 ? '-' : ''}${Math.abs(cat.balance).toFixed(2)})` : ''}
           </option>
         ))}
       </select>

@@ -269,7 +269,10 @@ export default function TransactionsClient({
           >
             <option value="floating">🌊 Floating (Uncategorized)</option>
             {categories.map(cat => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+                {cat.balance !== undefined ? ` ($${cat.balance < 0 ? '-' : ''}${Math.abs(cat.balance).toFixed(2)})` : ''}
+              </option>
             ))}
           </select>
           <Button 

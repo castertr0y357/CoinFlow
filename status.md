@@ -1,6 +1,7 @@
-# Project Status: CoinFlow Browser Extension (v2.25.5)
+# Project Status: CoinFlow Browser Extension (v2.25.6)
 
 ## Current Progress
+- [x] **Category Balance in Transaction Assignment (v2.25.6)**: Retrieved dynamic category balances using `getMonthlyTally()` on the transactions inbox page. Displayed remaining category balances directly in both the transaction row split category dropdowns and the bulk categorization dropdown selector.
 - [x] **Project Standards Audit & Integrity Alignment (v2.25.5)**: Implemented startup configuration validation checks for required environment variables. Defined explicit deletion behaviors and added missing performance indexes on all database foreign key columns in `schema.prisma`. Copied `eslint.config.mjs` to the Docker runner stage to enable containerized linter verification.
 - [x] **Logo Image Optimization & Rules Sync (v2.25.4)**: Fixed the `400 (Bad Request)` error when loading the CoinFlow logo image by adding the `unoptimized` prop to the Next.js `Image` component. Synchronized local workspace rules files with the latest global developer standards.
 - [x] **Isolated AI Settings Tab (v2.25.3)**: Separated the AI configuration settings into a dedicated "AI Assistant" settings tab page at `/settings/ai`, cleaning up the general settings page inputs and updating settings navigation links accordingly.
@@ -50,6 +51,13 @@
 - [x] **Subscription Detective Alignment (v2.10.0)**: Corrected unmapped keys (`monthlyCost`, `reason`) and wrapped the JSON response array inside an object matching frontend specifications.
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
+
+## Recent Fixes & Features (v2.25.6)
+- **Category Balances in Dropdown Selectors**:
+  - Modified `TransactionsPage` in `src/app/transactions/page.tsx` to retrieve categories using `getMonthlyTally()`.
+  - Added optional `balance` property to `Category` type definition in `src/types/index.ts`.
+  - Updated transaction split select dropdown options in `src/app/transactions/TransactionRow.tsx` to display category balances.
+  - Updated bulk categorization select dropdown options in `src/components/transactions/TransactionsClient.tsx` to display category balances.
 
 ## Recent Fixes & Features (v2.25.5)
 - **Startup Config Validation**:

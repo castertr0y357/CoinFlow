@@ -1,11 +1,17 @@
 import prisma from "@/lib/prisma";
+import { getMonthlyTally } from "@/lib/services/budgetService";
 import TransactionsClient from "@/components/transactions/TransactionsClient";
 import "./Transactions.css";
 
 export default async function TransactionsPage() {
-  const categories = await prisma.category.findMany({
-    orderBy: { name: 'asc' },
-  });
+  const tally = await getMonthlyTally();
+  const categories = tally.categories
+    .map(c => ({
+      id: c.id,
+      name: c.name,
+      balance: c.remaining
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const settings = await prisma.settings.findUnique({
     where: { id: "global" }
