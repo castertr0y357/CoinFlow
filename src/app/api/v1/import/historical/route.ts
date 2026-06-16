@@ -15,6 +15,21 @@ export async function POST(req: NextRequest) {
 
       const buffer = Buffer.from(await file.arrayBuffer());
 
+      // Magic bytes verification
+      const isZip = buffer.length >= 4 && buffer[0] === 0x50 && buffer[1] === 0x4b && buffer[2] === 0x03 && buffer[3] === 0x04;
+      const isXls = buffer.length >= 8 && buffer[0] === 0xd0 && buffer[1] === 0xcf && buffer[2] === 0x11 && buffer[3] === 0xe0 && buffer[4] === 0xa1 && buffer[5] === 0xb1 && buffer[6] === 0x1a && buffer[7] === 0xe1;
+      
+      // Basic text file verification (for CSVs)
+      let isCsv = false;
+      if (!isZip && !isXls) {
+        const textSample = buffer.toString('utf-8', 0, Math.min(buffer.length, 1024));
+        isCsv = !/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(textSample);
+      }
+
+      if (!isZip && !isXls && !isCsv) {
+        return NextResponse.json({ error: "Invalid file format. Only Excel (XLSX/XLS) or CSV files are allowed." }, { status: 400 });
+      }
+
       if (phase === "analyze") {
         const analysis = await analyzeXlsx(buffer);
         return NextResponse.json(analysis);

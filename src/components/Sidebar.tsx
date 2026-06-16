@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { mutate } from "swr";
 import Image from "next/image";
+import { useNotification } from "@/components/ui/NotificationProvider";
 
 interface Account {
   id: string;
@@ -28,8 +29,7 @@ export default function Sidebar({ accounts }: SidebarProps) {
   const router = useRouter();
   const [isSyncing, setIsSyncing] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-
-
+  const { showToast } = useNotification();
 
   const handleSync = async () => {
     setIsSyncing(true);
@@ -38,11 +38,12 @@ export default function Sidebar({ accounts }: SidebarProps) {
         method: 'POST',
         headers: { 'X-API-KEY': process.env.NEXT_PUBLIC_INTERNAL_API_KEY || '' }
       });
-      alert("Bank sync started!");
+      showToast("Bank sync started!", "success");
       router.refresh();
       mutate('/api/v1/budget/tally');
     } catch (error) {
       console.error("Sync Error:", error);
+      showToast("Sync trigger failed", "error");
     } finally {
       setIsSyncing(false);
     }

@@ -55,6 +55,17 @@ The easiest way to run CoinFlow is using Docker Compose, which boots the Next.js
    ```
 4. Access the web dashboard at `http://localhost:3000`. Your transaction sync worker will automatically run in the background every 6 hours.
 
+### 🔐 Default Credentials
+- **Master Password**: `admin` (configure via `APP_PASSWORD` in `.env`)
+
+### 💾 Backup & Restore Commands
+- **Manual Backups**: Auto-saved on the server (inside container at `/app/backups`) or via the Settings -> Maintenance UI.
+- **Programmatic Restore**: You can restore your data programmatically from any JSON backup using the following CLI command:
+  ```bash
+  curl -X POST -H "Content-Type: application/json" -H "X-API-KEY: your-internal-key-here" -d @backup.json http://localhost:3000/api/v1/data/import
+  ```
+  *(Note: Replace `your-internal-key-here` with your `NEXT_PUBLIC_INTERNAL_API_KEY` from `.env`)*
+
 ---
 
 ### 💻 Local Development Setup (Manual)

@@ -109,6 +109,7 @@ model YearlyCategory {
   year          BudgetYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
 
   @@unique([yearId, categoryId])
+  @@index([categoryId])
 }
 
 model Transaction {

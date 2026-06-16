@@ -11,7 +11,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ file
       const resolvedParams = await params;
       const { filename } = resolvedParams;
       
-      if (!filename || !filename.endsWith(".json")) {
+      if (!filename || (!filename.endsWith(".json.gz") && !filename.endsWith(".json"))) {
         return NextResponse.json({ error: "Invalid backup filename" }, { status: 400 });
       }
 
@@ -24,10 +24,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ file
       }
 
       const fileBuffer = fs.readFileSync(filepath);
+      const contentType = safeFilename.endsWith(".gz") ? "application/gzip" : "application/json";
 
       return new NextResponse(fileBuffer, {
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": contentType,
           "Content-Disposition": `attachment; filename="${safeFilename}"`
         }
       });

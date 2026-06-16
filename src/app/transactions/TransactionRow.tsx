@@ -4,6 +4,7 @@ import { useState } from "react";
 import { categorizeSplit, applyTransactionSplits, hideTransaction, addSplit, deleteTransactionSplit, updateTransactionMemo, linkRefundAction } from "./actions";
 import Button from "@/components/ui/Button";
 import { Category, Transaction, Split } from "@/types";
+import { useNotification } from "@/components/ui/NotificationProvider";
 
 interface RefundCandidateSplit {
   id: string;
@@ -45,6 +46,8 @@ export default function TransactionRow({
   const [showRefundMatcher, setShowRefundMatcher] = useState(false);
   const [isSearchingRefunds, setIsSearchingRefunds] = useState(false);
 
+  const { showToast, confirm } = useNotification();
+
   const handleFindRefundMatches = async () => {
     setIsSearchingRefunds(true);
     try {
@@ -56,7 +59,7 @@ export default function TransactionRow({
       setShowRefundMatcher(true);
     } catch (error) {
       console.error("Refund search error:", error);
-      alert("Error searching for refund matches");
+      showToast("Error searching for refund matches", "error");
     } finally {
       setIsSearchingRefunds(false);
     }
@@ -67,23 +70,28 @@ export default function TransactionRow({
     const targetCategoryName = candidate.splits[0]?.categoryName || "Uncategorized";
     
     if (!targetCategory) {
-      alert("The selected purchase has no category assigned. Please categorize the original purchase first.");
+      showToast("The selected purchase has no category assigned. Please categorize the original purchase first.", "error");
       return;
     }
     
-    if (confirm(`Link refund to original purchase? This will set this refund's category to "${targetCategoryName}" to offset your spending.`)) {
-      setIsPending(true);
-      try {
-        await linkRefundAction(tx.id, targetCategory);
-        setShowRefundMatcher(false);
-        if (onCategorized) onCategorized();
-      } catch (error) {
-        console.error(error);
-        alert("Failed to link refund");
-      } finally {
-        setIsPending(false);
+    confirm({
+      title: "Link Refund",
+      message: `Link refund to original purchase? This will set this refund's category to "${targetCategoryName}" to offset your spending.`,
+      onConfirm: async () => {
+        setIsPending(true);
+        try {
+          await linkRefundAction(tx.id, targetCategory);
+          setShowRefundMatcher(false);
+          if (onCategorized) onCategorized();
+          showToast("Refund linked successfully", "success");
+        } catch (error) {
+          console.error(error);
+          showToast("Failed to link refund", "error");
+        } finally {
+          setIsPending(false);
+        }
       }
-    }
+    });
   };
 
   const handleCategoryChange = async (splitId: string, categoryId: string) => {
@@ -99,7 +107,7 @@ export default function TransactionRow({
     
     const amount = parseFloat(amountStr);
     if (isNaN(amount) || amount <= 0) {
-      alert("Please enter a valid positive amount.");
+      showToast("Please enter a valid positive amount.", "error");
       return;
     }
 
@@ -109,9 +117,10 @@ export default function TransactionRow({
       const splitAmount = Number(tx.amount) < 0 ? -Math.abs(amount) : Math.abs(amount);
       await addSplit(tx.id, splitAmount, null);
       if (onCategorized) onCategorized();
+      showToast("Split added successfully", "success");
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : "An error occurred";
-      alert(errMsg);
+      showToast(errMsg, "error");
     } finally {
       setIsPending(false);
     }
@@ -130,15 +139,27 @@ export default function TransactionRow({
       });
       const data = await res.json();
       if (data.splits) {
-        if (confirm(`AI suggests splitting this into ${data.splits.length} categories. Apply now?`)) {
-          setIsPending(true);
-          await applyTransactionSplits(tx.id, data.splits);
-          setIsPending(false);
-          if (onCategorized) onCategorized();
-        }
+        confirm({
+          title: "Apply Smart Split",
+          message: `AI suggests splitting this into ${data.splits.length} categories. Apply now?`,
+          onConfirm: async () => {
+            setIsPending(true);
+            try {
+              await applyTransactionSplits(tx.id, data.splits);
+              if (onCategorized) onCategorized();
+              showToast("Smart split applied successfully!", "success");
+            } catch (error) {
+              console.error(error);
+              showToast("Failed to apply smart split", "error");
+            } finally {
+              setIsPending(false);
+            }
+          }
+        });
       }
     } catch (error) {
       console.error("Smart Split Error:", error);
+      showToast("Error processing smart split suggestion", "error");
     } finally {
       setIsAiSplitting(false);
     }

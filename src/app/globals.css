@@ -7,12 +7,31 @@
   --glass-bg: rgba(22, 22, 26, 0.7);
   --glass-border: rgba(255, 255, 255, 0.08);
   
-  --primary: #6366f1;
-  --primary-glow: rgba(99, 102, 241, 0.4);
-  --secondary: #a855f7;
-  --accent: #10b981;
-  --danger: #ef4444;
-  --warning: #f59e0b;
+  --primary-h: 239;
+  --primary-s: 84%;
+  --primary-l: 67%;
+  --primary: hsl(var(--primary-h), var(--primary-s), var(--primary-l));
+  --primary-glow: hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.4);
+  
+  --secondary-h: 271;
+  --secondary-s: 91%;
+  --secondary-l: 65%;
+  --secondary: hsl(var(--secondary-h), var(--secondary-s), var(--secondary-l));
+  
+  --accent-h: 161;
+  --accent-s: 84%;
+  --accent-l: 39%;
+  --accent: hsl(var(--accent-h), var(--accent-s), var(--accent-l));
+  
+  --danger-h: 0;
+  --danger-s: 84%;
+  --danger-l: 60%;
+  --danger: hsl(var(--danger-h), var(--danger-s), var(--danger-l));
+  
+  --warning-h: 38;
+  --warning-s: 92%;
+  --warning-l: 50%;
+  --warning: hsl(var(--warning-h), var(--warning-s), var(--warning-l));
   
   --text-main: #f8fafc;
   --text-dim: #94a3b8;
@@ -381,3 +400,8 @@ select:focus {
   margin-top: 0.25rem;
 }
 
+/* Accessibility Focus Rings */
+*:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}

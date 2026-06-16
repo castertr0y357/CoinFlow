@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Sidebar from "@/components/Sidebar";
 import { getSidebarData } from "@/lib/services/budgetService";
+import { NotificationProvider } from "@/components/ui/NotificationProvider";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -34,13 +35,16 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <div className="layout-wrapper">
-          <Sidebar accounts={sidebarData} />
-          <main className="main-content">
-            {children}
-          </main>
-        </div>
+        <NotificationProvider>
+          <div className="layout-wrapper">
+            <Sidebar accounts={sidebarData} />
+            <main className="main-content">
+              {children}
+            </main>
+          </div>
+        </NotificationProvider>
       </body>
     </html>
   );
 }
+

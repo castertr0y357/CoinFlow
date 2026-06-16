@@ -1,8 +1,13 @@
 import OpenAI from "openai";
 import { Category, Prisma } from "@prisma/client";
 import { logger } from "../logger";
-
 import prisma from "@/lib/prisma";
+import {
+  isMockMode,
+  getMockAiCategorize,
+  getMockNormalizedPayees,
+  getMockSubscriptions
+} from "./mockService";
 
 let isChatIdSupported = true;
 
@@ -151,6 +156,9 @@ function cleanJsonContent(content: string): string {
  */
 export async function normalizeItemNames(titles: string[]): Promise<Record<string, string>> {
   if (titles.length === 0) return {};
+  if (isMockMode()) {
+    return getMockNormalizedPayees(titles);
+  }
 
   const config = await getAiConfig();
   if (!config) {
@@ -198,6 +206,9 @@ Format the response as valid JSON only.
  * Detects recurring subscriptions from a list of transactions.
  */
 export async function detectSubscriptions(transactions: SubscriptionTxInput[]): Promise<SubscriptionResult[]> {
+  if (isMockMode()) {
+    return getMockSubscriptions().subscriptions as any;
+  }
   const config = await getAiConfig();
   if (!config) return [];
   const prompt = `
@@ -229,6 +240,9 @@ Format the response as valid JSON only.
  */
 export async function getCategorySuggestions(transactions: CategorizeTxInput[], categories: Category[], examples: CategorizeExampleInput[] = []): Promise<Record<string, string>> {
   if (transactions.length === 0) return {};
+  if (isMockMode()) {
+    return getMockAiCategorize(transactions.map(t => t.id), categories);
+  }
 
   const config = await getAiConfig();
   if (!config) return {};
@@ -286,6 +300,9 @@ Format the response as valid JSON only.
  * Cleans a raw merchant name from bank data into a human-readable payee name.
  */
 export async function getCleanMerchantName(rawPayee: string, examples: MerchantCleanExample[] = []): Promise<string> {
+  if (isMockMode()) {
+    return getMockNormalizedPayees([rawPayee])[rawPayee] || rawPayee;
+  }
   const config = await getAiConfig();
   if (!config) return rawPayee;
   const prompt = `
@@ -319,6 +336,9 @@ Format the response as valid JSON only.
  */
 export async function getCleanMerchantNamesBatch(rawPayees: string[], examples: MerchantCleanExample[] = []): Promise<Record<string, string>> {
   if (rawPayees.length === 0) return {};
+  if (isMockMode()) {
+    return getMockNormalizedPayees(rawPayees);
+  }
 
   const config = await getAiConfig();
   if (!config) {
@@ -369,6 +389,14 @@ export async function getSplitSuggestions(
   items: { title: string, price: number }[],
   categories: Category[]
 ): Promise<{ splits: { title: string, price: number, categoryName: string }[] }> {
+  if (isMockMode()) {
+    const mockSplits = items.map((item, idx) => ({
+      title: item.title,
+      price: item.price,
+      categoryName: categories[idx % categories.length]?.name || "Uncategorized"
+    }));
+    return { splits: mockSplits };
+  }
   const config = await getAiConfig();
   if (!config) return { splits: [] };
   const prompt = `

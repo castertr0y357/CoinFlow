@@ -3,6 +3,34 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { syncAllValuations } from "@/lib/services/valuationService";
+import { getSession } from "@/lib/auth";
+import { z } from "zod";
+import { isSafeUrl } from "@/lib/security";
+
+const UpdateMortgageSchema = z.object({
+  accountId: z.string().min(1),
+  interestRate: z.number().min(0).max(100),
+  monthlyPayment: z.number().min(0),
+  startDate: z.string().refine((val) => !isNaN(Date.parse(val)), "Invalid start date"),
+  termMonths: z.number().int().min(1),
+  manualHomeValue: z.number().min(0).nullable().optional(),
+  originalBalance: z.number().min(0).optional(),
+  address: z.string().nullable().optional(),
+});
+
+const AddValuationProviderSchema = z.object({
+  mortgageId: z.string().min(1),
+  name: z.string().min(1),
+  url: z.string().url(),
+});
+
+const RemoveValuationProviderSchema = z.object({
+  providerId: z.string().min(1),
+});
+
+const SyncValuationsSchema = z.object({
+  mortgageId: z.string().min(1),
+});
 
 export async function updateMortgageDetails(data: {
   accountId: string;
@@ -14,88 +42,131 @@ export async function updateMortgageDetails(data: {
   originalBalance?: number;
   address?: string;
 }) {
-  const mortgage = await prisma.mortgageDetail.upsert({
-    where: { accountId: data.accountId },
-    update: {
-      interestRate: data.interestRate,
-      monthlyPayment: data.monthlyPayment,
-      startDate: new Date(data.startDate),
-      termMonths: data.termMonths,
-      manualHomeValue: data.manualHomeValue ?? null,
-      originalBalance: data.originalBalance,
-      address: data.address || null,
-    },
-    create: {
-      accountId: data.accountId,
-      interestRate: data.interestRate,
-      monthlyPayment: data.monthlyPayment,
-      startDate: new Date(data.startDate),
-      termMonths: data.termMonths,
-      manualHomeValue: data.manualHomeValue ?? null,
-      originalBalance: data.originalBalance,
-      address: data.address || null,
-    },
-  });
+  const session = await getSession();
+  if (!session) throw new Error("Unauthorized");
 
-  if (data.address) {
-    const existingRentCastProvider = await prisma.homeValueProvider.findFirst({
-      where: {
-        mortgageId: mortgage.id,
-        name: "RentCast"
-      }
+  try {
+    const parsed = UpdateMortgageSchema.parse(data);
+
+    const mortgage = await prisma.mortgageDetail.upsert({
+      where: { accountId: parsed.accountId },
+      update: {
+        interestRate: parsed.interestRate,
+        monthlyPayment: parsed.monthlyPayment,
+        startDate: new Date(parsed.startDate),
+        termMonths: parsed.termMonths,
+        manualHomeValue: parsed.manualHomeValue ?? null,
+        originalBalance: parsed.originalBalance,
+        address: parsed.address || null,
+      },
+      create: {
+        accountId: parsed.accountId,
+        interestRate: parsed.interestRate,
+        monthlyPayment: parsed.monthlyPayment,
+        startDate: new Date(parsed.startDate),
+        termMonths: parsed.termMonths,
+        manualHomeValue: parsed.manualHomeValue ?? null,
+        originalBalance: parsed.originalBalance,
+        address: parsed.address || null,
+      },
     });
 
-    if (!existingRentCastProvider) {
-      await prisma.homeValueProvider.create({
-        data: {
+    if (parsed.address) {
+      const existingRentCastProvider = await prisma.homeValueProvider.findFirst({
+        where: {
           mortgageId: mortgage.id,
-          name: "RentCast",
-          url: "https://api.rentcast.io/v1/avm/value"
+          name: "RentCast"
         }
       });
-    }
 
-    const existingTaxProvider = await prisma.homeValueProvider.findFirst({
-      where: {
-        mortgageId: mortgage.id,
-        name: "RentCast Tax Assessment"
+      if (!existingRentCastProvider) {
+        await prisma.homeValueProvider.create({
+          data: {
+            mortgageId: mortgage.id,
+            name: "RentCast",
+            url: "https://api.rentcast.io/v1/avm/value"
+          }
+        });
       }
-    });
 
-    if (!existingTaxProvider) {
-      await prisma.homeValueProvider.create({
-        data: {
+      const existingTaxProvider = await prisma.homeValueProvider.findFirst({
+        where: {
           mortgageId: mortgage.id,
-          name: "RentCast Tax Assessment",
-          url: "https://api.rentcast.io/v1/properties"
+          name: "RentCast Tax Assessment"
         }
       });
+
+      if (!existingTaxProvider) {
+        await prisma.homeValueProvider.create({
+          data: {
+            mortgageId: mortgage.id,
+            name: "RentCast Tax Assessment",
+            url: "https://api.rentcast.io/v1/properties"
+          }
+        });
+      }
     }
+
+    revalidatePath("/mortgage");
+    revalidatePath("/");
+  } catch (error) {
+    console.error("[MORTGAGE ACTION ERROR] updateMortgageDetails failed:", error);
+    throw error;
   }
-
-  revalidatePath("/mortgage");
-  revalidatePath("/");
 }
 
 export async function addValuationProvider(mortgageId: string, name: string, url: string) {
-  await prisma.homeValueProvider.create({
-    data: {
-      mortgageId,
-      name,
-      url
+  const session = await getSession();
+  if (!session) throw new Error("Unauthorized");
+
+  try {
+    const parsed = AddValuationProviderSchema.parse({ mortgageId, name, url });
+
+    if (!(await isSafeUrl(parsed.url))) {
+      throw new Error("Invalid or unsafe destination URL (SSRF detection)");
     }
-  });
-  revalidatePath("/mortgage");
+
+    await prisma.homeValueProvider.create({
+      data: {
+        mortgageId: parsed.mortgageId,
+        name: parsed.name,
+        url: parsed.url,
+      }
+    });
+    revalidatePath("/mortgage");
+  } catch (error) {
+    console.error("[MORTGAGE ACTION ERROR] addValuationProvider failed:", error);
+    throw error;
+  }
 }
 
 export async function removeValuationProvider(providerId: string) {
-  await prisma.homeValueProvider.delete({
-    where: { id: providerId }
-  });
-  revalidatePath("/mortgage");
+  const session = await getSession();
+  if (!session) throw new Error("Unauthorized");
+
+  try {
+    const parsed = RemoveValuationProviderSchema.parse({ providerId });
+    await prisma.homeValueProvider.delete({
+      where: { id: parsed.providerId }
+    });
+    revalidatePath("/mortgage");
+  } catch (error) {
+    console.error("[MORTGAGE ACTION ERROR] removeValuationProvider failed:", error);
+    throw error;
+  }
 }
 
 export async function syncValuations(mortgageId: string) {
-  await syncAllValuations(mortgageId);
-  revalidatePath("/mortgage");
+  const session = await getSession();
+  if (!session) throw new Error("Unauthorized");
+
+  try {
+    const parsed = SyncValuationsSchema.parse({ mortgageId });
+    await syncAllValuations(parsed.mortgageId);
+    revalidatePath("/mortgage");
+  } catch (error) {
+    console.error("[MORTGAGE ACTION ERROR] syncValuations failed:", error);
+    throw error;
+  }
 }
+

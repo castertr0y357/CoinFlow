@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
       }
 
       const files = fs.readdirSync(BACKUP_DIR)
-        .filter(f => f.endsWith(".json"))
+        .filter(f => f.endsWith(".json.gz") || f.endsWith(".json"))
         .map(f => {
           const stats = fs.statSync(path.join(BACKUP_DIR, f));
           return {

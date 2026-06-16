@@ -1,8 +1,8 @@
 import prisma from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
+import { updateSettingsAction } from "./actions";
 
 export default async function GeneralSettingsPage() {
   const settings = await prisma.settings.findUnique({ where: { id: 'global' } });
@@ -15,82 +15,9 @@ export default async function GeneralSettingsPage() {
     select: { id: true, name: true }
   });
 
-  async function updateSettings(formData: FormData) {
-    "use server";
-    
-    const target = parseFloat(formData.get("savingsTarget") as string);
-    const income = parseFloat(formData.get("expectedMonthlyIncome") as string);
-    const retention = parseInt(formData.get("backupRetentionDays") as string);
-    const savingsCategoryId = formData.get("savingsCategoryId") as string;
-    let token = formData.get("simpleFinToken") as string;
-    const rentcastApiKey = formData.get("rentcastApiKey") as string;
-
-    const paycheckEnabled = formData.get("paycheckEnabled") === "on";
-    const paycheckFrequency = formData.get("paycheckFrequency") as string;
-    const paycheckAmount = parseFloat(formData.get("paycheckAmount") as string);
-    const paycheckNextDateStr = formData.get("paycheckNextDate") as string;
-    const paycheckNextDate = paycheckNextDateStr ? new Date(paycheckNextDateStr + "T00:00:00") : null;
-
-    if (token && !token.startsWith('https://user:')) { 
-      let claimUrl = token;
-      if (!token.startsWith('https://')) {
-        try {
-          const decoded = Buffer.from(token, 'base64').toString('utf-8');
-          if (decoded.startsWith('https://')) {
-            claimUrl = decoded;
-          }
-        } catch {}
-      }
-
-      if (claimUrl.includes('/claim/')) {
-        try {
-          const claimResponse = await fetch(claimUrl, { method: 'POST' });
-          if (claimResponse.ok) {
-            const accessUrl = await claimResponse.text();
-            if (accessUrl && accessUrl.startsWith('https')) {
-              token = accessUrl;
-            }
-          }
-        } catch {}
-      }
-    }
-
-    await prisma.settings.upsert({
-      where: { id: 'global' },
-      update: {
-        savingsTarget: isNaN(target) ? 0 : target,
-        monthlyIncome: isNaN(income) ? 5000 : income,
-        backupRetentionDays: isNaN(retention) ? 30 : retention,
-        savingsCategoryId: savingsCategoryId || null,
-        simpleFinToken: token || null,
-        paycheckEnabled,
-        paycheckFrequency: paycheckFrequency || "BI_WEEKLY",
-        paycheckAmount: isNaN(paycheckAmount) ? 0 : paycheckAmount,
-        paycheckNextDate,
-        rentcastApiKey: rentcastApiKey || null,
-      },
-      create: {
-        id: 'global',
-        savingsTarget: isNaN(target) ? 0 : target,
-        monthlyIncome: isNaN(income) ? 5000 : income,
-        backupRetentionDays: isNaN(retention) ? 30 : retention,
-        savingsCategoryId: savingsCategoryId || null,
-        simpleFinToken: token || null,
-        paycheckEnabled,
-        paycheckFrequency: paycheckFrequency || "BI_WEEKLY",
-        paycheckAmount: isNaN(paycheckAmount) ? 0 : paycheckAmount,
-        paycheckNextDate,
-        rentcastApiKey: rentcastApiKey || null,
-      }
-    });
-
-    revalidatePath("/settings/general");
-    revalidatePath("/");
-  }
-
   return (
     <div className="subpage-container animate-fade-in">
-      <form action={updateSettings}>
+      <form action={updateSettingsAction}>
         <Card className="settings-form">
           <div className="form-section">
             <h2>Budget Rules</h2>

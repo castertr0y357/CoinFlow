@@ -1,6 +1,7 @@
 import prisma from "../prisma";
 import * as cheerio from "cheerio";
 import { logger } from "../logger";
+import { isMockMode, getMockRentCastValue, getMockRentCastTaxValue } from "./mockService";
 
 export async function scrapeHomeValue(url: string, provider: string): Promise<number | null> {
   try {
@@ -128,6 +129,9 @@ export async function scrapeHomeValue(url: string, provider: string): Promise<nu
 }
 
 export async function fetchRentCastValue(address: string, apiKey: string): Promise<number | null> {
+  if (isMockMode()) {
+    return getMockRentCastValue(address).price;
+  }
   try {
     const url = `https://api.rentcast.io/v1/avm/value?address=${encodeURIComponent(address)}`;
     const response = await fetch(url, {
@@ -158,6 +162,9 @@ export async function fetchRentCastValue(address: string, apiKey: string): Promi
 }
 
 export async function fetchRentCastTaxValue(address: string, apiKey: string): Promise<number | null> {
+  if (isMockMode()) {
+    return getMockRentCastTaxValue(address).totalValue;
+  }
   try {
     const url = `https://api.rentcast.io/v1/properties?address=${encodeURIComponent(address)}`;
     const response = await fetch(url, {

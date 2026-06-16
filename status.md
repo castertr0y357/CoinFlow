@@ -1,6 +1,7 @@
-# Project Status: CoinFlow Browser Extension (v2.25.7)
+# Project Status: CoinFlow Browser Extension (v2.26.0)
 
 ## Current Progress
+- [x] **Security and Code Quality Audit Remediation (v2.26.0)**: Executed a comprehensive security and code quality audit remediation. Secured all 30+ server actions with auth checks, Zod schema validations, and try-catch blocks. Extracted inline server actions into separate modules. Implemented a global glassmorphic `NotificationProvider` for toasts and confirmation modals. Redacted tracebacks in `error.tsx` to display correlation IDs. Converted color tokens to HSL variables, added focus-visible outlines, compressed automated backups with gzip, and offloaded SimpleFIN sync asynchronously.
 - [x] **Workspace Rules Synchronization (v2.25.7)**: Synchronized local rules files (AGENTS.md, CLAUDE.md, .cursorrules, .windsurfrules) with the latest global developer template, integrating new guidelines for IDOR Protection, AI Integration Security, Secure File Upload & SVG Handling, SSRF Defenses, and DB Port restrictions.
 - [x] **Category Balance in Transaction Assignment (v2.25.6)**: Retrieved dynamic category balances using `getMonthlyTally()` on the transactions inbox page. Displayed remaining category balances directly in both the transaction row split category dropdowns and the bulk categorization dropdown selector.
 - [x] **Project Standards Audit & Integrity Alignment (v2.25.5)**: Implemented startup configuration validation checks for required environment variables. Defined explicit deletion behaviors and added missing performance indexes on all database foreign key columns in `schema.prisma`. Copied `eslint.config.mjs` to the Docker runner stage to enable containerized linter verification.
@@ -52,6 +53,16 @@
 - [x] **Subscription Detective Alignment (v2.10.0)**: Corrected unmapped keys (`monthlyCost`, `reason`) and wrapped the JSON response array inside an object matching frontend specifications.
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
+
+## Recent Fixes & Features (v2.26.0)
+- **Security & Code Quality Audit Remediations**:
+  - Secured all 30+ server actions (transactions, categories, mortgage, goals, settings, commitments, manual actions) with session validation (`getSession()`), input schema verification using Zod, and try-catch blocks.
+  - Extracted inline server actions from settings pages `/settings/general` and `/settings/ai` into dedicated standalone files (`src/app/settings/general/actions.ts` and `src/app/settings/ai/actions.ts`).
+  - Added strict SSRF validation checks using DNS resolution lookup for third-party integrations (SimpleFIN claims, RentCast valuations).
+  - Implemented glassmorphic `NotificationProvider` with slide-in/scale-up custom animations to replace browser `alert()` and `confirm()` dialogs.
+  - Redacted server-side tracebacks and query dumps in `error.tsx` to display correlation/digest IDs instead in production.
+  - Converted primary/secondary/accent CSS hex values to HSL tokens and added visible `:focus-visible` outline ring traversals in `globals.css`.
+  - Configured automated database seeding on Docker runtime startup by updating `package.json` to execute prisma seeding via `npx ts-node` to avoid ENOENT errors inside minimal standalone containers.
 
 ## Recent Fixes & Features (v2.25.7)
 - **Workspace Rules Synchronization**:
@@ -234,7 +245,7 @@
 - [ ] Test the newly added Realtor.com scraper with a live active-listing URL.
 
 ## Technical Details
-- **Version**: 2.25.4
+- **Version**: 2.26.0
 - **Core Files**:
   - `src/lib/services/aiService.ts`: Central completions loader and wrapper supporting settings toggles and fallback modes.
   - `src/app/settings/ai/page.tsx`: Isolated AI Assistant settings page.

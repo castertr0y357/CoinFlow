@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/api-utils";
 import fs from "fs";
 import path from "path";
+import zlib from "zlib";
 import { createBackupSnapshot, restoreBackupData } from "@/lib/services/backupService";
 
 const BACKUP_DIR = "/app/backups";
@@ -11,7 +12,7 @@ export async function POST(req: NextRequest) {
     try {
       const { filename } = await req.json();
 
-      if (!filename || !filename.endsWith(".json")) {
+      if (!filename || (!filename.endsWith(".json.gz") && !filename.endsWith(".json"))) {
         return NextResponse.json({ error: "Invalid backup filename" }, { status: 400 });
       }
 
@@ -23,7 +24,13 @@ export async function POST(req: NextRequest) {
       // 0. Take a safety snapshot before we overwrite anything
       await createBackupSnapshot("pre-restore");
 
-      const text = fs.readFileSync(filepath, "utf-8");
+      const fileBuffer = fs.readFileSync(filepath);
+      let text = "";
+      if (filename.endsWith(".gz")) {
+        text = zlib.gunzipSync(fileBuffer).toString("utf-8");
+      } else {
+        text = fileBuffer.toString("utf-8");
+      }
       const backup = JSON.parse(text);
 
       const isLegacy = backup.version === "1.0";

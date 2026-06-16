@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import fs from "fs";
 import path from "path";
+import zlib from "zlib";
 import { logger } from "../logger";
 import { Transaction, Account, Category, BudgetYear, YearlyCategory, MortgageDetail, HomeValueProvider, Settings, TransactionSplit } from "@prisma/client";
 
@@ -50,12 +51,14 @@ export async function createBackupSnapshot(reason: string = "auto") {
       }
     };
 
-    // 3. Save to disk
+    // 3. Save to disk with gzip compression
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-").replace("T", "_").split("Z")[0];
-    const filename = `webbudget_${reason}_${timestamp}.json`;
+    const filename = `webbudget_${reason}_${timestamp}.json.gz`;
     const filepath = path.join(BACKUP_DIR, filename);
     
-    fs.writeFileSync(filepath, JSON.stringify(backup, null, 2));
+    const jsonStr = JSON.stringify(backup, null, 2);
+    const compressed = zlib.gzipSync(jsonStr);
+    fs.writeFileSync(filepath, compressed);
     logger.info("Backup", `Snapshot created: ${filename}`);
 
     // 4. Cleanup old backups
@@ -77,7 +80,7 @@ async function rotateBackups() {
 
     const files = fs.readdirSync(BACKUP_DIR);
     for (const file of files) {
-      if (!file.endsWith(".json")) continue;
+      if (!file.endsWith(".json.gz") && !file.endsWith(".json")) continue;
       
       const filepath = path.join(BACKUP_DIR, file);
       const stats = fs.statSync(filepath);
