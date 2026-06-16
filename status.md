@@ -1,6 +1,7 @@
-# Project Status: CoinFlow Browser Extension (v2.25.6)
+# Project Status: CoinFlow Browser Extension (v2.25.7)
 
 ## Current Progress
+- [x] **Workspace Rules Synchronization (v2.25.7)**: Synchronized local rules files (AGENTS.md, CLAUDE.md, .cursorrules, .windsurfrules) with the latest global developer template, integrating new guidelines for IDOR Protection, AI Integration Security, Secure File Upload & SVG Handling, SSRF Defenses, and DB Port restrictions.
 - [x] **Category Balance in Transaction Assignment (v2.25.6)**: Retrieved dynamic category balances using `getMonthlyTally()` on the transactions inbox page. Displayed remaining category balances directly in both the transaction row split category dropdowns and the bulk categorization dropdown selector.
 - [x] **Project Standards Audit & Integrity Alignment (v2.25.5)**: Implemented startup configuration validation checks for required environment variables. Defined explicit deletion behaviors and added missing performance indexes on all database foreign key columns in `schema.prisma`. Copied `eslint.config.mjs` to the Docker runner stage to enable containerized linter verification.
 - [x] **Logo Image Optimization & Rules Sync (v2.25.4)**: Fixed the `400 (Bad Request)` error when loading the CoinFlow logo image by adding the `unoptimized` prop to the Next.js `Image` component. Synchronized local workspace rules files with the latest global developer standards.
@@ -51,6 +52,11 @@
 - [x] **Subscription Detective Alignment (v2.10.0)**: Corrected unmapped keys (`monthlyCost`, `reason`) and wrapped the JSON response array inside an object matching frontend specifications.
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
+
+## Recent Fixes & Features (v2.25.7)
+- **Workspace Rules Synchronization**:
+  - Synchronized rules in `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, and `.windsurfrules` with the latest global project rules template.
+  - Merged new rules covering IDOR Protection, AI Integration Security, Secure File Upload & SVG Handling, SSRF Defenses, and DB Port restrictions.
 
 ## Recent Fixes & Features (v2.25.6)
 - **Category Balances in Dropdown Selectors**:
