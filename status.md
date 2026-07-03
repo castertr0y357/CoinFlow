@@ -1,6 +1,7 @@
-# Project Status: CoinFlow Browser Extension (v2.26.0)
+# Project Status: CoinFlow Browser Extension (v2.26.1)
 
 ## Current Progress
+- [x] **Reverse Proxy CSRF Header Parsing Fix (v2.26.1)**: Resolved production server `400 Bad Request` and `An unexpected response was received from the server` errors on Server Actions by splitting comma-separated `X-Forwarded-Host` and `X-Forwarded-Proto` header values from double proxies and checking for `origin: null` edge cases to return a safe `403` instead of parsing exceptions.
 - [x] **Security and Code Quality Audit Remediation (v2.26.0)**: Executed a comprehensive security and code quality audit remediation. Secured all 30+ server actions with auth checks, Zod schema validations, and try-catch blocks. Extracted inline server actions into separate modules. Implemented a global glassmorphic `NotificationProvider` for toasts and confirmation modals. Redacted tracebacks in `error.tsx` to display correlation IDs. Converted color tokens to HSL variables, added focus-visible outlines, compressed automated backups with gzip, and offloaded SimpleFIN sync asynchronously.
 - [x] **Workspace Rules Synchronization (v2.25.7)**: Synchronized local rules files (AGENTS.md, CLAUDE.md, .cursorrules, .windsurfrules) with the latest global developer template, integrating new guidelines for IDOR Protection, AI Integration Security, Secure File Upload & SVG Handling, SSRF Defenses, and DB Port restrictions.
 - [x] **Category Balance in Transaction Assignment (v2.25.6)**: Retrieved dynamic category balances using `getMonthlyTally()` on the transactions inbox page. Displayed remaining category balances directly in both the transaction row split category dropdowns and the bulk categorization dropdown selector.
@@ -53,6 +54,12 @@
 - [x] **Subscription Detective Alignment (v2.10.0)**: Corrected unmapped keys (`monthlyCost`, `reason`) and wrapped the JSON response array inside an object matching frontend specifications.
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
+
+## Recent Fixes & Features (v2.26.1)
+- **Reverse Proxy CSRF Header Parsing Fix**:
+  - Sanitized `X-Forwarded-Host` and `X-Forwarded-Proto` header values by splitting by comma and taking the first/primary item, preventing Next.js router from throwing URL construction crashes when multiple proxies are in place.
+  - Handled `origin === "null"` edge cases explicitly in `src/middleware.ts` to log a clear debug error and block with a clean 403 Forbidden page instead of throwing 400 Bad Request exceptions.
+  - Verified compilation, container builds, and successfully ran the test suite (all 14 unit and integration tests passing).
 
 ## Recent Fixes & Features (v2.26.0)
 - **Security & Code Quality Audit Remediations**:

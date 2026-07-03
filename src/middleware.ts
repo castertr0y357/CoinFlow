@@ -3,7 +3,8 @@ import { decrypt, updateSession, encrypt, getCookieOptions } from "@/lib/auth";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const protocol = request.headers.get("x-forwarded-proto") || "http";
+  const rawProto = request.headers.get("x-forwarded-proto") || "http";
+  const protocol = rawProto.split(",")[0].trim();
   const host = request.headers.get("host") || "unknown";
   
   // 1. Generate Correlation ID for trace logging
@@ -30,11 +31,24 @@ export async function middleware(request: NextRequest) {
     if (!hasApiKey) {
       const origin = request.headers.get("origin");
       if (origin) {
-        const forwardedHost = request.headers.get("x-forwarded-host") || host;
-        const forwardedProto = request.headers.get("x-forwarded-proto") || "http";
+        const rawHost = request.headers.get("x-forwarded-host") || host;
+        const forwardedHost = rawHost.split(",")[0].trim();
+        const rawProto = request.headers.get("x-forwarded-proto") || "http";
+        const forwardedProto = rawProto.split(",")[0].trim();
         const expectedOrigin = `${forwardedProto}://${forwardedHost}`;
 
         try {
+          if (origin === "null") {
+            console.error(`[CSRF] [Id: ${correlationId}] Blocked request from null origin`);
+            return new NextResponse(JSON.stringify({ error: "CSRF Verification Failed" }), {
+              status: 403,
+              headers: { 
+                "Content-Type": "application/json",
+                "X-Correlation-ID": correlationId
+              }
+            });
+          }
+
           const originUrl = new URL(origin);
           const expectedUrl = new URL(expectedOrigin);
 
