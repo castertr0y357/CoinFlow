@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import prisma from "@/lib/prisma";
 import { getMonthlyTally } from "@/lib/services/budgetService";
 import TransactionsClient from "@/components/transactions/TransactionsClient";
@@ -13,6 +14,16 @@ export default async function TransactionsPage() {
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  const accounts = await prisma.account.findMany({
+    orderBy: { name: 'asc' }
+  });
+
+  const mappedAccounts = accounts.map(a => ({
+    id: a.id,
+    name: a.name,
+    displayName: a.displayName
+  }));
+
   const settings = await prisma.settings.findUnique({
     where: { id: "global" }
   });
@@ -26,10 +37,14 @@ export default async function TransactionsPage() {
         </p>
       </header>
 
-      <TransactionsClient 
-        categories={categories} 
-        aiEnabled={settings?.aiEnabled ?? false} 
-      />
+      <Suspense fallback={<div className="transactions-list glass skeleton animate-fade-in" style={{ minHeight: '400px' }}></div>}>
+        <TransactionsClient 
+          categories={categories} 
+          accounts={mappedAccounts}
+          aiEnabled={settings?.aiEnabled ?? false} 
+        />
+      </Suspense>
     </div>
   );
 }
+

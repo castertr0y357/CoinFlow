@@ -78,10 +78,10 @@
 }
 
 /* Edit Name Components */
-.display-name-group {
+.account-display-name-link {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  text-decoration: none;
   cursor: pointer;
 }
 
@@ -93,19 +93,25 @@
   transition: var(--transition-fast);
 }
 
-.display-name-group:hover .account-display-name {
+.account-display-name-link:hover .account-display-name {
   border-color: var(--primary);
-  color: white;
+  color: var(--primary);
 }
 
-.edit-indicator {
+.edit-indicator-btn {
   font-size: 0.75rem;
-  opacity: 0;
+  opacity: 0.25;
   transition: var(--transition-fast);
+  padding: 2px 4px;
 }
 
-.display-name-group:hover .edit-indicator {
-  opacity: 0.7;
+.display-name-group-wrapper:hover .edit-indicator-btn {
+  opacity: 0.8;
+}
+
+.edit-indicator-btn:hover {
+  opacity: 1 !important;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .edit-input-group {

@@ -31,6 +31,12 @@ export interface ExternalOrder {
   items?: ExternalOrderItem[];
 }
 
+export interface AccountShort {
+  id: string;
+  name: string;
+  displayName: string | null;
+}
+
 export type Transaction = {
   id: string;
   date: Date;
@@ -38,11 +44,14 @@ export type Transaction = {
   rawPayee: string | null;
   amount: number | string;
   splits: Split[];
+  accountId: string;
+  account?: AccountShort | null;
   externalOrderId: string | null;
   externalOrder?: ExternalOrder | null;
   isHidden: boolean;
   memo: string | null;
 }
+
 
 export interface Settings {
   id: string;

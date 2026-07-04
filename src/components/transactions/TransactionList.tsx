@@ -14,6 +14,7 @@ interface TransactionListProps {
   sortOrder?: 'asc' | 'desc';
   onSort?: (field: 'date' | 'amount' | 'payee') => void;
   aiEnabled?: boolean;
+  onAccountClick?: (accountId: string) => void;
 }
 
 function SortIcon({ field, sortBy, sortOrder }: { field: 'date' | 'amount' | 'payee'; sortBy?: 'date' | 'amount' | 'payee'; sortOrder?: 'asc' | 'desc' }) {
@@ -32,7 +33,8 @@ export default function TransactionList({
   sortBy,
   sortOrder,
   onSort,
-  aiEnabled = false
+  aiEnabled = false,
+  onAccountClick
 }: TransactionListProps) {
   const allSelected = transactions.length > 0 && transactions.every(tx => selectedIds.has(tx.id));
 
@@ -61,6 +63,9 @@ export default function TransactionList({
             onClick={() => onSort?.('payee')}
           >
             Payee <SortIcon field="payee" sortBy={sortBy} sortOrder={sortOrder} />
+          </span>
+          <span style={{ flex: 1.2 }}>
+            Account
           </span>
           <span 
             className={`sortable-header ${sortBy === 'amount' ? 'active' : ''}`} 
@@ -91,6 +96,7 @@ export default function TransactionList({
               isSelected={selectedIds.has(tx.id)}
               onSelectionToggle={onSelectionToggle}
               aiEnabled={aiEnabled}
+              onAccountClick={onAccountClick}
             />
           ))}
         </div>

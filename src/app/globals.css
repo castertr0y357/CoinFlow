@@ -310,6 +310,15 @@ select:focus {
   align-items: center;
   font-size: 0.85rem;
   color: var(--text-dim);
+  padding: 0.25rem 0.5rem;
+  margin: 0 -0.5rem;
+  border-radius: 6px;
+  transition: var(--transition-fast);
+  cursor: pointer;
+}
+.sidebar-account-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
 }
 .account-info {
   display: flex;

@@ -29,7 +29,8 @@ export default function TransactionRow({
   onCategorized,
   isSelected,
   onSelectionToggle,
-  aiEnabled = false
+  aiEnabled = false,
+  onAccountClick
 }: { 
   tx: Transaction; 
   categories: Category[];
@@ -38,6 +39,7 @@ export default function TransactionRow({
   isSelected?: boolean;
   onSelectionToggle?: (id: string, selected: boolean) => void;
   aiEnabled?: boolean;
+  onAccountClick?: (accountId: string) => void;
 }) {
   const [isPending, setIsPending] = useState(false);
   const [isAiSplitting, setIsAiSplitting] = useState(false);
@@ -289,10 +291,34 @@ export default function TransactionRow({
                   💬 Add note...
                 </span>
               )}
+
+              {/* Mobile Account Badge */}
+              {tx.account && (
+                <div className="tx-mobile-account-badge" onClick={(e) => e.stopPropagation()}>
+                  <span 
+                    className="account-badge-pill"
+                    onClick={() => onAccountClick?.(tx.accountId)}
+                    title="Filter by this account"
+                  >
+                    🏦 {tx.account.displayName || tx.account.name}
+                  </span>
+                </div>
+              )}
             </div>
 
             {aiEnabled && suggestion && !tx.splits.every(s => s.categoryId) && (
               <span className="ai-badge animate-pulse" style={{ marginTop: '0.25rem' }}>✨ AI Suggested: {suggestedCategory?.name}</span>
+            )}
+          </div>
+          <div className="tx-account">
+            {tx.account && (
+              <span 
+                className="account-badge-pill"
+                onClick={() => onAccountClick?.(tx.accountId)}
+                title="Filter by this account"
+              >
+                🏦 {tx.account.displayName || tx.account.name}
+              </span>
             )}
           </div>
           <div className={`tx-amount ${Number(tx.amount) < 0 ? 'danger' : 'accent'}`}>

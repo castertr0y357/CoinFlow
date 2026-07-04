@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { mutate } from "swr";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -265,10 +266,16 @@ export default function AccountsClient({ initialAccounts }: AccountsClientProps)
                       </div>
                     ) : (
                       <div className="display-name-group-wrapper">
-                        <div className="display-name-group" onClick={() => startEditing(acc)} title={acc.isManual ? "Click to edit name and balance" : "Click to rename account"}>
+                        <Link href={`/transactions?accountId=${acc.id}`} className="account-display-name-link" title="View transactions for this account">
                           <span className="account-display-name">{acc.displayName || acc.name}</span>
-                          <span className="edit-indicator">✏️</span>
-                        </div>
+                        </Link>
+                        <button 
+                          className="icon-action-btn edit-indicator-btn" 
+                          onClick={() => startEditing(acc)} 
+                          title={acc.isManual ? "Edit name and balance" : "Rename account"}
+                        >
+                          ✏️
+                        </button>
                         {acc.isManual && (
                           <button 
                             className="icon-action-btn delete-account-btn" 
@@ -408,10 +415,16 @@ export default function AccountsClient({ initialAccounts }: AccountsClientProps)
                       </div>
                     ) : (
                       <div className="display-name-group-wrapper">
-                        <div className="display-name-group" onClick={() => startEditing(acc)} title={acc.isManual ? "Click to edit name and balance" : "Click to rename account"}>
+                        <Link href={`/transactions?accountId=${acc.id}`} className="account-display-name-link" title="View transactions for this account">
                           <span className="account-display-name">{acc.displayName || acc.name}</span>
-                          <span className="edit-indicator">✏️</span>
-                        </div>
+                        </Link>
+                        <button 
+                          className="icon-action-btn edit-indicator-btn" 
+                          onClick={() => startEditing(acc)} 
+                          title={acc.isManual ? "Edit name and balance" : "Rename account"}
+                        >
+                          ✏️
+                        </button>
                         {acc.isManual && (
                           <button 
                             className="icon-action-btn delete-account-btn" 

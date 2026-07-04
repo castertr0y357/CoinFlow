@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTransactions } from "@/hooks/useTransactions";
 import TransactionList from "./TransactionList";
 import Button from "@/components/ui/Button";
@@ -9,9 +10,11 @@ import { applyTransactionSplits, bulkCategorizeTransactions } from "@/app/transa
 
 export default function TransactionsClient({ 
   categories, 
+  accounts,
   aiEnabled 
 }: { 
   categories: Category[]; 
+  accounts: { id: string; name: string; displayName: string | null }[];
   aiEnabled: boolean; 
 }) {
   const [view, setView] = useState<'inbox' | 'all' | 'hidden'>('inbox');
@@ -20,6 +23,13 @@ export default function TransactionsClient({
     view === 'all' || view === 'hidden', 
     view === 'hidden'
   );
+  const searchParams = useSearchParams();
+  const initialAccountId = searchParams.get("accountId") || "all";
+  const [selectedAccountId, setSelectedAccountId] = useState<string>(initialAccountId);
+
+  useEffect(() => {
+    setSelectedAccountId(initialAccountId);
+  }, [initialAccountId]);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [isNormalizeLoading, setIsNormalizeLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<Record<string, string>>({});
@@ -169,11 +179,15 @@ export default function TransactionsClient({
     }
   };
 
-  const filteredTransactions = (transactions as Transaction[])?.filter(tx => 
-    tx.payee.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    tx.amount.toString().includes(searchQuery) ||
-    tx.splits.some(s => s.memo?.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredTransactions = (transactions as Transaction[])?.filter(tx => {
+    const matchesSearch = tx.payee.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      tx.amount.toString().includes(searchQuery) ||
+      tx.splits.some(s => s.memo?.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    const matchesAccount = selectedAccountId === "all" || tx.accountId === selectedAccountId;
+
+    return matchesSearch && matchesAccount;
+  });
 
   const sortedTransactions = filteredTransactions ? [...filteredTransactions].sort((a, b) => {
     let comparison = 0;
@@ -204,6 +218,22 @@ export default function TransactionsClient({
               {filteredTransactions.length} items
             </span>
           )}
+        </div>
+
+        <div className="account-filter-box glass" style={{ display: 'flex', alignItems: 'center', padding: '0 1rem', borderRadius: '12px', minWidth: '200px' }}>
+          <span style={{ marginRight: '0.5rem' }}>🏦</span>
+          <select
+            value={selectedAccountId}
+            onChange={(e) => setSelectedAccountId(e.target.value)}
+            style={{ background: 'none', border: 'none', color: 'white', padding: '0.75rem 0', width: '100%', outline: 'none', cursor: 'pointer' }}
+          >
+            <option value="all">All Accounts</option>
+            {accounts.map(acc => (
+              <option key={acc.id} value={acc.id}>
+                {acc.displayName || acc.name}
+              </option>
+            ))}
+          </select>
         </div>
         
         <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -292,6 +322,15 @@ export default function TransactionsClient({
         </div>
       )}
 
+      {selectedAccountId !== "all" && (
+        <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.5rem' }}>
+          <div className="active-filter-badge glass animate-fade-in">
+            <span>Filtering: <strong>{accounts.find(a => a.id === selectedAccountId)?.displayName || accounts.find(a => a.id === selectedAccountId)?.name}</strong></span>
+            <button className="clear-filter-btn" onClick={() => setSelectedAccountId("all")} title="Clear account filter">✕</button>
+          </div>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="transactions-list glass skeleton animate-fade-in" style={{ minHeight: '400px' }}></div>
       ) : (
@@ -309,6 +348,7 @@ export default function TransactionsClient({
           sortOrder={sortOrder}
           onSort={handleSort}
           aiEnabled={aiEnabled}
+          onAccountClick={(accountId) => setSelectedAccountId(accountId)}
         />
       )}
     </>

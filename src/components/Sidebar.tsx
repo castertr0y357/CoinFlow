@@ -222,14 +222,19 @@ export default function Sidebar({ accounts }: SidebarProps) {
                   <div className="subgroup-label">Assets</div>
                   <div className="account-links">
                     {assets.map(acc => (
-                      <div key={acc.id} className="sidebar-account-item">
+                      <Link 
+                        key={acc.id} 
+                        href={`/transactions?accountId=${acc.id}`} 
+                        className="sidebar-account-item"
+                        onClick={() => setIsOpen(false)}
+                      >
                         <div className="account-info">
                           <span className="account-name">{acc.displayName || acc.name}</span>
                         </div>
                         <span className={`account-balance ${acc.balance < 0 ? 'neg' : ''}`}>
                           ${acc.balance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </span>
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 </div>
@@ -240,14 +245,19 @@ export default function Sidebar({ accounts }: SidebarProps) {
                   <div className="subgroup-label">Debts</div>
                   <div className="account-links">
                     {debts.map(acc => (
-                      <div key={acc.id} className="sidebar-account-item">
+                      <Link 
+                        key={acc.id} 
+                        href={`/transactions?accountId=${acc.id}`} 
+                        className="sidebar-account-item"
+                        onClick={() => setIsOpen(false)}
+                      >
                         <div className="account-info">
                           <span className="account-name">{acc.displayName || acc.name}</span>
                         </div>
                         <span className={`account-balance ${acc.balance < 0 ? 'neg' : ''}`}>
                           ${acc.balance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </span>
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 </div>

@@ -1,6 +1,7 @@
-# Project Status: CoinFlow Browser Extension (v2.26.1)
+# Project Status: CoinFlow Browser Extension (v2.27.0)
 
 ## Current Progress
+- [x] **Account Filtering & Cross-Navigation (v2.27.0)**: Added account display names to each transaction in the transactions inbox, supported responsive account filtering on the transactions page, enabled direct link clicks from the accounts list configuration page and sidebar accounts menu to see their transactions.
 - [x] **Reverse Proxy CSRF Header Parsing Fix (v2.26.1)**: Resolved production server `400 Bad Request` and `An unexpected response was received from the server` errors on Server Actions by splitting comma-separated `X-Forwarded-Host` and `X-Forwarded-Proto` header values from double proxies and checking for `origin: null` edge cases to return a safe `403` instead of parsing exceptions.
 - [x] **Security and Code Quality Audit Remediation (v2.26.0)**: Executed a comprehensive security and code quality audit remediation. Secured all 30+ server actions with auth checks, Zod schema validations, and try-catch blocks. Extracted inline server actions into separate modules. Implemented a global glassmorphic `NotificationProvider` for toasts and confirmation modals. Redacted tracebacks in `error.tsx` to display correlation IDs. Converted color tokens to HSL variables, added focus-visible outlines, compressed automated backups with gzip, and offloaded SimpleFIN sync asynchronously.
 - [x] **Workspace Rules Synchronization (v2.25.7)**: Synchronized local rules files (AGENTS.md, CLAUDE.md, .cursorrules, .windsurfrules) with the latest global developer template, integrating new guidelines for IDOR Protection, AI Integration Security, Secure File Upload & SVG Handling, SSRF Defenses, and DB Port restrictions.
@@ -54,6 +55,16 @@
 - [x] **Subscription Detective Alignment (v2.10.0)**: Corrected unmapped keys (`monthlyCost`, `reason`) and wrapped the JSON response array inside an object matching frontend specifications.
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
+
+## Recent Fixes & Features (v2.27.0)
+- **Account Filtering & Cross-Navigation**:
+  - Attached database-level `account` relations to transaction records and typed `Transaction` interface.
+  - Placed account filtering state parameters into Transactions page and client components.
+  - Implemented dropdown account selector and clearable active filter pill inside the actions panel.
+  - Added new Account column for desktop and inline badge under Payee for mobile.
+  - Configured account badges to act as shortcuts to update filter state on click.
+  - Converted passive account display text lists on accounts page and sidebar navigation into deep-linking navigations.
+  - Decoupled accounts list editing from row link click actions by introducing standalone edit controls and animations.
 
 ## Recent Fixes & Features (v2.26.1)
 - **Reverse Proxy CSRF Header Parsing Fix**:

@@ -543,6 +543,71 @@
   margin-top: 0.25rem;
 }
 
+.tx-account {
+  flex: 1.2;
+  font-size: 0.875rem;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+}
+
+.account-badge-pill {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-badge-pill:hover {
+  background: var(--primary-glow);
+  border-color: var(--primary);
+  color: white;
+}
+
+.tx-mobile-account-badge {
+  display: none;
+}
+
+.active-filter-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  background: rgba(99, 102, 241, 0.15) !important;
+  border: 1px solid var(--primary) !important;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: var(--text-main);
+}
+
+.clear-filter-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0 2px;
+  transition: var(--transition-fast);
+}
+
+.clear-filter-btn:hover {
+  color: var(--danger);
+}
+
 @media (max-width: 768px) {
   .tx-list-header {
     display: none;
@@ -640,6 +705,15 @@
 
   .tx-refund-matcher-row {
     margin-left: 0 !important;
+  }
+
+  .tx-account {
+    display: none;
+  }
+
+  .tx-mobile-account-badge {
+    display: block;
+    margin-top: 0.25rem;
   }
 }
 
