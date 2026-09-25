@@ -18,6 +18,8 @@ interface SimpleFinAccount {
   balance: string;
   currency: string;
   transactions: SimpleFinTransaction[];
+  err?: string;
+  error?: string;
 }
 
 interface SimpleFinResponse {
@@ -96,12 +98,14 @@ export async function syncSimpleFin() {
           name: remoteAccount.name,
           balance: remoteAccount.balance,
           currency: remoteAccount.currency,
+          syncError: remoteAccount.err || remoteAccount.error || null,
         },
         create: {
           remoteId: remoteAccount.id,
           name: remoteAccount.name,
           balance: remoteAccount.balance,
           currency: remoteAccount.currency,
+          syncError: remoteAccount.err || remoteAccount.error || null,
         },
       });
 

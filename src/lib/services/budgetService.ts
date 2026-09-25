@@ -405,7 +405,8 @@ export async function getSidebarData() {
     isDebt: a.isDebt,
     showInSidebar: a.showInSidebar,
     excludeFromAssetCalculation: a.excludeFromAssetCalculation,
-    showTransactions: a.showTransactions
+    showTransactions: a.showTransactions,
+    syncError: a.syncError
   }));
 }
 

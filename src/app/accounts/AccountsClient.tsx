@@ -19,6 +19,7 @@ interface Account {
   showInSidebar: boolean;
   excludeFromAssetCalculation: boolean;
   showTransactions: boolean;
+  syncError?: string | null;
   isManual: boolean;
 }
 
@@ -267,6 +268,7 @@ export default function AccountsClient({ initialAccounts }: AccountsClientProps)
                     ) : (
                       <div className="display-name-group-wrapper">
                         <Link href={`/transactions?accountId=${acc.id}`} className="account-display-name-link" title="View transactions for this account">
+                          {acc.syncError && <span title={acc.syncError} style={{ color: 'orange', marginRight: '4px' }}>⚠️</span>}
                           <span className="account-display-name">{acc.displayName || acc.name}</span>
                         </Link>
                         <button 
@@ -416,6 +418,7 @@ export default function AccountsClient({ initialAccounts }: AccountsClientProps)
                     ) : (
                       <div className="display-name-group-wrapper">
                         <Link href={`/transactions?accountId=${acc.id}`} className="account-display-name-link" title="View transactions for this account">
+                          {acc.syncError && <span title={acc.syncError} style={{ color: 'orange', marginRight: '4px' }}>⚠️</span>}
                           <span className="account-display-name">{acc.displayName || acc.name}</span>
                         </Link>
                         <button 

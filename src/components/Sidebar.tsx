@@ -18,6 +18,7 @@ interface Account {
   showInSidebar: boolean;
   excludeFromAssetCalculation: boolean;
   showTransactions?: boolean;
+  syncError?: string | null;
 }
 
 interface SidebarProps {
@@ -229,7 +230,10 @@ export default function Sidebar({ accounts }: SidebarProps) {
                         onClick={() => setIsOpen(false)}
                       >
                         <div className="account-info">
-                          <span className="account-name">{acc.displayName || acc.name}</span>
+                          <span className="account-name">
+                            {acc.syncError && <span title={acc.syncError} style={{ color: 'orange', marginRight: '4px' }}>⚠️</span>}
+                            {acc.displayName || acc.name}
+                          </span>
                         </div>
                         <span className={`account-balance ${acc.balance < 0 ? 'neg' : ''}`}>
                           ${acc.balance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
@@ -252,7 +256,10 @@ export default function Sidebar({ accounts }: SidebarProps) {
                         onClick={() => setIsOpen(false)}
                       >
                         <div className="account-info">
-                          <span className="account-name">{acc.displayName || acc.name}</span>
+                          <span className="account-name">
+                            {acc.syncError && <span title={acc.syncError} style={{ color: 'orange', marginRight: '4px' }}>⚠️</span>}
+                            {acc.displayName || acc.name}
+                          </span>
                         </div>
                         <span className={`account-balance ${acc.balance < 0 ? 'neg' : ''}`}>
                           ${acc.balance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
