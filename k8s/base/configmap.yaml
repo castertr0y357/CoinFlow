@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coinflow-config
+data:
+  PORT: "3000"
+  HOSTNAME: "0.0.0.0"
+  NODE_ENV: "production"
+  DATABASE_HOST: "db"
+  DATABASE_PORT: "5432"
+  POSTGRES_DB: "webbudget"
+  AI_MODEL: "gemma4:e4b"
+  OPENAI_BASE_URL: "https://ollama.example.com/v1"
+  NEXTAUTH_URL: "https://coinflow.example.com"
+  SECURE_COOKIES: "true"
