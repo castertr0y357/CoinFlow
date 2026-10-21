@@ -23,7 +23,7 @@ CoinFlow is a premium, self-hosted financial automation hub designed for those w
 ### 📈 Reports & Data Portability
 - **Yearly Deep-Dives**: Historical spending analysis with AI-powered trend spotting.
 - **Surplus Rollover**: Intelligently carry over unspent funds from one calendar year to the next.
-- **Data Vault**: One-click JSON backup and restore. Your data moves with you.
+- **Data Vault**: One-click PostgreSQL database dump (`.sql.gz`) backup and restore. Your data moves with you.
 
 ### 🛡️ Fortress Security
 - **JWT Authentication**: Secured with a master password and encrypted session tokens.
@@ -59,10 +59,10 @@ The easiest way to run CoinFlow is using Docker Compose, which boots the Next.js
 - **Master Password**: `admin` (configure via `APP_PASSWORD` in `.env`)
 
 ### 💾 Backup & Restore Commands
-- **Manual Backups**: Auto-saved on the server (inside container at `/app/backups`) or via the Settings -> Maintenance UI.
-- **Programmatic Restore**: You can restore your data programmatically from any JSON backup using the following CLI command:
+- **Manual Backups**: Auto-saved as compressed PostgreSQL dumps (`.sql.gz`) on the server (inside container at `/app/backups`) or via the Settings -> Maintenance UI.
+- **Programmatic Restore**: You can restore your data programmatically from any `.sql.gz` database dump using the following CLI command:
   ```bash
-  curl -X POST -H "Content-Type: application/json" -H "X-API-KEY: your-internal-key-here" -d @backup.json http://localhost:3000/api/v1/data/import
+  curl -X POST -H "X-API-KEY: your-internal-key-here" -F "file=@backup.sql.gz" http://localhost:3000/api/v1/data/import
   ```
   *(Note: Replace `your-internal-key-here` with your `NEXT_PUBLIC_INTERNAL_API_KEY` from `.env`)*
 

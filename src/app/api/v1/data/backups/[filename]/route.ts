@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/api-utils";
 import fs from "fs";
 import path from "path";
+import { logger } from "@/lib/logger";
 
 const BACKUP_DIR = "/app/backups";
 
@@ -11,7 +12,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ file
       const resolvedParams = await params;
       const { filename } = resolvedParams;
       
-      if (!filename || (!filename.endsWith(".json.gz") && !filename.endsWith(".json"))) {
+      if (!filename || !filename.endsWith(".sql.gz")) {
         return NextResponse.json({ error: "Invalid backup filename" }, { status: 400 });
       }
 
@@ -24,16 +25,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ file
       }
 
       const fileBuffer = fs.readFileSync(filepath);
-      const contentType = safeFilename.endsWith(".gz") ? "application/gzip" : "application/json";
 
-      return new NextResponse(fileBuffer, {
+      return new NextResponse(new Uint8Array(fileBuffer), {
         headers: {
-          "Content-Type": contentType,
+          "Content-Type": "application/gzip",
           "Content-Disposition": `attachment; filename="${safeFilename}"`
         }
       });
     } catch (error) {
-      console.error("Server Download error:", error);
+      logger.error("Backup", "Server Download error", error);
       const message = error instanceof Error ? error.message : String(error);
       return NextResponse.json({ error: message }, { status: 500 });
     }

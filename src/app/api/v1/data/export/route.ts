@@ -1,50 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/api-utils";
-import prisma from "@/lib/prisma";
+import { dumpDatabaseSqlGz } from "@/lib/services/backupService";
+import { logger } from "@/lib/logger";
 
 export async function GET(req: NextRequest) {
   return withAuth(req, async () => {
-    // Fetch everything
-    const [
-      transactions,
-      accounts,
-      categories,
-      budgetYears,
-      yearlyCategories,
-      mortgageDetails,
-      valuationProviders,
-      settings
-    ] = await Promise.all([
-      prisma.transaction.findMany({ include: { splits: true } }),
-      prisma.account.findMany(),
-      prisma.category.findMany(),
-      prisma.budgetYear.findMany(),
-      prisma.yearlyCategory.findMany(),
-      prisma.mortgageDetail.findFirst(),
-      prisma.homeValueProvider.findMany(),
-      prisma.settings.findFirst()
-    ]);
+    try {
+      const compressed = await dumpDatabaseSqlGz();
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-").replace("T", "_").split("Z")[0];
 
-    const backup = {
-      version: "1.1", // Bumped version for new schema
-      timestamp: new Date().toISOString(),
-      data: {
-        transactions,
-        accounts,
-        categories,
-        budgetYears,
-        yearlyCategories,
-        mortgageDetails,
-        valuationProviders,
-        settings
-      }
-    };
-
-    return new NextResponse(JSON.stringify(backup, null, 2), {
-      headers: {
-        "Content-Type": "application/json",
-        "Content-Disposition": `attachment; filename="webbudget_backup_${new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').split('Z')[0]}.json"`
-      }
-    });
+      return new NextResponse(new Uint8Array(compressed), {
+        headers: {
+          "Content-Type": "application/gzip",
+          "Content-Disposition": `attachment; filename="webbudget_backup_${timestamp}.sql.gz"`
+        }
+      });
+    } catch (error) {
+      logger.error("Backup", "Export error", error);
+      const message = error instanceof Error ? error.message : String(error);
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
   });
 }

@@ -2,63 +2,120 @@ import prisma from "@/lib/prisma";
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
+import { spawn } from "child_process";
 import { logger } from "../logger";
-import { Transaction, Account, Category, BudgetYear, YearlyCategory, MortgageDetail, HomeValueProvider, Settings, TransactionSplit } from "@prisma/client";
 
 const BACKUP_DIR = "/app/backups";
 
-export async function createBackupSnapshot(reason: string = "auto") {
+export function dumpDatabaseSqlGz(): Promise<Buffer> {
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) {
+    return Promise.reject(new Error("DATABASE_URL environment variable is not configured"));
+  }
+
+  return new Promise((resolve, reject) => {
+    const proc = spawn("pg_dump", [
+      "--clean",
+      "--if-exists",
+      "--no-owner",
+      "--no-privileges",
+      "--dbname",
+      dbUrl
+    ]);
+
+    const chunks: Buffer[] = [];
+    const errChunks: Buffer[] = [];
+
+    proc.stdout.on("data", (chunk: Buffer) => chunks.push(chunk));
+    proc.stderr.on("data", (chunk: Buffer) => errChunks.push(chunk));
+
+    proc.on("error", (err) => reject(err));
+    proc.on("close", (code) => {
+      if (code === 0) {
+        try {
+          const rawSql = Buffer.concat(chunks).toString("utf-8");
+          // Strip SET transaction_timeout (added in PG 17+ pg_dump) for compatibility with PG 15/16 servers
+          const compatibleSql = rawSql.replace(/^SET transaction_timeout = .*;\r?\n/gm, "");
+          const compressed = zlib.gzipSync(Buffer.from(compatibleSql, "utf-8"));
+          resolve(compressed);
+        } catch (err) {
+          reject(err);
+        }
+      } else {
+        const stderr = Buffer.concat(errChunks).toString("utf-8").trim();
+        reject(new Error(`pg_dump exited with code ${code}: ${stderr}`));
+      }
+    });
+  });
+}
+
+export function restoreDatabaseSql(sqlContent: string | Buffer): Promise<void> {
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) {
+    return Promise.reject(new Error("DATABASE_URL environment variable is not configured"));
+  }
+
+  return new Promise((resolve, reject) => {
+    const proc = spawn("psql", [
+      "-v",
+      "ON_ERROR_STOP=1",
+      "--dbname",
+      dbUrl
+    ]);
+
+    const errChunks: Buffer[] = [];
+
+    proc.stderr.on("data", (chunk: Buffer) => errChunks.push(chunk));
+
+    proc.on("error", (err) => reject(err));
+    proc.on("close", (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        const stderr = Buffer.concat(errChunks).toString("utf-8").trim();
+        reject(new Error(`psql exited with code ${code}: ${stderr}`));
+      }
+    });
+
+    proc.stdin.on("error", () => {
+      // Ignore EPIPE on stdin if psql terminates early; close event will capture stderr and exit code
+    });
+    const sqlStr = Buffer.isBuffer(sqlContent) ? sqlContent.toString("utf-8") : sqlContent;
+    const compatibleSql = sqlStr.replace(/^SET transaction_timeout = .*;\r?\n/gm, "");
+    proc.stdin.write(compatibleSql);
+    proc.stdin.end();
+  });
+}
+
+export async function restoreDatabaseFromBuffer(fileBuffer: Buffer, filename: string): Promise<void> {
+  let sqlBuffer: Buffer;
+  const isGzip = filename.endsWith(".gz") || (fileBuffer.length >= 2 && fileBuffer[0] === 0x1f && fileBuffer[1] === 0x8b);
+  if (isGzip) {
+    sqlBuffer = zlib.gunzipSync(fileBuffer);
+  } else {
+    sqlBuffer = fileBuffer;
+  }
+
+  await restoreDatabaseSql(sqlBuffer);
+}
+
+export async function createBackupSnapshot(reason: string = "auto"): Promise<string | null> {
   try {
     // 1. Ensure directory exists
     if (!fs.existsSync(BACKUP_DIR)) {
-      fs.mkdirSync(BACKUP_DIR, { recursive: true });
+      fs.mkdirSync(BACKUP_DIR, { recursive: true, mode: 0o700 });
     }
 
-    // 2. Fetch everything (Same logic as export route)
-    const [
-      transactions,
-      accounts,
-      categories,
-      budgetYears,
-      yearlyCategories,
-      mortgageDetails,
-      valuationProviders,
-      settings
-    ] = await Promise.all([
-      prisma.transaction.findMany({ include: { splits: true } }),
-      prisma.account.findMany(),
-      prisma.category.findMany(),
-      prisma.budgetYear.findMany(),
-      prisma.yearlyCategory.findMany(),
-      prisma.mortgageDetail.findFirst(),
-      prisma.homeValueProvider.findMany(),
-      prisma.settings.findFirst()
-    ]);
+    // 2. Dump database and compress with gzip
+    const compressed = await dumpDatabaseSqlGz();
 
-    const backup = {
-      version: "1.1",
-      timestamp: new Date().toISOString(),
-      reason,
-      data: {
-        transactions,
-        accounts,
-        categories,
-        budgetYears,
-        yearlyCategories,
-        mortgageDetails,
-        valuationProviders,
-        settings
-      }
-    };
-
-    // 3. Save to disk with gzip compression
+    // 3. Save to disk with restricted permissions
+    const safeReason = reason.replace(/[^a-zA-Z0-9_-]/g, "");
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-").replace("T", "_").split("Z")[0];
-    const filename = `webbudget_${reason}_${timestamp}.json.gz`;
+    const filename = `webbudget_${safeReason || "auto"}_${timestamp}.sql.gz`;
     const filepath = path.join(BACKUP_DIR, filename);
-    
-    const jsonStr = JSON.stringify(backup, null, 2);
-    const compressed = zlib.gzipSync(jsonStr);
-    fs.writeFileSync(filepath, compressed);
+
+    fs.writeFileSync(filepath, compressed, { mode: 0o600 });
     logger.info("Backup", `Snapshot created: ${filename}`);
 
     // 4. Cleanup old backups
@@ -71,7 +128,7 @@ export async function createBackupSnapshot(reason: string = "auto") {
   }
 }
 
-async function rotateBackups() {
+async function rotateBackups(): Promise<void> {
   try {
     const settings = await prisma.settings.findUnique({ where: { id: "global" } });
     const retentionDays = settings?.backupRetentionDays || 30;
@@ -80,8 +137,8 @@ async function rotateBackups() {
 
     const files = fs.readdirSync(BACKUP_DIR);
     for (const file of files) {
-      if (!file.endsWith(".json.gz") && !file.endsWith(".json")) continue;
-      
+      if (!file.endsWith(".sql.gz")) continue;
+
       const filepath = path.join(BACKUP_DIR, file);
       const stats = fs.statSync(filepath);
       const ageDays = (now - stats.mtimeMs) / msInDay;
@@ -96,125 +153,3 @@ async function rotateBackups() {
   }
 }
 
-export interface BackupData {
-  accounts?: Account[];
-  categories?: Category[];
-  budgetYears?: BudgetYear[];
-  yearlyCategories?: YearlyCategory[];
-  transactions?: (Transaction & { splits?: TransactionSplit[] })[];
-  mortgageDetails?: MortgageDetail | null;
-  valuationProviders?: HomeValueProvider[];
-  settings?: Settings | null;
-}
-
-export async function restoreBackupData(data: BackupData) {
-  // We use a transaction to ensure atomic restore
-  await prisma.$transaction(async (tx) => {
-    // 0. Clean up existing data to prevent unique constraint conflicts (in order of dependencies)
-    await tx.transactionSplit.deleteMany();
-    await tx.transaction.deleteMany();
-    await tx.commitment.deleteMany();
-    await tx.yearlyCategory.deleteMany();
-    await tx.homeValueProvider.deleteMany();
-    await tx.mortgageDetail.deleteMany();
-    await tx.category.deleteMany();
-    await tx.account.deleteMany();
-    await tx.externalOrderItem.deleteMany();
-    await tx.externalOrder.deleteMany();
-    await tx.budgetYear.deleteMany();
-
-    // 1. Restore Accounts FIRST (Categories may depend on them)
-    if (data.accounts) {
-      for (const acc of data.accounts) {
-        await tx.account.upsert({
-          where: { id: acc.id },
-          update: acc,
-          create: acc
-        });
-      }
-    }
-
-    // 2. Restore Categories
-    if (data.categories) {
-      for (const cat of data.categories) {
-        await tx.category.upsert({
-          where: { id: cat.id },
-          update: cat,
-          create: cat
-        });
-      }
-    }
-
-    // 2.1 Restore Budget Years & Yearly Configs (New in v1.1)
-    if (data.budgetYears) {
-      for (const by of data.budgetYears) {
-        await tx.budgetYear.upsert({
-          where: { id: by.id },
-          update: by,
-          create: by
-        });
-      }
-    }
-
-    if (data.yearlyCategories) {
-      for (const yc of data.yearlyCategories) {
-        await tx.yearlyCategory.upsert({
-          where: { yearId_categoryId: { yearId: yc.yearId, categoryId: yc.categoryId } },
-          update: yc,
-          create: yc
-        });
-      }
-    }
-
-    // 3. Restore Transactions & Splits
-    if (data.transactions) {
-      for (const t of data.transactions) {
-        const { splits, ...txData } = t;
-        await tx.transaction.upsert({
-          where: { id: t.id },
-          update: txData,
-          create: txData
-        });
-
-        if (splits) {
-          for (const s of splits) {
-            await tx.transactionSplit.upsert({
-              where: { id: s.id },
-              update: s,
-              create: s
-            });
-          }
-        }
-      }
-    }
-
-    // 4. Mortgage & Valuations
-    if (data.mortgageDetails) {
-      await tx.mortgageDetail.upsert({
-        where: { accountId: data.mortgageDetails.accountId },
-        update: data.mortgageDetails,
-        create: data.mortgageDetails
-      });
-    }
-
-    if (data.valuationProviders) {
-      for (const p of data.valuationProviders) {
-        await tx.homeValueProvider.upsert({
-          where: { id: p.id },
-          update: p,
-          create: p
-        });
-      }
-    }
-
-    if (data.settings) {
-      await tx.settings.upsert({
-        where: { id: 'global' },
-        update: data.settings,
-        create: data.settings
-      });
-    }
-  }, {
-    timeout: 60000 // 60 seconds
-  });
-}

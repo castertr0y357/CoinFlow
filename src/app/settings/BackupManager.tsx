@@ -61,20 +61,27 @@ export default function BackupManager() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!confirm("WARNING: This will replace or update existing data. Are you sure?")) return;
+    if (!file.name.endsWith(".sql.gz") && !file.name.endsWith(".sql")) {
+      setStatus("Error: Invalid file format. Please select a .sql.gz or .sql file.");
+      e.target.value = "";
+      return;
+    }
+
+    if (!confirm("WARNING: This will replace all existing database data with the dump. Are you sure?")) {
+      e.target.value = "";
+      return;
+    }
 
     setIsSyncing(true);
-    setStatus("Reading backup...");
+    setStatus("Uploading and restoring database dump...");
 
     try {
-      const text = await file.text();
-      const backup = JSON.parse(text);
+      const formData = new FormData();
+      formData.append("file", file);
 
-      setStatus("Restoring vault...");
       const res = await fetch("/api/v1/data/import", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(backup),
+        body: formData,
       });
 
       if (res.ok) {
@@ -85,9 +92,10 @@ export default function BackupManager() {
         setStatus(`Error: ${err.error}`);
       }
     } catch {
-      setStatus("Error: Invalid JSON file.");
+      setStatus("Error restoring database dump.");
     } finally {
       setIsSyncing(false);
+      e.target.value = "";
     }
   };
 
@@ -129,10 +137,10 @@ export default function BackupManager() {
         
         <div className="import-zone mt-4">
           <label className="import-label">
-            <span className="icon">📤</span> Restore from Local File
+            <span className="icon">📤</span> Restore from Local File (.sql.gz)
             <input 
               type="file" 
-              accept=".json" 
+              accept=".sql.gz,.gz,.sql" 
               onChange={handleImport} 
               disabled={isSyncing}
               style={{ display: 'none' }}
