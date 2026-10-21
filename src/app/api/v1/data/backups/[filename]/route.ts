@@ -39,3 +39,31 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ file
     }
   });
 }
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ filename: string }> }) {
+  return withAuth(req, async () => {
+    try {
+      const resolvedParams = await params;
+      const { filename } = resolvedParams;
+
+      if (!filename || !filename.endsWith(".sql.gz")) {
+        return NextResponse.json({ error: "Invalid backup filename" }, { status: 400 });
+      }
+
+      const safeFilename = path.basename(filename);
+      const filepath = path.join(BACKUP_DIR, safeFilename);
+
+      if (!fs.existsSync(filepath)) {
+        return NextResponse.json({ error: "Backup file not found" }, { status: 404 });
+      }
+
+      fs.unlinkSync(filepath);
+      logger.info("Backup", `Deleted backup snapshot: ${safeFilename}`);
+      return NextResponse.json({ success: true, message: `Backup ${safeFilename} deleted.` });
+    } catch (error) {
+      logger.error("Backup", "Server Delete error", error);
+      const message = error instanceof Error ? error.message : String(error);
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  });
+}

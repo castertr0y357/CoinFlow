@@ -35,7 +35,7 @@ export function dumpDatabaseSqlGz(): Promise<Buffer> {
         try {
           const rawSql = Buffer.concat(chunks).toString("utf-8");
           // Strip SET transaction_timeout (added in PG 17+ pg_dump) for compatibility with PG 15/16 servers
-          const compatibleSql = rawSql.replace(/^SET transaction_timeout = .*;\r?\n/gm, "");
+          const compatibleSql = rawSql.replace(/^[ \t]*(?:SET\s+transaction_timeout|SELECT\s+pg_catalog\.set_config\(\s*['"]transaction_timeout).*;\r?\n?/gim, "");
           const compressed = zlib.gzipSync(Buffer.from(compatibleSql, "utf-8"));
           resolve(compressed);
         } catch (err) {
@@ -81,7 +81,7 @@ export function restoreDatabaseSql(sqlContent: string | Buffer): Promise<void> {
       // Ignore EPIPE on stdin if psql terminates early; close event will capture stderr and exit code
     });
     const sqlStr = Buffer.isBuffer(sqlContent) ? sqlContent.toString("utf-8") : sqlContent;
-    const compatibleSql = sqlStr.replace(/^SET transaction_timeout = .*;\r?\n/gm, "");
+    const compatibleSql = sqlStr.replace(/^[ \t]*(?:SET\s+transaction_timeout|SELECT\s+pg_catalog\.set_config\(\s*['"]transaction_timeout).*;\r?\n?/gim, "");
     proc.stdin.write(compatibleSql);
     proc.stdin.end();
   });
