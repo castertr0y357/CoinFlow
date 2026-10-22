@@ -91,7 +91,9 @@ export async function syncSimpleFin() {
     const data: SimpleFinResponse = await response.json();
     logger.info("SimpleFIN", `Found ${data.accounts.length} accounts.`);
 
+    let totalTransactions = 0;
     for (const remoteAccount of data.accounts) {
+      totalTransactions += remoteAccount.transactions.length;
       const account = await prisma.account.upsert({
         where: { remoteId: remoteAccount.id },
         update: {
@@ -176,7 +178,7 @@ export async function syncSimpleFin() {
       data: { lastSync: new Date() },
     });
 
-    return { success: true, accountCount: data.accounts.length };
+    return { success: true, accountCount: data.accounts.length, transactionCount: totalTransactions };
   } catch (err) {
     clearTimeout(timeoutId);
     const errorMsg = err instanceof Error ? (err.name === 'AbortError' ? 'Timeout' : err.message) : String(err);

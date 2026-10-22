@@ -1,6 +1,7 @@
-# Project Status: CoinFlow Browser Extension (v2.28.1)
+# Project Status: CoinFlow Browser Extension (v2.28.2)
 
 ## Current Progress
+- [x] **SimpleFIN Sync Result Type Alignment (v2.28.2)**: Fixed TypeScript compilation failure in `src/lib/services/syncService.ts` where properties `accounts` and `transactions` were queried on `result` (`MockSimpleFinResult | { success: boolean; accountCount: number }`). Added `transactionCount` to `syncSimpleFin` return payload and updated `syncService.ts` to access `result.accountCount` and `result.transactionCount` cleanly.
 - [x] **Edge Runtime Logger Fix (v2.28.1)**: Replaced Node.js-only API `process.stdout.write` in `src/lib/logger.ts` with standard `console.error`, `console.warn`, and `console.log` methods. Fixed Turbopack build failure when bundling Edge middleware (`src/middleware.ts`) which imports `@/lib/logger`.
 - [x] **PostgreSQL SQL.gz Database Dump Backups & Restore (v2.28.0)**: Replaced JSON-based backups with direct PostgreSQL database dumps compressed in `.sql.gz` format using `pg_dump` (`--clean --if-exists --no-owner --no-privileges`) and `psql`. Added `postgresql-client` to the production Docker runner image, updated all backup/restore/export/import API routes and the `BackupManager` UI to exclusively create, list, download, and restore `.sql.gz` dumps, and stripped `SET transaction_timeout` statements for PostgreSQL 15 server compatibility.
 - [x] **Account Filtering & Cross-Navigation (v2.27.0)**: Added account display names to each transaction in the transactions inbox, supported responsive account filtering on the transactions page, enabled direct link clicks from the accounts list configuration page and sidebar accounts menu to see their transactions.
@@ -57,6 +58,12 @@
 - [x] **Subscription Detective Alignment (v2.10.0)**: Corrected unmapped keys (`monthlyCost`, `reason`) and wrapped the JSON response array inside an object matching frontend specifications.
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
+
+## Recent Fixes & Features (v2.28.2)
+- **SimpleFIN Sync Result Type Alignment**:
+  - Added `transactionCount` to the return value of `syncSimpleFin()` in `src/lib/simplefin.ts` by summing `remoteAccount.transactions.length`.
+  - Updated `src/lib/services/syncService.ts` to access `result.accountCount` and `result.transactionCount` directly instead of referencing non-existent `result?.accounts?.length` and `result?.transactions?.length`.
+  - Verified containerized production build (`npm run build`) passing TypeScript type check in Turbopack and test suite (all 20 unit/integration tests passing).
 
 ## Recent Fixes & Features (v2.28.1)
 - **Edge Runtime Logger Fix**:

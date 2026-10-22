@@ -61,8 +61,8 @@ export function startSyncSimpleFinTask(): string {
         context: {
           taskId,
           durationMs,
-          accountsCount: result?.accounts?.length ?? 0,
-          transactionsCount: result?.transactions?.length ?? 0,
+          accountsCount: result.accountCount,
+          transactionsCount: result.transactionCount,
         },
       });
     } catch (error) {
