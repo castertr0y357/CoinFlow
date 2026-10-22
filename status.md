@@ -1,6 +1,7 @@
-# Project Status: CoinFlow Browser Extension (v2.28.2)
+# Project Status: CoinFlow Browser Extension (v2.28.3)
 
 ## Current Progress
+- [x] **Kubernetes DATABASE_URL Auto-Resolution (v2.28.3)**: Resolved Prisma `P1013: invalid port number in database URL` error in Kubernetes containers. Removed unexpanded `env.DATABASE_URL` template from `k8s/base/web-deployment.yaml` and implemented automatic fallback assembly and URL encoding in `entrypoint.sh` and `src/instrumentation.ts` to construct `DATABASE_URL` from `POSTGRES_USER`, `POSTGRES_PASSWORD`, `DATABASE_HOST`, `DATABASE_PORT`, and `POSTGRES_DB` whenever `DATABASE_URL` is omitted from secrets or contains unexpanded `$(...)` tokens.
 - [x] **SimpleFIN Sync Result Type Alignment (v2.28.2)**: Fixed TypeScript compilation failure in `src/lib/services/syncService.ts` where properties `accounts` and `transactions` were queried on `result` (`MockSimpleFinResult | { success: boolean; accountCount: number }`). Added `transactionCount` to `syncSimpleFin` return payload and updated `syncService.ts` to access `result.accountCount` and `result.transactionCount` cleanly.
 - [x] **Edge Runtime Logger Fix (v2.28.1)**: Replaced Node.js-only API `process.stdout.write` in `src/lib/logger.ts` with standard `console.error`, `console.warn`, and `console.log` methods. Fixed Turbopack build failure when bundling Edge middleware (`src/middleware.ts`) which imports `@/lib/logger`.
 - [x] **PostgreSQL SQL.gz Database Dump Backups & Restore (v2.28.0)**: Replaced JSON-based backups with direct PostgreSQL database dumps compressed in `.sql.gz` format using `pg_dump` (`--clean --if-exists --no-owner --no-privileges`) and `psql`. Added `postgresql-client` to the production Docker runner image, updated all backup/restore/export/import API routes and the `BackupManager` UI to exclusively create, list, download, and restore `.sql.gz` dumps, and stripped `SET transaction_timeout` statements for PostgreSQL 15 server compatibility.
@@ -58,6 +59,13 @@
 - [x] **Subscription Detective Alignment (v2.10.0)**: Corrected unmapped keys (`monthlyCost`, `reason`) and wrapped the JSON response array inside an object matching frontend specifications.
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
+
+## Recent Fixes & Features (v2.28.3)
+- **Kubernetes DATABASE_URL Auto-Resolution**:
+  - Removed unexpanded `env.DATABASE_URL` string interpolation from `k8s/base/web-deployment.yaml`.
+  - Added auto-construction with URL-encoding for `DATABASE_URL` in `entrypoint.sh` and `src/instrumentation.ts` using `POSTGRES_USER`, `POSTGRES_PASSWORD`, `DATABASE_HOST`, `DATABASE_PORT`, and `POSTGRES_DB` when `DATABASE_URL` is omitted or contains unexpanded `$(...)` tokens.
+  - Documented optional `DATABASE_URL` variable in `k8s/base/secret.yaml.example`.
+  - Verified compilation (`npm run build`) and test suite (all 20 unit/integration tests passing).
 
 ## Recent Fixes & Features (v2.28.2)
 - **SimpleFIN Sync Result Type Alignment**:

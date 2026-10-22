@@ -1,6 +1,20 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     const { logger } = await import('@/lib/logger');
+
+    // If DATABASE_URL is unset or contains unexpanded Kubernetes $(...) variable syntax
+    if (!process.env.DATABASE_URL || process.env.DATABASE_URL.includes('$(')) {
+      if (process.env.POSTGRES_USER && process.env.POSTGRES_PASSWORD && process.env.DATABASE_HOST) {
+        const user = encodeURIComponent(process.env.POSTGRES_USER);
+        const pass = encodeURIComponent(process.env.POSTGRES_PASSWORD);
+        const host = process.env.DATABASE_HOST;
+        const port = process.env.DATABASE_PORT || '5432';
+        const db = process.env.POSTGRES_DB || 'webbudget';
+        process.env.DATABASE_URL = `postgresql://${user}:${pass}@${host}:${port}/${db}`;
+        logger.info('Startup', 'Resolved DATABASE_URL from individual environment variables', { action: 'startup.db_resolve' });
+      }
+    }
+
     // Validate required environment variables
     const requiredEnv = ['DATABASE_URL', 'APP_PASSWORD', 'NEXTAUTH_SECRET'];
     const missingEnv = requiredEnv.filter(envVar => !process.env[envVar]);
