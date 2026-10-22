@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { decrypt, updateSession, encrypt, getCookieOptions } from "@/lib/auth";
+import { logger, metrics } from "@/lib/logger";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -10,10 +11,15 @@ export async function middleware(request: NextRequest) {
   // 1. Generate Correlation ID for trace logging
   const correlationId = request.headers.get("X-Correlation-ID") || crypto.randomUUID();
 
-  console.log(`[MIDDLEWARE] [Id: ${correlationId}] Request: ${request.method} ${pathname} | Protocol: ${protocol} | Host: ${host}`);
+  logger.info("MIDDLEWARE", `${request.method} ${pathname}`, {
+    correlationId,
+    action: "http.request",
+    context: { method: request.method, path: pathname, protocol, host }
+  });
 
   // 2. Always allow preflight requests with CORS headers
   if (request.method === "OPTIONS") {
+    metrics.recordRequest(request.method, pathname, 200);
     return new NextResponse(null, {
       status: 200,
       headers: {
@@ -39,7 +45,8 @@ export async function middleware(request: NextRequest) {
 
         try {
           if (origin === "null") {
-            console.error(`[CSRF] [Id: ${correlationId}] Blocked request from null origin`);
+            logger.warn("CSRF", "Blocked request from null origin", { correlationId });
+            metrics.recordRequest(request.method, pathname, 403);
             return new NextResponse(JSON.stringify({ error: "CSRF Verification Failed" }), {
               status: 403,
               headers: { 
@@ -53,7 +60,8 @@ export async function middleware(request: NextRequest) {
           const expectedUrl = new URL(expectedOrigin);
 
           if (originUrl.host !== expectedUrl.host) {
-            console.error(`[CSRF] [Id: ${correlationId}] Blocked request from origin: ${origin} | Expected host: ${expectedUrl.host}`);
+            logger.warn("CSRF", `Blocked request from origin: ${origin} | Expected host: ${expectedUrl.host}`, { correlationId });
+            metrics.recordRequest(request.method, pathname, 403);
             return new NextResponse(JSON.stringify({ error: "CSRF Verification Failed" }), {
               status: 403,
               headers: { 
@@ -63,7 +71,8 @@ export async function middleware(request: NextRequest) {
             });
           }
         } catch (err) {
-          console.error(`[CSRF] [Id: ${correlationId}] Origin parsing error`, err);
+          logger.error("CSRF", "Origin parsing error", err, { correlationId });
+          metrics.recordRequest(request.method, pathname, 400);
           return new NextResponse(JSON.stringify({ error: "Invalid Origin header" }), {
             status: 400,
             headers: { 
@@ -76,7 +85,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // 4. Allow public assets and login page
+  // 4. Allow public assets, observability endpoints, and login page
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/static") ||
@@ -84,11 +93,14 @@ export async function middleware(request: NextRequest) {
     pathname === "/favicon.ico" ||
     pathname === "/manifest.json" ||
     pathname === "/coinflow-extension.zip" ||
+    pathname.startsWith("/api/metrics") ||
+    pathname.startsWith("/api/observability") ||
     pathname.startsWith("/api/v1/auth") ||
     // Allow background sync with API Key
     pathname.startsWith("/api/v1/sync/background") ||
     request.headers.has("X-API-KEY")
   ) {
+    metrics.recordRequest(request.method, pathname, 200);
     const response = NextResponse.next();
     response.headers.set("X-Correlation-ID", correlationId);
     return response;
@@ -109,7 +121,7 @@ export async function middleware(request: NextRequest) {
     }
 
     if (!isValidSession) {
-      console.log(`[SSO] [Id: ${correlationId}] Auto-logging in user from proxy header: ${ssoUser}`);
+      logger.info("SSO", `Auto-logging in user from proxy header: ${ssoUser}`, { correlationId });
       const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
       const newSessionValue = await encrypt({ user: "admin", expiresAt });
       const response = NextResponse.next();
@@ -120,6 +132,7 @@ export async function middleware(request: NextRequest) {
         ...getCookieOptions(),
       });
       response.headers.set("X-Correlation-ID", correlationId);
+      metrics.recordRequest(request.method, pathname, 200);
       return response;
     }
   }
@@ -129,6 +142,8 @@ export async function middleware(request: NextRequest) {
 
   if (!session) {
     if (pathname.startsWith("/api/")) {
+      logger.warn("AUTH", `Unauthorized API access to ${pathname}`, { correlationId });
+      metrics.recordRequest(request.method, pathname, 401);
       const response = NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       response.headers.set("Access-Control-Allow-Origin", "*");
       response.headers.set("X-Correlation-ID", correlationId);
@@ -146,11 +161,13 @@ export async function middleware(request: NextRequest) {
   const res = await updateSession(request);
   if (res) {
     res.headers.set("X-Correlation-ID", correlationId);
+    metrics.recordRequest(request.method, pathname, 200);
     return res;
   }
 
   const defaultRes = NextResponse.next();
   defaultRes.headers.set("X-Correlation-ID", correlationId);
+  metrics.recordRequest(request.method, pathname, 200);
   return defaultRes;
 }
 
