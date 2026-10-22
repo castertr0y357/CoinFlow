@@ -4,7 +4,7 @@ metadata:
   name: coinflow-backup-pvc
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   storageClassName: longhorn
   resources:
     requests:
