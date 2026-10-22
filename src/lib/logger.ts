@@ -68,7 +68,14 @@ function emitLog(level: LogLevel, job: string, message: string, opts?: LogOption
       ...(opts?.context ? { context: opts.context } : {}),
       ...(opts?.error && opts.error instanceof Error ? { stack: opts.error.stack } : {}),
     };
-    process.stdout.write(JSON.stringify(logEntry) + '\n');
+    const jsonStr = JSON.stringify(logEntry);
+    if (level === 'ERROR') {
+      console.error(jsonStr);
+    } else if (level === 'WARN') {
+      console.warn(jsonStr);
+    } else {
+      console.log(jsonStr);
+    }
   }
 }
 
