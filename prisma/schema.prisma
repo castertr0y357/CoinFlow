@@ -123,6 +123,8 @@ model Transaction {
   posted          Boolean            @default(true)
   accountId       String
   externalOrderId String?            @unique
+  matchedOrderId  String?            @unique
+  matchedOrderSource String?
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
   rawPayee        String?
@@ -134,6 +136,7 @@ model Transaction {
   @@index([date])
   @@index([accountId])
   @@index([payee])
+  @@index([matchedOrderId])
 }
 
 model TransactionSplit {
@@ -161,6 +164,8 @@ model ExternalOrder {
   updatedAt   DateTime            @updatedAt
   items       ExternalOrderItem[]
   transaction Transaction?
+
+  @@index([source, totalAmount, date])
 }
 
 model ExternalOrderItem {

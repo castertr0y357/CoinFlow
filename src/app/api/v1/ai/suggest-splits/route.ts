@@ -16,21 +16,38 @@ export async function POST(req: NextRequest) {
       const transaction = await prisma.transaction.findUnique({
         where: { id: transactionId },
         include: { 
+          splits: true,
           externalOrder: {
             include: { items: true }
           }
         }
       });
 
-      if (!transaction || !transaction.externalOrder) {
+      if (!transaction || (!transaction.externalOrder && !transaction.matchedOrderId && transaction.splits.length <= 1)) {
         return NextResponse.json({ error: "Transaction not found or not linked to an order" }, { status: 404 });
       }
 
       const categories = await prisma.category.findMany();
-      const items = transaction.externalOrder.items.map(item => ({
-        title: item.title,
-        price: Number(item.price)
-      }));
+      let items: { title: string; price: number }[] = [];
+
+      if (transaction.externalOrder && transaction.externalOrder.items.length > 0) {
+        items = transaction.externalOrder.items.map(item => ({
+          title: item.title,
+          price: Number(item.price)
+        }));
+      } else {
+        // Matched order was pruned; read items from transaction.splits memos and amounts
+        items = transaction.splits
+          .filter(s => !!s.memo)
+          .map(s => ({
+            title: s.memo || "Order Item",
+            price: Math.abs(Number(s.amount))
+          }));
+      }
+
+      if (items.length === 0) {
+        return NextResponse.json({ error: "No order items found to suggest categories for" }, { status: 400 });
+      }
 
       const suggestions = await getSplitSuggestions(transaction, items, categories);
       

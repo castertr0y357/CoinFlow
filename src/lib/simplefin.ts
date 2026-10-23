@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import { getCleanMerchantName } from "./services/aiService";
 import { logger } from "./logger";
+import { matchTransactionToPendingOrder } from "./external-orders";
 
 interface SimpleFinTransaction {
   id: string;
@@ -153,7 +154,7 @@ export async function syncSimpleFin() {
             );
           }
 
-          await prisma.transaction.create({
+          const createdTx = await prisma.transaction.create({
             data: {
               remoteId: remoteTx.id,
               date: txDate,
@@ -169,6 +170,13 @@ export async function syncSimpleFin() {
               }
             },
           });
+
+          // Check if new transaction matches any pending buffered ExternalOrder
+          try {
+            await matchTransactionToPendingOrder(createdTx.id);
+          } catch (matchErr) {
+            logger.warn("SimpleFIN", `Order match check failed for transaction ${createdTx.id}`, { error: matchErr });
+          }
         }
       }
     }

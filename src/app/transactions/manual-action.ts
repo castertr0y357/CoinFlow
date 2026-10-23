@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { z } from "zod";
+import { matchTransactionToPendingOrder } from "@/lib/external-orders";
 
 const AddManualTransactionSchema = z.object({
   date: z.string().refine(val => !isNaN(Date.parse(val))),
@@ -56,6 +57,12 @@ export async function addManualTransaction(data: {
         }
       }
     });
+
+    try {
+      await matchTransactionToPendingOrder(transaction.id);
+    } catch (e) {
+      console.warn("Could not match manual transaction to pending order:", e);
+    }
 
     revalidatePath("/");
     revalidatePath(`/categories/${parsed.categoryId}`);

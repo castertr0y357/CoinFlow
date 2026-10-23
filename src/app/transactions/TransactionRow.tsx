@@ -246,7 +246,7 @@ export default function TransactionRow({
                   )}
                 </span>
                 
-                {tx.externalOrderId && (
+                {(tx.externalOrderId || tx.matchedOrderId) && (
                   <div onClick={(e) => e.stopPropagation()} style={{ display: 'inline-block' }}>
                     <div className="external-order-info">
                       {aiEnabled && (
@@ -260,19 +260,28 @@ export default function TransactionRow({
                           {isAiSplitting ? "✨ Analyzing..." : "✨ Smart Split"}
                         </Button>
                       )}
-                      {!!tx.externalOrder && (
+                      {(!!tx.externalOrder || !!tx.matchedOrderId) && (
                         <div className="order-details-popover glass">
                           <div className="order-header">
-                            <strong>{tx.externalOrder.source} Order #{tx.externalOrder.orderId}</strong>
+                            <strong>{tx.matchedOrderSource || tx.externalOrder?.source} Order #{tx.matchedOrderId || tx.externalOrder?.orderId}</strong>
                           </div>
                           <ul className="order-items">
-                            {tx.externalOrder.items?.map((item) => (
-                              <li key={item.id} className="order-item">
-                                <span className="item-qty">{item.quantity}x</span>
-                                <span className="item-title">{item.title}</span>
-                                <span className="item-price">${Number(item.price).toFixed(2)}</span>
-                              </li>
-                            ))}
+                            {tx.externalOrder?.items && tx.externalOrder.items.length > 0 ? (
+                              tx.externalOrder.items.map((item) => (
+                                <li key={item.id} className="order-item">
+                                  <span className="item-qty">{item.quantity}x</span>
+                                  <span className="item-title">{item.title}</span>
+                                  <span className="item-price">${Number(item.price).toFixed(2)}</span>
+                                </li>
+                              ))
+                            ) : (
+                              tx.splits.filter(s => !!s.memo).map((split) => (
+                                <li key={split.id} className="order-item">
+                                  <span className="item-title">{split.memo}</span>
+                                  <span className="item-price">${Math.abs(Number(split.amount)).toFixed(2)}</span>
+                                </li>
+                              ))
+                            )}
                           </ul>
                         </div>
                       )}

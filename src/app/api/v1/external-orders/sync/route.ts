@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/api-utils";
-import prisma from "@/lib/prisma";
-import { applySplits } from "@/lib/services/transactionService";
-import { calculateProportionalSplits, getPayeeFilterForSource } from "@/lib/external-orders";
+import { processScrapedOrder, isOrderAlreadyMatched } from "@/lib/external-orders";
 import { normalizeItemNames } from "@/lib/services/aiService";
 import { logger } from "@/lib/logger";
 
@@ -38,12 +36,29 @@ export async function POST(req: NextRequest) {
       const results = {
         ordersProcessed: 0,
         itemsCreated: 0,
-        matchedTransactions: 0
+        matchedTransactions: 0,
+        bufferedOrders: 0,
+        skippedDuplicates: 0,
       };
 
-      // Extract all unique titles across all orders for batch normalization
-      const allTitles = new Set<string>();
+      // 1. Filter out orders that are already matched (duplicate scan protection)
+      const nonDuplicateOrders: SyncOrder[] = [];
       for (const order of orders) {
+        if (await isOrderAlreadyMatched(order.orderId)) {
+          logger.info("ExternalOrderSync", `Order ${order.orderId} already matched. Discarding duplicate scan.`);
+          results.skippedDuplicates++;
+        } else {
+          nonDuplicateOrders.push(order);
+        }
+      }
+
+      if (nonDuplicateOrders.length === 0) {
+        return NextResponse.json(results);
+      }
+
+      // 2. Extract all unique titles across remaining orders for batch normalization
+      const allTitles = new Set<string>();
+      for (const order of nonDuplicateOrders) {
         if (order.items && Array.isArray(order.items)) {
           order.items.forEach((item: SyncOrderItem) => {
             if (item.title) allTitles.add(item.title);
@@ -54,7 +69,8 @@ export async function POST(req: NextRequest) {
       logger.info("ExternalOrderSync", `Normalizing ${allTitles.size} unique titles...`);
       const normalizedTitles = await normalizeItemNames(Array.from(allTitles));
 
-      for (const order of orders) {
+      // 3. Process each order
+      for (const order of nonDuplicateOrders) {
         const { orderId, date, totalAmount, items } = order;
 
         // Deduplicate incoming items as a safety measure
@@ -64,123 +80,30 @@ export async function POST(req: NextRequest) {
           ))
         );
 
-        // Check for existing order and its categorization status
-        const existingOrder = await prisma.externalOrder.findUnique({
-          where: { orderId },
-          include: { 
-            transaction: {
-              include: { splits: true }
-            }
-          }
-        });
+        const normalizedItems = uniqueItems.map(item => ({
+          title: normalizedTitles[item.title] || item.title,
+          rawTitle: item.title,
+          price: item.price,
+          quantity: item.quantity || 1,
+        }));
 
-        // We can refresh if it's new OR if the transaction exists but is completely uncategorized
-        const isCategorized = existingOrder?.transaction?.splits.some(s => s.categoryId !== null);
-        const canRefresh = !existingOrder || !isCategorized;
-
-        if (!canRefresh) {
-          logger.info("ExternalOrderSync", `Skipping order ${orderId} - Already categorized.`);
-          continue;
-        }
-
-        // If we are refreshing an existing order, clean up old items first
-        if (existingOrder) {
-          await prisma.externalOrderItem.deleteMany({
-            where: { externalOrderId: existingOrder.id }
-          });
-        }
-
-        // Upsert the order
-        const externalOrder = await prisma.externalOrder.upsert({
-          where: { orderId },
-          update: {
-            date: new Date(date),
-            totalAmount: totalAmount,
-            source: source,
-            items: {
-              create: uniqueItems.map((item: SyncOrderItem) => ({
-                title: normalizedTitles[item.title] || item.title,
-                rawTitle: item.title,
-                price: item.price,
-                quantity: item.quantity || 1
-              }))
-            }
-          },
-          create: {
-            orderId,
-            source: source,
-            date: new Date(date),
-            totalAmount: totalAmount,
-            items: {
-              create: uniqueItems.map((item: SyncOrderItem) => ({
-                title: normalizedTitles[item.title] || item.title,
-                rawTitle: item.title,
-                price: item.price,
-                quantity: item.quantity || 1
-              }))
-            }
-          },
+        const processResult = await processScrapedOrder({
+          orderId,
+          source: source.toUpperCase(),
+          date,
+          totalAmount,
+          items: normalizedItems,
         });
 
         results.ordersProcessed++;
-        results.itemsCreated += uniqueItems.length;
 
-        // Matching logic
-        let matchedTransactionId: string | null = existingOrder?.transaction?.id || null;
-
-        // Broaden search window to handle timezone shifts and posting delays
-        // Range: [OrderDate - 3 days, OrderDate + 10 days]
-        const startDate = new Date(date);
-        startDate.setDate(startDate.getDate() - 3);
-        startDate.setHours(0, 0, 0, 0);
-
-        const endDate = new Date(date);
-        endDate.setDate(endDate.getDate() + 10);
-        endDate.setHours(23, 59, 59, 999);
-
-        logger.info("ExternalOrderSync", `Searching for transaction: Amount -${totalAmount}, Range ${startDate.toISOString()} to ${endDate.toISOString()}`);
-
-        const payeeFilter = getPayeeFilterForSource(source);
-
-        const foundTx = await prisma.transaction.findFirst({
-          where: {
-            amount: -totalAmount, 
-            date: {
-              gte: startDate,
-              lte: endDate
-            },
-            externalOrderId: null,
-            ...payeeFilter
-          },
-          orderBy: { date: 'asc' } // Pick the one closest to the order date if multiple exist
-        });
-
-        if (foundTx) {
-          logger.info("ExternalOrderSync", `Matched transaction ${foundTx.id} (${foundTx.payee}) to order ${orderId}`);
-          await prisma.transaction.update({
-            where: { id: foundTx.id },
-            data: { externalOrderId: externalOrder.id }
-          });
-          matchedTransactionId = foundTx.id;
+        if (processResult.duplicate) {
+          results.skippedDuplicates++;
+        } else if (processResult.matched) {
           results.matchedTransactions++;
         } else {
-          logger.warn("ExternalOrderSync", `No transaction match found for order ${orderId} ($${totalAmount}) in window.`);
-        }
-
-        // Auto-split or re-split the transaction based on fresh items
-        if (matchedTransactionId) {
-          const fullTx = await prisma.transaction.findUnique({
-            where: { id: matchedTransactionId }
-          });
-          if (fullTx) {
-            const itemsForSplits = uniqueItems.map(item => ({
-              title: item.title,
-              price: item.price,
-              quantity: item.quantity ?? 1
-            }));
-            const splits = calculateProportionalSplits(Number(fullTx.amount), itemsForSplits);
-            await applySplits(fullTx.id, splits);
-          }
+          results.bufferedOrders++;
+          results.itemsCreated += normalizedItems.length;
         }
       }
 

@@ -1,6 +1,7 @@
-# Project Status: CoinFlow Browser Extension (v2.29.0)
+# Project Status: CoinFlow Browser Extension (v2.30.0)
 
 ## Current Progress
+- [x] **Two-Way External Order Buffering, Auto-Pruning & Duplicate Protection (v2.30.0)**: Upgraded external order sync for Amazon, Walmart, and Lowe's. Unmatched orders are buffered in the database waiting for bank transactions to arrive. When bank transactions sync (via SimpleFIN or manual creation), they automatically match to pending orders, auto-split the transactions, stamp `matchedOrderId` and `matchedOrderSource`, and prune the order records to reclaim database storage. Duplicate scans of already matched orders are immediately detected and discarded. Maintained backward compatibility for AI Smart Split and order popovers using split item memos.
 - [x] **Automated GFS Backup Schedule, Retention, Multi-Storage & Catalog (v2.29.0)**: Added Grandfather-Father-Son (GFS) automated backup engine mirroring the BeverageLab reference implementation. Added GFS schedule, retention, and storage configuration fields to `Settings` and created `BackupRecord` catalog model with Prisma migration `20261023002125_add_backup_gfs_configuration`. Implemented Daily, Weekly, and Monthly tier classification and retention enforcement, multi-destination storage drivers (Local `/app/backups`, S3, CIFS/SMB, NFS) with a storage test endpoint, cross-application AES-256-GCM PBKDF2 encryption (`BLABENC1` magic header), config preservation toggle across database restores, failure webhook alerting with SSRF validation, background advisory-locked scheduler loop, and upgraded `BackupManager.tsx` UI with Quick Actions, Schedule/Storage configurations, and Snapshot Catalog table.
 - [x] **Kubernetes DATABASE_URL Auto-Resolution (v2.28.3)**: Resolved Prisma `P1013: invalid port number in database URL` error in Kubernetes containers. Removed unexpanded `env.DATABASE_URL` template from `k8s/base/web-deployment.yaml` and implemented automatic fallback assembly and URL encoding in `entrypoint.sh` and `src/instrumentation.ts` to construct `DATABASE_URL` from `POSTGRES_USER`, `POSTGRES_PASSWORD`, `DATABASE_HOST`, `DATABASE_PORT`, and `POSTGRES_DB` whenever `DATABASE_URL` is omitted from secrets or contains unexpanded `$(...)` tokens.
 - [x] **SimpleFIN Sync Result Type Alignment (v2.28.2)**: Fixed TypeScript compilation failure in `src/lib/services/syncService.ts` where properties `accounts` and `transactions` were queried on `result` (`MockSimpleFinResult | { success: boolean; accountCount: number }`). Added `transactionCount` to `syncSimpleFin` return payload and updated `syncService.ts` to access `result.accountCount` and `result.transactionCount` cleanly.
@@ -60,6 +61,16 @@
 - [x] **Subscription Detective Alignment (v2.10.0)**: Corrected unmapped keys (`monthlyCost`, `reason`) and wrapped the JSON response array inside an object matching frontend specifications.
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
+
+## Recent Fixes & Features (v2.30.0)
+- **Two-Way External Order Buffering, Auto-Pruning & Duplicate Protection**:
+  - Added `matchedOrderId` (unique) and `matchedOrderSource` fields to `Transaction` model and composite index on `ExternalOrder(source, totalAmount, date)` in `prisma/schema.prisma`.
+  - Created and deployed migration `20261022205500_add_matched_order_tracking`.
+  - Implemented `processScrapedOrder`, `matchTransactionToPendingOrder`, `isOrderAlreadyMatched`, and `detectSourceFromPayee` in `src/lib/external-orders.ts`.
+  - Upgraded `/api/v1/external-orders/sync` to discard duplicate scans, match existing transactions, or buffer pending orders without orphaned data.
+  - Connected `matchTransactionToPendingOrder` hook to SimpleFIN transaction sync (`src/lib/simplefin.ts`) and manual transaction creation (`src/app/transactions/manual-action.ts`).
+  - Updated `TransactionRow.tsx` and `/api/v1/ai/suggest-splits` to display order details and support AI smart splitting seamlessly using transaction split memos even after `ExternalOrder` records are pruned.
+  - Added comprehensive test suite `src/lib/external-orders.test.ts` covering buffering, delayed matching, immediate matching, pruning, and duplicate rejection. All 29 unit and integration tests passing.
 
 ## Recent Fixes & Features (v2.29.0)
 - **Automated GFS Backup Schedule, Retention, Multi-Storage & Catalog**:

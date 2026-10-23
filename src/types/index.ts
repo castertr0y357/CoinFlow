@@ -48,6 +48,8 @@ export type Transaction = {
   account?: AccountShort | null;
   externalOrderId: string | null;
   externalOrder?: ExternalOrder | null;
+  matchedOrderId?: string | null;
+  matchedOrderSource?: string | null;
   isHidden: boolean;
   memo: string | null;
 }
