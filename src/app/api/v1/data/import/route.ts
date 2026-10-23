@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/api-utils";
+import prisma from "@/lib/prisma";
 import { createBackupSnapshot, restoreDatabaseFromBuffer } from "@/lib/services/backupService";
 import { logger } from "@/lib/logger";
 
@@ -9,18 +10,20 @@ export async function POST(req: NextRequest) {
       const contentType = req.headers.get("content-type") || "";
       let fileBuffer: Buffer;
       let filename = "upload.sql.gz";
+      let passphrase = "";
 
       if (contentType.includes("multipart/form-data")) {
         const formData = await req.formData();
         const file = formData.get("file");
+        passphrase = (formData.get("passphrase") as string) || "";
         if (!file || !(file instanceof Blob)) {
           return NextResponse.json({ error: "No backup file provided" }, { status: 400 });
         }
         if ("name" in file && typeof file.name === "string") {
           filename = file.name;
         }
-        if (!filename.endsWith(".sql.gz") && !filename.endsWith(".sql")) {
-          return NextResponse.json({ error: "Invalid backup file format. Expected .sql.gz or .sql" }, { status: 400 });
+        if (!filename.endsWith(".sql.gz") && !filename.endsWith(".sql") && !filename.endsWith(".enc")) {
+          return NextResponse.json({ error: "Invalid backup file format. Expected .sql.gz, .sql, or .enc" }, { status: 400 });
         }
         const arrayBuffer = await file.arrayBuffer();
         fileBuffer = Buffer.from(arrayBuffer);
@@ -36,9 +39,12 @@ export async function POST(req: NextRequest) {
       // 0. Take a safety snapshot before we do anything
       await createBackupSnapshot("pre-import");
 
-      await restoreDatabaseFromBuffer(fileBuffer, filename);
+      const settings = await prisma.settings.findUnique({ where: { id: "global" } });
+      const effectivePassphrase = passphrase || settings?.backupEncryptionPass || null;
 
-      return NextResponse.json({ success: true });
+      await restoreDatabaseFromBuffer(fileBuffer, filename, effectivePassphrase);
+
+      return NextResponse.json({ success: true, message: "Database successfully restored." });
     } catch (error) {
       logger.error("Backup", "Import error", error);
       const message = error instanceof Error ? error.message : String(error);

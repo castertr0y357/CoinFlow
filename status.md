@@ -1,6 +1,7 @@
-# Project Status: CoinFlow Browser Extension (v2.28.3)
+# Project Status: CoinFlow Browser Extension (v2.29.0)
 
 ## Current Progress
+- [x] **Automated GFS Backup Schedule, Retention, Multi-Storage & Catalog (v2.29.0)**: Added Grandfather-Father-Son (GFS) automated backup engine mirroring the BeverageLab reference implementation. Added GFS schedule, retention, and storage configuration fields to `Settings` and created `BackupRecord` catalog model with Prisma migration `20261023002125_add_backup_gfs_configuration`. Implemented Daily, Weekly, and Monthly tier classification and retention enforcement, multi-destination storage drivers (Local `/app/backups`, S3, CIFS/SMB, NFS) with a storage test endpoint, cross-application AES-256-GCM PBKDF2 encryption (`BLABENC1` magic header), config preservation toggle across database restores, failure webhook alerting with SSRF validation, background advisory-locked scheduler loop, and upgraded `BackupManager.tsx` UI with Quick Actions, Schedule/Storage configurations, and Snapshot Catalog table.
 - [x] **Kubernetes DATABASE_URL Auto-Resolution (v2.28.3)**: Resolved Prisma `P1013: invalid port number in database URL` error in Kubernetes containers. Removed unexpanded `env.DATABASE_URL` template from `k8s/base/web-deployment.yaml` and implemented automatic fallback assembly and URL encoding in `entrypoint.sh` and `src/instrumentation.ts` to construct `DATABASE_URL` from `POSTGRES_USER`, `POSTGRES_PASSWORD`, `DATABASE_HOST`, `DATABASE_PORT`, and `POSTGRES_DB` whenever `DATABASE_URL` is omitted from secrets or contains unexpanded `$(...)` tokens.
 - [x] **SimpleFIN Sync Result Type Alignment (v2.28.2)**: Fixed TypeScript compilation failure in `src/lib/services/syncService.ts` where properties `accounts` and `transactions` were queried on `result` (`MockSimpleFinResult | { success: boolean; accountCount: number }`). Added `transactionCount` to `syncSimpleFin` return payload and updated `syncService.ts` to access `result.accountCount` and `result.transactionCount` cleanly.
 - [x] **Edge Runtime Logger Fix (v2.28.1)**: Replaced Node.js-only API `process.stdout.write` in `src/lib/logger.ts` with standard `console.error`, `console.warn`, and `console.log` methods. Fixed Turbopack build failure when bundling Edge middleware (`src/middleware.ts`) which imports `@/lib/logger`.
@@ -59,6 +60,19 @@
 - [x] **Subscription Detective Alignment (v2.10.0)**: Corrected unmapped keys (`monthlyCost`, `reason`) and wrapped the JSON response array inside an object matching frontend specifications.
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
+
+## Recent Fixes & Features (v2.29.0)
+- **Automated GFS Backup Schedule, Retention, Multi-Storage & Catalog**:
+  - Extended Prisma schema `Settings` model with GFS fields (`backupEnabled`, `backupTime`, `backupWeeklyDay`, `backupMonthlyDay`, `backupKeepDaily`, `backupKeepWeekly`, `backupKeepMonthly`, `backupPreserveConfig`, `backupStorageType`, `backupLocalPath`, S3/CIFS/NFS parameters, `backupEncryptionPass`, `backupWebhookUrl`, `backupLastRunAt`, `backupLastStatus`, `backupLastError`).
+  - Created `BackupRecord` Prisma model with fields `id`, `filename`, `tier`, `storageType`, `fileSize`, `isEncrypted`, `status`, `errorMessage`, `createdAt`.
+  - Generated and executed migration `20261023002125_add_backup_gfs_configuration`.
+  - Implemented cross-app AES-256-GCM encryption with PBKDF2 (200k iterations SHA256) and magic signature `BLABENC1` in `src/lib/services/backupCrypto.ts`, unit tested with 4 passing tests in `backupCrypto.test.ts`.
+  - Implemented multi-storage destination abstraction (`LocalStorageDriver` with S3/CIFS/NFS interfaces) and storage connectivity tester in `src/lib/services/storageDrivers.ts`.
+  - Upgraded `src/lib/services/backupService.ts` to support tier classification (`determineGfsTier`), automated retention pruning (`enforceGfsRetention`), config preservation across restores, webhook failure alerts with SSRF guard, and local directory syncing.
+  - Added background daemon loop in `src/lib/services/backupScheduler.ts` using Postgres advisory locking (`SELECT pg_try_advisory_lock(...)`) to prevent multi-container duplicate backups, hooked into `src/instrumentation.ts`.
+  - Created API routes: `GET/POST /api/v1/data/backups/config`, `POST /api/v1/data/backups/test-storage`, and upgraded snapshot list, restore, and delete endpoints.
+  - Rebuilt `src/app/settings/BackupManager.tsx` UI with Quick Actions cards (Instant Export, Run Backup Now, Restore Archive with passphrase), Automated GFS Schedule & Storage Configuration form with Test Connection button, and Backup Catalog table with Tier badges, size, encryption indicator, and Restore/Download/Delete actions.
+  - Verified with 25 unit/integration tests passing (100% pass rate) in container environment.
 
 ## Recent Fixes & Features (v2.28.3)
 - **Kubernetes DATABASE_URL Auto-Resolution**:

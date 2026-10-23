@@ -77,23 +77,8 @@ export async function register() {
       }
     }, SIX_HOURS);
 
-    // Run compressed backup snapshot every 24 hours (daily backup)
-    const ONE_DAY = 24 * 60 * 60 * 1000;
-    setInterval(async () => {
-      try {
-        logger.info('Scheduler', 'Running scheduled database backup...', { action: 'cron.backup' });
-        const filename = await createBackupSnapshot('auto');
-        if (filename) {
-          logger.info('Scheduler', `Scheduled backup created successfully: ${filename}`, {
-            action: 'cron.backup',
-            context: { filename },
-          });
-        } else {
-          logger.error('Scheduler', 'Scheduled backup execution returned null.', undefined, { action: 'cron.backup' });
-        }
-      } catch (error) {
-        logger.error('Scheduler', 'Scheduled database backup failed', error, { action: 'cron.backup' });
-      }
-    }, ONE_DAY);
+    // Initialize automated GFS backup daemon loop
+    const { startGfsBackupScheduler } = await import('@/lib/services/backupScheduler');
+    startGfsBackupScheduler();
   }
 }

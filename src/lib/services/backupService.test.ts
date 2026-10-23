@@ -2,10 +2,31 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import zlib from "zlib";
 import { EventEmitter } from "events";
 import * as childProcess from "child_process";
-import { dumpDatabaseSqlGz, restoreDatabaseSql, restoreDatabaseFromBuffer } from "./backupService";
+import {
+  dumpDatabaseSqlGz,
+  restoreDatabaseSql,
+  restoreDatabaseFromBuffer,
+  determineGfsTier,
+} from "./backupService";
 
 vi.mock("child_process", () => ({
   spawn: vi.fn(),
+}));
+
+vi.mock("@/lib/prisma", () => ({
+  default: {
+    settings: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      upsert: vi.fn().mockResolvedValue({}),
+      update: vi.fn().mockResolvedValue({}),
+    },
+    backupRecord: {
+      findMany: vi.fn().mockResolvedValue([]),
+      upsert: vi.fn().mockResolvedValue({}),
+      delete: vi.fn().mockResolvedValue({}),
+    },
+    $queryRaw: vi.fn().mockResolvedValue([{ pg_try_advisory_lock: true }]),
+  },
 }));
 
 interface MockChildProcess extends EventEmitter {
@@ -29,7 +50,7 @@ function createMockProcess(): MockChildProcess {
   return proc;
 }
 
-describe("backupService - SQL.gz Database Dump & Restore", () => {
+describe("backupService - SQL.gz Database Dump, Restore & GFS", () => {
   const originalEnv = process.env.DATABASE_URL;
 
   beforeEach(() => {
@@ -39,6 +60,22 @@ describe("backupService - SQL.gz Database Dump & Restore", () => {
 
   afterEach(() => {
     process.env.DATABASE_URL = originalEnv;
+  });
+
+  it("should classify GFS tiers correctly based on monthly and weekly day settings", () => {
+    const config = { backupWeeklyDay: 0, backupMonthlyDay: 1 }; // Sunday & 1st of month
+
+    // 2026-11-01 is Sunday and 1st of month -> Monthly takes priority
+    const monthlyDate = new Date(Date.UTC(2026, 10, 1));
+    expect(determineGfsTier(monthlyDate, config)).toBe("MONTHLY");
+
+    // 2026-11-08 is Sunday (8th of month) -> Weekly
+    const weeklyDate = new Date(Date.UTC(2026, 10, 8));
+    expect(determineGfsTier(weeklyDate, config)).toBe("WEEKLY");
+
+    // 2026-11-09 is Monday (9th of month) -> Daily
+    const dailyDate = new Date(Date.UTC(2026, 10, 9));
+    expect(determineGfsTier(dailyDate, config)).toBe("DAILY");
   });
 
   it("should reject dumpDatabaseSqlGz when DATABASE_URL is missing", async () => {
@@ -83,15 +120,16 @@ describe("backupService - SQL.gz Database Dump & Restore", () => {
 
   it("should gunzip .sql.gz buffer and pipe SQL into psql during restoreDatabaseFromBuffer", async () => {
     const mockProc = createMockProcess();
-    vi.mocked(childProcess.spawn).mockReturnValue(mockProc as unknown as childProcess.ChildProcess);
+    vi.mocked(childProcess.spawn).mockImplementation(() => {
+      process.nextTick(() => mockProc.emit("close", 0));
+      return mockProc as unknown as childProcess.ChildProcess;
+    });
 
     const sampleSql = "SELECT 1;";
     const gzipped = zlib.gzipSync(Buffer.from(sampleSql, "utf-8"));
 
-    const promise = restoreDatabaseFromBuffer(gzipped, "webbudget_manual_2026-10-21.sql.gz");
-    mockProc.emit("close", 0);
+    await restoreDatabaseFromBuffer(gzipped, "coinflow_manual_2026-10-21.sql.gz");
 
-    await promise;
     expect(childProcess.spawn).toHaveBeenCalledWith("psql", [
       "-v",
       "ON_ERROR_STOP=1",
@@ -128,4 +166,3 @@ describe("backupService - SQL.gz Database Dump & Restore", () => {
     await expect(promise).rejects.toThrow("psql exited with code 3: ERROR: syntax error at or near \"INVALID\"");
   });
 });
-

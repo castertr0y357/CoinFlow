@@ -220,6 +220,51 @@ model Settings {
   aiChatId              String?
   aiThinkingEnabled     Boolean   @default(false)
   aiThinkingEffort      String?
+  // GFS Automated Backup Configuration
+  backupEnabled         Boolean   @default(false)
+  backupTime            String    @default("02:00")
+  backupWeeklyDay       Int       @default(0) // 0 = Sunday, 1 = Monday, etc.
+  backupMonthlyDay      Int       @default(1)
+  backupKeepDaily       Int       @default(7)
+  backupKeepWeekly      Int       @default(4)
+  backupKeepMonthly     Int       @default(3)
+  backupPreserveConfig  Boolean   @default(true)
+  backupStorageType     String    @default("LOCAL") // LOCAL, S3, CIFS, NFS
+  backupLocalPath       String    @default("/app/backups")
+  backupS3Endpoint      String?
+  backupS3Bucket        String?
+  backupS3Region        String?   @default("us-east-1")
+  backupS3AccessKey     String?
+  backupS3SecretKey     String?
+  backupS3Prefix        String?   @default("coinflow/")
+  backupCifsServer      String?
+  backupCifsShare       String?
+  backupCifsSubpath     String?
+  backupCifsUsername    String?
+  backupCifsPassword    String?
+  backupCifsDomain      String?
+  backupNfsServer       String?
+  backupNfsExport       String?
+  backupNfsSubpath      String?
+  backupEncryptionPass  String?
+  backupWebhookUrl      String?
+  backupLastRunAt       DateTime?
+  backupLastStatus      String?
+  backupLastError       String?
+}
+
+model BackupRecord {
+  id           String    @id @default(cuid())
+  filename     String    @unique
+  tier         String    @default("MANUAL") // MANUAL, DAILY, WEEKLY, MONTHLY
+  storageType  String    @default("LOCAL")
+  fileSize     BigInt    @default(0)
+  isEncrypted  Boolean   @default(false)
+  status       String    @default("SUCCESS") // SUCCESS, FAILED
+  errorMessage String?
+  createdAt    DateTime  @default(now())
+
+  @@index([tier, createdAt])
 }
 
 model Commitment {

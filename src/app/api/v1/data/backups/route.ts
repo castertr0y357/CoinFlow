@@ -1,39 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/api-utils";
-import fs from "fs";
-import path from "path";
-import { createBackupSnapshot } from "@/lib/services/backupService";
-import { logger } from "@/lib/logger";
-
-const BACKUP_DIR = "/app/backups";
+import prisma from "@/lib/prisma";
+import { executeBackup, syncLocalDirectoryToCatalog } from "@/lib/services/backupService";
 
 export async function GET(req: NextRequest) {
   return withAuth(req, async () => {
     try {
-      if (!fs.existsSync(BACKUP_DIR)) {
-        return NextResponse.json({ backups: [] });
-      }
+      // Sync local disk files to DB records so any files copied directly show up
+      await syncLocalDirectoryToCatalog();
 
-      const files = fs.readdirSync(BACKUP_DIR)
-        .filter(f => f.endsWith(".sql.gz"))
-        .map(f => {
-          const stats = fs.statSync(path.join(BACKUP_DIR, f));
-          return {
-            filename: f,
-            size: stats.size,
-            createdAt: stats.mtime,
-          };
-        })
-        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-
-      logger.debug("Backup", `Listed ${files.length} database backups`, {
-        action: "backup.list",
-        context: { count: files.length },
+      const records = await prisma.backupRecord.findMany({
+        orderBy: { createdAt: "desc" },
       });
 
-      return NextResponse.json({ backups: files });
+      const backups = records.map(r => ({
+        id: r.id,
+        filename: r.filename,
+        tier: r.tier,
+        storageType: r.storageType,
+        size: Number(r.fileSize),
+        isEncrypted: r.isEncrypted,
+        status: r.status,
+        errorMessage: r.errorMessage,
+        createdAt: r.createdAt.toISOString(),
+      }));
+
+      return NextResponse.json({ backups });
     } catch (error) {
-      logger.error("Backup", "Failed to list backups", error, { action: "backup.list" });
       const message = error instanceof Error ? error.message : String(error);
       return NextResponse.json({ error: message }, { status: 500 });
     }
@@ -43,16 +36,13 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   return withAuth(req, async () => {
     try {
-      logger.info("Backup", "Manual database backup requested", { action: "backup.create_manual" });
-      const filename = await createBackupSnapshot("manual");
+      const body = await req.json().catch(() => ({}));
+      const tier = body.tier === "DAILY" ? "DAILY" : (body.tier === "WEEKLY" ? "WEEKLY" : (body.tier === "MONTHLY" ? "MONTHLY" : "MANUAL"));
+
+      const filename = await executeBackup(tier);
       if (!filename) throw new Error("Failed to create snapshot");
-      logger.info("Backup", `Manual database backup succeeded: ${filename}`, {
-        action: "backup.create_manual",
-        context: { filename },
-      });
       return NextResponse.json({ success: true, filename });
     } catch (error) {
-      logger.error("Backup", "Manual database backup failed", error, { action: "backup.create_manual" });
       const message = error instanceof Error ? error.message : String(error);
       return NextResponse.json({ error: message }, { status: 500 });
     }
