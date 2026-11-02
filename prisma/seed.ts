@@ -3,11 +3,11 @@ import { createHash } from 'crypto';
 
 const prisma = new PrismaClient();
 
-async function main() {
+export async function runSeed(client: PrismaClient = prisma) {
   console.log('Seeding data...');
 
   // 1. Initialize Settings
-  await prisma.settings.upsert({
+  await client.settings.upsert({
     where: { id: 'global' },
     update: {},
     create: {
@@ -16,26 +16,32 @@ async function main() {
     },
   });
 
-  // 2. Initialize Core Categories
-  const categories = [
-    { name: 'Rent/Mortgage' },
-    { name: 'Groceries' },
-    { name: 'Utilities' },
-    { name: 'Gas/Transit' },
-    { name: 'Dining Out' },
-    { name: 'Entertainment' },
-  ];
+  // 2. Initialize Core Categories only if no categories exist yet
+  const existingCategoryCount = await client.category.count();
+  if (existingCategoryCount === 0) {
+    const categories = [
+      { name: 'Rent/Mortgage' },
+      { name: 'Groceries' },
+      { name: 'Utilities' },
+      { name: 'Gas/Transit' },
+      { name: 'Dining Out' },
+      { name: 'Entertainment' },
+    ];
 
-  for (const cat of categories) {
-    await prisma.category.upsert({
-      where: { name: cat.name },
-      update: {},
-      create: cat,
-    });
+    for (const cat of categories) {
+      await client.category.upsert({
+        where: { name: cat.name },
+        update: {},
+        create: cat,
+      });
+    }
+    console.log('Seeded default categories.');
+  } else {
+    console.log(`Skipping default category seeding (${existingCategoryCount} categories already exist).`);
   }
 
   // 3. Initialize Default User & API Key
-  const user = await prisma.user.upsert({
+  const user = await client.user.upsert({
     where: { email: 'admin@webbudget.local' },
     update: {},
     create: {
@@ -47,7 +53,7 @@ async function main() {
   const systemKey = "system-dev-key-123";
   const hashed = createHash("sha256").update(systemKey).digest("hex");
 
-  await prisma.apiKey.upsert({
+  await client.apiKey.upsert({
     where: { key: hashed },
     update: {},
     create: {
@@ -60,11 +66,14 @@ async function main() {
   console.log('Seed completed successfully. System Key: ' + systemKey);
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+const isDirectExecution = process.argv[1]?.replace(/\\/g, '/').endsWith('prisma/seed.ts');
+if (isDirectExecution) {
+  runSeed()
+    .catch((e) => {
+      console.error(e);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}

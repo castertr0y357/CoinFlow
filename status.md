@@ -1,6 +1,7 @@
-# Project Status: CoinFlow Browser Extension (v2.30.0)
+# Project Status: CoinFlow Browser Extension (v2.30.1)
 
 ## Current Progress
+- [x] **Conditional Default Category Seeding (v2.30.1)**: Updated `prisma/seed.ts` (invoked on startup via `entrypoint.sh` -> `prisma db seed`) to check `prisma.category.count()` before creating default categories (`Rent/Mortgage`, `Groceries`, `Utilities`, `Gas/Transit`, `Dining Out`, `Entertainment`). Default categories are now only seeded if zero categories exist in the database, preventing deleted or renamed default categories from being re-created on every container restart. Added unit tests in `src/lib/seed.test.ts` and synchronized workspace rules with the global template.
 - [x] **Two-Way External Order Buffering, Auto-Pruning & Duplicate Protection (v2.30.0)**: Upgraded external order sync for Amazon, Walmart, and Lowe's. Unmatched orders are buffered in the database waiting for bank transactions to arrive. When bank transactions sync (via SimpleFIN or manual creation), they automatically match to pending orders, auto-split the transactions, stamp `matchedOrderId` and `matchedOrderSource`, and prune the order records to reclaim database storage. Duplicate scans of already matched orders are immediately detected and discarded. Maintained backward compatibility for AI Smart Split and order popovers using split item memos.
 - [x] **Automated GFS Backup Schedule, Retention, Multi-Storage & Catalog (v2.29.0)**: Added Grandfather-Father-Son (GFS) automated backup engine mirroring the BeverageLab reference implementation. Added GFS schedule, retention, and storage configuration fields to `Settings` and created `BackupRecord` catalog model with Prisma migration `20261023002125_add_backup_gfs_configuration`. Implemented Daily, Weekly, and Monthly tier classification and retention enforcement, multi-destination storage drivers (Local `/app/backups`, S3, CIFS/SMB, NFS) with a storage test endpoint, cross-application AES-256-GCM PBKDF2 encryption (`BLABENC1` magic header), config preservation toggle across database restores, failure webhook alerting with SSRF validation, background advisory-locked scheduler loop, and upgraded `BackupManager.tsx` UI with Quick Actions, Schedule/Storage configurations, and Snapshot Catalog table.
 - [x] **Kubernetes DATABASE_URL Auto-Resolution (v2.28.3)**: Resolved Prisma `P1013: invalid port number in database URL` error in Kubernetes containers. Removed unexpanded `env.DATABASE_URL` template from `k8s/base/web-deployment.yaml` and implemented automatic fallback assembly and URL encoding in `entrypoint.sh` and `src/instrumentation.ts` to construct `DATABASE_URL` from `POSTGRES_USER`, `POSTGRES_PASSWORD`, `DATABASE_HOST`, `DATABASE_PORT`, and `POSTGRES_DB` whenever `DATABASE_URL` is omitted from secrets or contains unexpanded `$(...)` tokens.
@@ -61,6 +62,13 @@
 - [x] **Subscription Detective Alignment (v2.10.0)**: Corrected unmapped keys (`monthlyCost`, `reason`) and wrapped the JSON response array inside an object matching frontend specifications.
 - [x] **LLM Markdown Wrapper Protection (v2.11.0)**: Added global `cleanJsonContent` JSON parsing sanitizers to protect all AI endpoints against Ollama's tendency to wrap responses in markdown backticks, fully restoring category suggestions and itemized order splits.
 - [x] **Remote HTTPS LLM Routing (v2.11.0)**: Corrected protocol and port bindings for remote AI hosting, ensuring secure, connection-error-free HTTPS communication.
+
+## Recent Fixes & Features (v2.30.1)
+- **Conditional Default Category Seeding**:
+  - Updated `prisma/seed.ts` to query `prisma.category.count()` before seeding default categories, skipping category creation whenever `existingCategoryCount > 0`.
+  - Exported `runSeed()` from `prisma/seed.ts` with ES module entrypoint guard (`process.argv[1]`) for testability and runtime execution.
+  - Added unit test suite `src/lib/seed.test.ts` verifying category seeding on empty databases and skipping when categories already exist (all 31 tests passing).
+  - Synchronized local rules files (`AGENTS.md`, `CLAUDE.md`, `.cursorrules`, `.windsurfrules`) with global standards.
 
 ## Recent Fixes & Features (v2.30.0)
 - **Two-Way External Order Buffering, Auto-Pruning & Duplicate Protection**:
