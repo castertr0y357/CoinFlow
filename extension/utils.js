@@ -135,6 +135,39 @@ window.CoinFlowUtils = {
     console.log(`CoinFlow [Utils]: Marked order ${orderId} as synced`);
   },
 
+  markOrdersSyncedBatch: async (orderIds) => {
+    if (!orderIds || orderIds.length === 0) return;
+    const synced = await CoinFlowUtils.getSyncedOrders();
+    const now = new Date().toISOString();
+    for (const id of orderIds) {
+      synced[id] = now;
+    }
+    await chrome.storage.local.set({ syncedOrders: synced });
+    console.log(`CoinFlow [Utils]: Batch marked ${orderIds.length} orders as synced`);
+  },
+
+  /**
+   * Run async task functions with bounded concurrency and optional jitter
+   */
+  runWithConcurrency: async (tasks, concurrency = 3, jitterMs = 150) => {
+    const results = new Array(tasks.length);
+    let nextIndex = 0;
+
+    async function worker() {
+      while (nextIndex < tasks.length) {
+        const currentIndex = nextIndex++;
+        if (jitterMs > 0 && currentIndex > 0) {
+          await new Promise(r => setTimeout(r, Math.random() * jitterMs));
+        }
+        results[currentIndex] = await tasks[currentIndex]();
+      }
+    }
+
+    const workerCount = Math.min(concurrency, tasks.length);
+    await Promise.all(Array.from({ length: workerCount }, () => worker()));
+    return results;
+  },
+
   /**
    * Show a temporary notification
    */

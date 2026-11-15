@@ -136,6 +136,7 @@ model Transaction {
   @@index([date])
   @@index([accountId])
   @@index([payee])
+  @@index([rawPayee])
   @@index([matchedOrderId])
 }
 

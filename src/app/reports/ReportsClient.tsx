@@ -1,8 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import { useNotification } from "@/components/ui/NotificationProvider";
+import { applySingleCategoryRollover, finalizeYearEndRollovers } from "./actions";
 import "./Reports.css";
 
 interface Category {
@@ -17,22 +20,92 @@ interface Category {
 
 interface ReportsClientProps {
   availableYears: number[];
+  selectedYear: number;
   initialCategories: Category[];
   aiEnabled: boolean;
 }
 
-export default function ReportsClient({ availableYears, initialCategories, aiEnabled }: ReportsClientProps) {
-  const [selectedYear, setSelectedYear] = useState(availableYears[0] || new Date().getFullYear());
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+export default function ReportsClient({ availableYears, selectedYear, initialCategories }: ReportsClientProps) {
+  const router = useRouter();
+  const { showToast, confirm } = useNotification();
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [applyingId, setApplyingId] = useState<string | null>(null);
+  const [isFinalizing, setIsFinalizing] = useState(false);
 
-  const handleRunAnalysis = async () => {
-    setIsAnalyzing(true);
-    // In a real app, call an AI endpoint here
-    setTimeout(() => {
-      setAiAnalysis(`## ${selectedYear} Year-End Review\n\nBased on your spending patterns:\n- **Groceries**: You were under budget by $450 this year. Excellent discipline!\n- **Dining Out**: This peaked in Q3. Consider a monthly "Dining Cap" to save an extra $1,200 next year.\n- **Utilities**: Higher than average in July/August. Investigate insulation or AC efficiency.\n\n**Recommendation**: Roll over 50% of your 'Groceries' surplus into your 'Savings' category to accelerate your mortgage payoff by 3 months.`);
-      setIsAnalyzing(false);
-    }, 2000);
+  const handleRunAnalysis = () => {
+    const totalBudget = initialCategories.reduce((sum, c) => sum + c.budget, 0);
+    const totalSpent = initialCategories.reduce((sum, c) => sum + c.totalSpent, 0);
+    const netDiff = totalBudget - totalSpent;
+
+    const underBudget = [...initialCategories]
+      .filter((c) => c.budget > 0 && c.totalSpent < c.budget)
+      .sort((a, b) => (b.budget - b.totalSpent) - (a.budget - a.totalSpent))
+      .slice(0, 3);
+
+    const overBudget = [...initialCategories]
+      .filter((c) => c.budget > 0 && c.totalSpent > c.budget)
+      .sort((a, b) => (b.totalSpent - b.budget) - (a.totalSpent - a.budget))
+      .slice(0, 3);
+
+    const lines = [
+      `## ${selectedYear} Financial Insights Summary`,
+      ``,
+      `- **Total Annual Budget**: $${totalBudget.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+      `- **Total Spent**: $${totalSpent.toLocaleString(undefined, { maximumFractionDigits: 0 })} (${netDiff >= 0 ? `+$${netDiff.toLocaleString(undefined, { maximumFractionDigits: 0 })} under budget` : `$${Math.abs(netDiff).toLocaleString(undefined, { maximumFractionDigits: 0 })} over budget`})`,
+    ];
+
+    if (underBudget.length > 0) {
+      lines.push(``, `### Top Surpluses`);
+      underBudget.forEach((c) => {
+        const saved = c.budget - c.totalSpent;
+        lines.push(`- **${c.name}**: Under budget by $${saved.toLocaleString(undefined, { maximumFractionDigits: 0 })}`);
+      });
+    }
+
+    if (overBudget.length > 0) {
+      lines.push(``, `### Over-Budget Categories`);
+      overBudget.forEach((c) => {
+        const over = c.totalSpent - c.budget;
+        lines.push(`- **${c.name}**: Over budget by $${over.toLocaleString(undefined, { maximumFractionDigits: 0 })} (consider raising monthly budget by ~$${Math.ceil(over / 12)}/mo)`);
+      });
+    }
+
+    setAiAnalysis(lines.join("\n"));
+  };
+
+  const handleApplySingleRollover = async (cat: Category) => {
+    setApplyingId(cat.id);
+    try {
+      const res = await applySingleCategoryRollover(cat.id, selectedYear, cat.currentBalance);
+      showToast(`Rolled $${cat.currentBalance.toLocaleString()} for ${cat.name} into ${res.targetYear}`, "success");
+      router.refresh();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Failed to apply rollover", "error");
+    } finally {
+      setApplyingId(null);
+    }
+  };
+
+  const handleFinalizeAll = () => {
+    confirm({
+      title: `Finalize ${selectedYear} Rollovers?`,
+      message: `This will set the starting rollover balance in ${selectedYear + 1} for all ${initialCategories.length} categories to their ${selectedYear} ending balances.`,
+      onConfirm: async () => {
+        setIsFinalizing(true);
+        try {
+          const res = await finalizeYearEndRollovers(
+            selectedYear,
+            initialCategories.map((c) => ({ categoryId: c.id, amount: c.currentBalance }))
+          );
+          showToast(`Rolled over ${res.count} categories into ${res.targetYear}!`, "success");
+          router.refresh();
+        } catch (error) {
+          showToast(error instanceof Error ? error.message : "Failed to finalize rollovers", "error");
+        } finally {
+          setIsFinalizing(false);
+        }
+      },
+    });
   };
 
   return (
@@ -40,7 +113,7 @@ export default function ReportsClient({ availableYears, initialCategories, aiEna
       <div className="reports-top">
         <div className="year-selector">
           <label>Analysis Year:</label>
-          <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))}>
+          <select value={selectedYear} onChange={(e) => router.push(`/reports?year=${e.target.value}`)}>
             {availableYears.length > 0 ? (
               availableYears.map(y => <option key={y} value={y}>{y}</option>)
             ) : (
@@ -48,11 +121,9 @@ export default function ReportsClient({ availableYears, initialCategories, aiEna
             )}
           </select>
         </div>
-        {aiEnabled && (
-          <Button variant="primary" onClick={handleRunAnalysis} disabled={isAnalyzing}>
-            {isAnalyzing ? "✨ Analyzing Data..." : "✨ Generate AI Analysis"}
-          </Button>
-        )}
+        <Button variant="primary" onClick={handleRunAnalysis}>
+          📊 Generate Insights
+        </Button>
       </div>
 
       <div className="reports-grid">
@@ -114,8 +185,24 @@ export default function ReportsClient({ availableYears, initialCategories, aiEna
                         </span>
                      </div>
                      <div className="rollover-action">
-                        <input type="number" defaultValue={defaultRoll} placeholder="Amt to roll..." />
-                        <Button size="sm" variant="ghost">Apply</Button>
+                        <input
+                          type="number"
+                          defaultValue={defaultRoll}
+                          id={`rollover-input-${cat.id}`}
+                          placeholder="Amt to roll..."
+                        />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            const el = document.getElementById(`rollover-input-${cat.id}`) as HTMLInputElement | null;
+                            const val = el ? parseFloat(el.value) : defaultRoll;
+                            handleApplySingleRollover({ ...cat, currentBalance: isNaN(val) ? defaultRoll : val });
+                          }}
+                          disabled={applyingId === cat.id || isFinalizing}
+                        >
+                          {applyingId === cat.id ? "..." : "Apply"}
+                        </Button>
                      </div>
                   </div>
                 );
@@ -123,7 +210,13 @@ export default function ReportsClient({ availableYears, initialCategories, aiEna
             </div>
             
             <div className="rollover-footer">
-               <Button className="w-full">Finalize Year-End Rollovers</Button>
+               <Button
+                 className="w-full"
+                 onClick={handleFinalizeAll}
+                 disabled={isFinalizing || initialCategories.length === 0}
+               >
+                 {isFinalizing ? "Finalizing..." : "Finalize Year-End Rollovers"}
+               </Button>
             </div>
           </Card>
         </aside>

@@ -32,19 +32,52 @@ export default function Sidebar({ accounts }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { showToast } = useNotification();
 
-  const handleSync = async () => {
+  const handleSync = async (fullSync = false) => {
     setIsSyncing(true);
     try {
-      await fetch('/api/v1/sync/simplefin', {
+      const res = await fetch('/api/v1/sync/simplefin', {
         method: 'POST',
-        headers: { 'X-API-KEY': process.env.NEXT_PUBLIC_INTERNAL_API_KEY || '' }
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-KEY': process.env.NEXT_PUBLIC_INTERNAL_API_KEY || ''
+        },
+        body: JSON.stringify({ fullSync })
       });
-      showToast("Bank sync started!", "success");
+
+      if (!res.ok) {
+        throw new Error(`Sync trigger failed (${res.status})`);
+      }
+
+      const { task_id: taskId } = await res.json();
+      showToast(fullSync ? "Full-year bank sync started..." : "Bank sync started...", "info");
+
+      if (taskId) {
+        const maxAttempts = 60;
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          const statusRes = await fetch(`/api/v1/sync/status?taskId=${encodeURIComponent(taskId)}`, {
+            headers: { 'X-API-KEY': process.env.NEXT_PUBLIC_INTERNAL_API_KEY || '' }
+          });
+          if (!statusRes.ok) break;
+          const task = await statusRes.json();
+          if (task.status === "completed") {
+            const newCount = task.result?.newTransactionCount ?? task.result?.transactionCount ?? 0;
+            const scannedCount = task.result?.transactionCount ?? 0;
+            showToast(`Synced ${newCount} new transactions (scanned ${scannedCount})`, "success");
+            break;
+          }
+          if (task.status === "failed") {
+            throw new Error(task.error || "Bank sync failed");
+          }
+        }
+      }
+
       router.refresh();
       mutate('/api/v1/budget/tally');
+      mutate((key: unknown) => typeof key === 'string' && key.startsWith('/api/v1/transactions'));
     } catch (error) {
       console.error("Sync Error:", error);
-      showToast("Sync trigger failed", "error");
+      showToast(error instanceof Error ? error.message : "Sync trigger failed", "error");
     } finally {
       setIsSyncing(false);
     }
@@ -181,13 +214,23 @@ export default function Sidebar({ accounts }: SidebarProps) {
         <div className="sidebar-actions">
           <button 
             className="sidebar-action-btn" 
-            onClick={handleSync}
+            onClick={(e) => handleSync(e.shiftKey)}
             disabled={isSyncing}
+            title="Click for fast incremental sync (Shift+Click for full-year lookback)"
           >
             <span className="icon">🏦</span>
             <span className="label">{isSyncing ? "Syncing..." : "Sync Banks"}</span>
           </button>
-
+          <button
+            className="sidebar-action-btn"
+            onClick={() => handleSync(true)}
+            disabled={isSyncing}
+            style={{ fontSize: '0.8rem', opacity: 0.8 }}
+            title="Pull transactions from Jan 1st of this year"
+          >
+            <span className="icon">📅</span>
+            <span className="label">{isSyncing ? "Syncing..." : "Full Year Sync"}</span>
+          </button>
         </div>
       </nav>
 

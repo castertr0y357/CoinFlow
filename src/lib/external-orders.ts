@@ -44,6 +44,30 @@ export function detectSourceFromPayee(payee: string): string | null {
   return null;
 }
 
+export async function getAlreadyMatchedOrderIds(orderIds: string[]): Promise<Set<string>> {
+  if (orderIds.length === 0) return new Set();
+
+  const existing = await prisma.transaction.findMany({
+    where: {
+      OR: [
+        { matchedOrderId: { in: orderIds } },
+        { externalOrder: { orderId: { in: orderIds } } }
+      ]
+    },
+    select: {
+      matchedOrderId: true,
+      externalOrder: { select: { orderId: true } }
+    }
+  });
+
+  const matched = new Set<string>();
+  for (const tx of existing) {
+    if (tx.matchedOrderId) matched.add(tx.matchedOrderId);
+    if (tx.externalOrder?.orderId) matched.add(tx.externalOrder.orderId);
+  }
+  return matched;
+}
+
 export async function isOrderAlreadyMatched(orderId: string): Promise<boolean> {
   const existing = await prisma.transaction.findFirst({
     where: {

@@ -1,5 +1,7 @@
 import prisma from "@/lib/prisma";
 import CommitmentsClient from "./CommitmentsClient";
+import SubscriptionDetective from "@/app/settings/SubscriptionDetective";
+import Card from "@/components/ui/Card";
 
 export const metadata = {
   title: "Commitments & Fixed Costs | CoinFlow",
@@ -29,6 +31,10 @@ export default async function CommitmentsPage() {
         }))} 
         categories={categories} 
       />
+
+      <Card style={{ marginTop: "2rem", padding: "1.75rem" }}>
+        <SubscriptionDetective />
+      </Card>
     </div>
   );
 }

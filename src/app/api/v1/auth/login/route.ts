@@ -5,6 +5,13 @@ import { rateLimit } from "@/lib/security";
 
 export async function POST(req: NextRequest) {
   try {
+    if (process.env.OIDC_ENABLED === "true") {
+      return NextResponse.json(
+        { error: "Password login is disabled. Please authenticate via Authentik SSO." },
+        { status: 403 }
+      );
+    }
+
     const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "127.0.0.1";
     const limitResult = rateLimit(ip, 5, 60 * 1000); // 5 attempts per minute
 

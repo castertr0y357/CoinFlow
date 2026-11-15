@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/api-utils";
 import { getCleanMerchantNamesBatch } from "@/lib/services/aiService";
+import { cleanMerchantNameDeterministic } from "@/lib/normalizer";
 import prisma from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
@@ -27,47 +28,66 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true, count: 0 });
       }
 
-      // 2. Identify the names we need to normalize. 
-      // Use rawPayee if present, otherwise fall back to payee.
-      const rawNamesToClean = transactions.map(tx => tx.rawPayee || tx.payee);
+      // 2. Apply fast deterministic cleaning first, collect remaining ambiguous names for AI
+      const deterministicMap = new Map<string, string>();
+      const remainingForAi = new Set<string>();
 
-      // 3. Fetch past pattern examples to guide the LLM (where rawPayee is clean and different)
-      const pastTransactions = await prisma.transaction.findMany({
-        where: {
-          rawPayee: { not: null },
-          payee: { not: "" }
-        },
-        take: 10,
-        orderBy: { createdAt: "desc" },
-        select: { payee: true, rawPayee: true }
-      });
-
-      const examples = pastTransactions
-        .filter(tx => tx.rawPayee !== tx.payee)
-        .map(tx => ({
-          raw: tx.rawPayee!,
-          clean: tx.payee
-        }));
-
-      // 4. Batch query the AI
-      const cleanMap = await getCleanMerchantNamesBatch(rawNamesToClean, examples);
-
-      // 5. Update each transaction in the database with the clean payee name
-      let updatedCount = 0;
       for (const tx of transactions) {
         const raw = tx.rawPayee || tx.payee;
-        const cleanName = cleanMap[raw];
-
-        if (cleanName && cleanName.trim() !== "" && cleanName !== tx.payee) {
-          await prisma.transaction.update({
-            where: { id: tx.id },
-            data: { payee: cleanName }
-          });
-          updatedCount++;
+        const detClean = cleanMerchantNameDeterministic(raw);
+        if (detClean && detClean !== raw && detClean !== tx.payee) {
+          deterministicMap.set(raw, detClean);
+        } else {
+          remainingForAi.add(raw);
         }
       }
 
-      return NextResponse.json({ success: true, count: updatedCount });
+      let aiCleanMap: Record<string, string> = {};
+      if (remainingForAi.size > 0) {
+        const settings = await prisma.settings.findUnique({ where: { id: "global" }, select: { aiEnabled: true } });
+        if (settings?.aiEnabled) {
+          const pastTransactions = await prisma.transaction.findMany({
+            where: {
+              rawPayee: { not: null },
+              payee: { not: "" }
+            },
+            take: 10,
+            orderBy: { createdAt: "desc" },
+            select: { payee: true, rawPayee: true }
+          });
+
+          const examples = pastTransactions
+            .filter(tx => tx.rawPayee !== tx.payee)
+            .map(tx => ({
+              raw: tx.rawPayee!,
+              clean: tx.payee
+            }));
+
+          aiCleanMap = await getCleanMerchantNamesBatch(Array.from(remainingForAi), examples);
+        }
+      }
+
+      // 3. Batch update all changed transactions in a single Prisma transaction
+      const updates = [];
+      for (const tx of transactions) {
+        const raw = tx.rawPayee || tx.payee;
+        const cleanName = deterministicMap.get(raw) || aiCleanMap[raw];
+
+        if (cleanName && cleanName.trim() !== "" && cleanName !== tx.payee) {
+          updates.push(
+            prisma.transaction.update({
+              where: { id: tx.id },
+              data: { payee: cleanName }
+            })
+          );
+        }
+      }
+
+      if (updates.length > 0) {
+        await prisma.$transaction(updates);
+      }
+
+      return NextResponse.json({ success: true, count: updates.length });
     } catch (error) {
       console.error("CoinFlow [AI Route]: Payee normalization failed:", error);
       const message = error instanceof Error ? error.message : String(error);

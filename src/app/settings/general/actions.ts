@@ -6,30 +6,29 @@ import { getSession } from "@/lib/auth";
 import { z } from "zod";
 import { isSafeUrl } from "@/lib/security";
 
-const UpdateSettingsSchema = z.object({
+const UpdateBudgetIncomeSchema = z.object({
   savingsTarget: z.number().min(0),
   monthlyIncome: z.number().min(0),
-  backupRetentionDays: z.number().int().min(1),
   savingsCategoryId: z.string().nullable().optional(),
-  simpleFinToken: z.string().nullable().optional(),
-  rentcastApiKey: z.string().nullable().optional(),
   paycheckEnabled: z.boolean(),
   paycheckFrequency: z.enum(["WEEKLY", "BI_WEEKLY", "SEMI_MONTHLY", "MONTHLY"]),
   paycheckAmount: z.number().min(0),
   paycheckNextDate: z.union([z.date(), z.string()]).nullable().optional().transform(val => val ? new Date(val) : null),
 });
 
-export async function updateSettingsAction(formData: FormData) {
+const UpdateIntegrationsSchema = z.object({
+  simpleFinToken: z.string().nullable().optional(),
+  rentcastApiKey: z.string().nullable().optional(),
+});
+
+export async function updateBudgetIncomeSettingsAction(formData: FormData) {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
 
   try {
     const target = parseFloat(formData.get("savingsTarget") as string);
     const income = parseFloat(formData.get("expectedMonthlyIncome") as string);
-    const retention = parseInt(formData.get("backupRetentionDays") as string);
     const savingsCategoryId = formData.get("savingsCategoryId") as string;
-    let token = formData.get("simpleFinToken") as string;
-    const rentcastApiKey = formData.get("rentcastApiKey") as string;
 
     const paycheckEnabled = formData.get("paycheckEnabled") === "on";
     const paycheckFrequency = formData.get("paycheckFrequency") as string;
@@ -37,20 +36,61 @@ export async function updateSettingsAction(formData: FormData) {
     const paycheckNextDateStr = formData.get("paycheckNextDate") as string;
     const paycheckNextDate = paycheckNextDateStr ? new Date(paycheckNextDateStr + "T00:00:00") : null;
 
-    const parsed = UpdateSettingsSchema.parse({
+    const parsed = UpdateBudgetIncomeSchema.parse({
       savingsTarget: isNaN(target) ? 0 : target,
       monthlyIncome: isNaN(income) ? 5000 : income,
-      backupRetentionDays: isNaN(retention) ? 30 : retention,
       savingsCategoryId: savingsCategoryId || null,
-      simpleFinToken: token || null,
-      rentcastApiKey: rentcastApiKey || null,
       paycheckEnabled,
       paycheckFrequency: paycheckFrequency || "BI_WEEKLY",
       paycheckAmount: isNaN(paycheckAmount) ? 0 : paycheckAmount,
       paycheckNextDate,
     });
 
-    if (parsed.simpleFinToken && !parsed.simpleFinToken.startsWith('https://user:')) { 
+    await prisma.settings.upsert({
+      where: { id: 'global' },
+      update: {
+        savingsTarget: parsed.savingsTarget,
+        monthlyIncome: parsed.monthlyIncome,
+        savingsCategoryId: parsed.savingsCategoryId,
+        paycheckEnabled: parsed.paycheckEnabled,
+        paycheckFrequency: parsed.paycheckFrequency,
+        paycheckAmount: parsed.paycheckAmount,
+        paycheckNextDate: parsed.paycheckNextDate,
+      },
+      create: {
+        id: 'global',
+        savingsTarget: parsed.savingsTarget,
+        monthlyIncome: parsed.monthlyIncome,
+        savingsCategoryId: parsed.savingsCategoryId,
+        paycheckEnabled: parsed.paycheckEnabled,
+        paycheckFrequency: parsed.paycheckFrequency,
+        paycheckAmount: parsed.paycheckAmount,
+        paycheckNextDate: parsed.paycheckNextDate,
+      }
+    });
+
+    revalidatePath("/settings/general");
+    revalidatePath("/");
+  } catch (error) {
+    console.error("[SETTINGS ACTION ERROR] updateBudgetIncomeSettingsAction failed:", error);
+    throw error;
+  }
+}
+
+export async function updateIntegrationsSettingsAction(formData: FormData) {
+  const session = await getSession();
+  if (!session) throw new Error("Unauthorized");
+
+  try {
+    const token = formData.get("simpleFinToken") as string;
+    const rentcastApiKey = formData.get("rentcastApiKey") as string;
+
+    const parsed = UpdateIntegrationsSchema.parse({
+      simpleFinToken: token || null,
+      rentcastApiKey: rentcastApiKey || null,
+    });
+
+    if (parsed.simpleFinToken && !parsed.simpleFinToken.startsWith('https://user:')) {
       let claimUrl = parsed.simpleFinToken;
       if (!parsed.simpleFinToken.startsWith('https://')) {
         try {
@@ -87,36 +127,21 @@ export async function updateSettingsAction(formData: FormData) {
     await prisma.settings.upsert({
       where: { id: 'global' },
       update: {
-        savingsTarget: parsed.savingsTarget,
-        monthlyIncome: parsed.monthlyIncome,
-        backupRetentionDays: parsed.backupRetentionDays,
-        savingsCategoryId: parsed.savingsCategoryId,
         simpleFinToken: parsed.simpleFinToken,
-        paycheckEnabled: parsed.paycheckEnabled,
-        paycheckFrequency: parsed.paycheckFrequency,
-        paycheckAmount: parsed.paycheckAmount,
-        paycheckNextDate: parsed.paycheckNextDate,
         rentcastApiKey: parsed.rentcastApiKey,
       },
       create: {
         id: 'global',
-        savingsTarget: parsed.savingsTarget,
-        monthlyIncome: parsed.monthlyIncome,
-        backupRetentionDays: parsed.backupRetentionDays,
-        savingsCategoryId: parsed.savingsCategoryId,
         simpleFinToken: parsed.simpleFinToken,
-        paycheckEnabled: parsed.paycheckEnabled,
-        paycheckFrequency: parsed.paycheckFrequency,
-        paycheckAmount: parsed.paycheckAmount,
-        paycheckNextDate: parsed.paycheckNextDate,
         rentcastApiKey: parsed.rentcastApiKey,
       }
     });
 
+    revalidatePath("/settings/integrations");
     revalidatePath("/settings/general");
     revalidatePath("/");
   } catch (error) {
-    console.error("[SETTINGS ACTION ERROR] updateSettingsAction failed:", error);
+    console.error("[SETTINGS ACTION ERROR] updateIntegrationsSettingsAction failed:", error);
     throw error;
   }
 }

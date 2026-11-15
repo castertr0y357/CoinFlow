@@ -178,10 +178,39 @@ export async function bulkCategorizeTransactions(transactionIds: string[], categ
   try {
     const parsed = BulkCategorizeSchema.parse({ transactionIds, categoryId });
     await bulkCategorize(parsed.transactionIds, parsed.categoryId);
+    
     revalidatePath("/transactions");
     revalidatePath("/");
   } catch (error) {
     console.error("[TRANSACTION ACTION ERROR] bulkCategorizeTransactions failed:", error);
+    throw error;
+  }
+}
+
+export async function applyBulkCategorySuggestions(suggestions: Record<string, string>) {
+  const session = await getSession();
+  if (!session) throw new Error("Unauthorized");
+
+  try {
+    const entries = Object.entries(suggestions).filter(([txId, catId]) => txId && catId);
+    if (entries.length === 0) return;
+
+    await prisma.$transaction(
+      entries.map(([transactionId, categoryId]) =>
+        prisma.transactionSplit.updateMany({
+          where: {
+            transactionId,
+            categoryId: null,
+          },
+          data: { categoryId },
+        })
+      )
+    );
+
+    revalidatePath("/transactions");
+    revalidatePath("/");
+  } catch (error) {
+    console.error("[TRANSACTION ACTION ERROR] applyBulkCategorySuggestions failed:", error);
     throw error;
   }
 }

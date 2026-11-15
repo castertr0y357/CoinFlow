@@ -70,6 +70,7 @@
 
     const orderCards = document.querySelectorAll('[data-testid^="order-"]');
     console.log(`CoinFlow: Found ${orderCards.length} potential Walmart order cards.`);
+    const tasks = [];
     
     for (const card of orderCards) {
       try {
@@ -88,55 +89,63 @@
           continue;
         }
 
-        console.log(`CoinFlow: Deep Syncing Walmart order ${orderId}...`);
-        let order;
-        try {
-          const detailsUrl = `https://www.walmart.com/orders/${orderId}`;
-          const response = await fetch(detailsUrl);
-          if (response.ok) {
-            const html = await response.text();
-            const doc = new DOMParser().parseFromString(html, "text/html");
-            order = scrapeDetailsFromDoc(doc, orderId);
+        tasks.push(async () => {
+          console.log(`CoinFlow: Deep Syncing Walmart order ${orderId}...`);
+          let order;
+          try {
+            const detailsUrl = `https://www.walmart.com/orders/${orderId}`;
+            const response = await fetch(detailsUrl);
+            if (response.ok) {
+              const html = await response.text();
+              const doc = new DOMParser().parseFromString(html, "text/html");
+              order = scrapeDetailsFromDoc(doc, orderId);
+            }
+          } catch (err) {
+            console.warn(`CoinFlow: Deep Sync failed for ${orderId}, falling back to card.`, err);
           }
-        } catch (err) {
-          console.warn(`CoinFlow: Deep Sync failed for ${orderId}, falling back to card.`, err);
-        }
 
-        if (!order) {
-          const totalEl = card.querySelector('.StyledText_large__afIjH, [data-automation-id="order-total"], span.b');
-          const dateEl = card.querySelector('h2, [data-automation-id="order-date"]');
-          
-          const totalStr = totalEl?.innerText.trim();
-          const dateStr = dateEl?.innerText.trim();
+          if (!order) {
+            const totalEl = card.querySelector('.StyledText_large__afIjH, [data-automation-id="order-total"], span.b');
+            const dateEl = card.querySelector('h2, [data-automation-id="order-date"]');
+            
+            const totalStr = totalEl?.innerText.trim();
+            const dateStr = dateEl?.innerText.trim();
 
-          if (orderId && totalStr) {
-            console.log(`CoinFlow [Walmart]: Falling back to card summary for ${orderId}: ${totalStr}`);
-            const items = [];
-            card.querySelectorAll('ul[data-testid="collapsedItemList"] li img').forEach(img => {
-              const title = img.getAttribute('alt')?.trim();
-              const qtyBadge = img.closest('li')?.querySelector('[data-testid="badge-section"]')?.innerText;
-              if (title) items.push({ title, price: 0, quantity: parseInt(qtyBadge || "1") });
-            });
+            if (orderId && totalStr) {
+              console.log(`CoinFlow [Walmart]: Falling back to card summary for ${orderId}: ${totalStr}`);
+              const items = [];
+              card.querySelectorAll('ul[data-testid="collapsedItemList"] li img').forEach(img => {
+                const title = img.getAttribute('alt')?.trim();
+                const qtyBadge = img.closest('li')?.querySelector('[data-testid="badge-section"]')?.innerText;
+                if (title) items.push({ title, price: 0, quantity: parseInt(qtyBadge || "1") });
+              });
 
-            order = {
-              orderId,
-              date: CoinFlowUtils.parseDate(dateStr),
-              totalAmount: CoinFlowUtils.parsePrice(totalStr),
-              items
-            };
-          } else {
-            console.warn(`CoinFlow [Walmart]: Failed to extract basic data for ${orderId}. Total found: ${!!totalStr}, Date found: ${!!dateStr}`);
+              order = {
+                orderId,
+                date: CoinFlowUtils.parseDate(dateStr),
+                totalAmount: CoinFlowUtils.parsePrice(totalStr),
+                items
+              };
+            } else {
+              console.warn(`CoinFlow [Walmart]: Failed to extract basic data for ${orderId}. Total found: ${!!totalStr}, Date found: ${!!dateStr}`);
+            }
           }
-        }
 
-        if (order) {
-          console.log(`CoinFlow [Walmart]: Scraped Walmart order ${orderId}`, order);
-          orders.push(order);
-          card.style.borderLeft = '4px solid #6366f1';
-        }
+          if (order) {
+            console.log(`CoinFlow [Walmart]: Scraped Walmart order ${orderId}`, order);
+            card.style.borderLeft = '4px solid #6366f1';
+            return order;
+          }
+          return null;
+        });
       } catch (e) {
-        console.error("CoinFlow: Error scraping Walmart card", e);
+        console.error("CoinFlow: Error queuing Walmart card", e);
       }
+    }
+
+    const scraped = await CoinFlowUtils.runWithConcurrency(tasks, 3, 150);
+    for (const order of scraped) {
+      if (order) orders.push(order);
     }
 
     return orders;
@@ -149,37 +158,28 @@
       return;
     }
 
-    const totalToSync = orders.length;
-    let successCount = 0;
+    btn.querySelector('.cf-text').innerText = `Syncing ${orders.length} orders...`;
 
-    for (let i = 0; i < orders.length; i++) {
-      const order = orders[i];
-      btn.querySelector('.cf-text').innerText = `Syncing ${i + 1}/${totalToSync}...`;
+    try {
+      const response = await new Promise(resolve => {
+        chrome.runtime.sendMessage({ 
+          action: 'syncOrders', 
+          source: 'WALMART', 
+          orders 
+        }, resolve);
+      });
 
-      try {
-        const response = await new Promise(resolve => {
-          chrome.runtime.sendMessage({ 
-            action: 'syncOrders', 
-            source: 'WALMART', 
-            orders: [order] 
-          }, resolve);
-        });
-
-        if (response && response.success) {
-          successCount++;
-          await CoinFlowUtils.markOrderSynced(order.orderId);
-        }
-      } catch (err) {
-        console.error(`CoinFlow: Failed to sync Walmart order ${order.orderId}`, err);
+      if (response && response.success) {
+        await CoinFlowUtils.markOrdersSyncedBatch(orders.map(o => o.orderId));
+        CoinFlowUtils.notify(`Successfully synced ${orders.length} Walmart orders!`);
+        const textEl = btn.querySelector('.cf-text');
+        if (textEl) textEl.innerText = 'Synced!';
+        setTimeout(() => location.reload(), 1500);
+        return;
       }
-    }
-
-    if (successCount > 0) {
-      CoinFlowUtils.notify(`Successfully synced ${successCount} Walmart orders!`);
-      const textEl = btn.querySelector('.cf-text');
-      if (textEl) textEl.innerText = 'Synced!';
-      setTimeout(() => location.reload(), 1500);
-    } else {
+      throw new Error(response?.error || "Unknown sync error");
+    } catch (err) {
+      console.error("CoinFlow: Failed to sync Walmart orders", err);
       CoinFlowUtils.notify("Sync failed. Check console for details.", "error");
       const textEl = btn.querySelector('.cf-text');
       if (textEl) textEl.innerText = 'Sync Failed';

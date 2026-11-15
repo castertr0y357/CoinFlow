@@ -4,7 +4,7 @@ import { useState } from "react";
 import Card from "@/components/ui/Card";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
-import { reorderCategories } from "@/app/categories/actions";
+import { reorderCategories, updateCategoryBudget } from "@/app/categories/actions";
 
 interface Category {
   id: string;
@@ -29,6 +29,16 @@ interface CategorySpreadsheetProps {
 export default function CategorySpreadsheet({ categories, integrityWarnings = [], onRefresh }: CategorySpreadsheetProps) {
   const [isEditingOrder, setIsEditingOrder] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
+  const [editingBudgetVal, setEditingBudgetVal] = useState<string>("");
+
+  const handleSaveInlineBudget = async (catId: string, originalBudget: number) => {
+    const parsed = parseFloat(editingBudgetVal);
+    setEditingBudgetId(null);
+    if (isNaN(parsed) || parsed < 0 || parsed === originalBudget) return;
+    await updateCategoryBudget(catId, parsed);
+    onRefresh();
+  };
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
     setDraggedId(id);
@@ -124,7 +134,42 @@ export default function CategorySpreadsheet({ categories, integrityWarnings = []
                           ⚠️
                         </span>
                       ) : null}
-                      <span>${cat.budget.toLocaleString()}</span>
+                      {editingBudgetId === cat.id ? (
+                        <input
+                          type="number"
+                          step="1"
+                          min="0"
+                          autoFocus
+                          value={editingBudgetVal}
+                          onChange={(e) => setEditingBudgetVal(e.target.value)}
+                          onBlur={() => handleSaveInlineBudget(cat.id, cat.budget)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSaveInlineBudget(cat.id, cat.budget);
+                            if (e.key === "Escape") setEditingBudgetId(null);
+                          }}
+                          style={{
+                            width: "5.5rem",
+                            textAlign: "right",
+                            background: "rgba(0,0,0,0.35)",
+                            border: "1px solid var(--accent)",
+                            borderRadius: "4px",
+                            color: "var(--text-main)",
+                            padding: "2px 6px",
+                            fontSize: "0.9rem",
+                          }}
+                        />
+                      ) : (
+                        <span
+                          onClick={() => {
+                            setEditingBudgetId(cat.id);
+                            setEditingBudgetVal(String(cat.budget));
+                          }}
+                          title="Click to edit monthly budget inline"
+                          style={{ cursor: "pointer", borderBottom: "1px dashed rgba(255,255,255,0.2)" }}
+                        >
+                          ${cat.budget.toLocaleString()}
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className={`text-right balance-cell ${cat.remaining < 0 ? 'neg' : 'pos'}`}>

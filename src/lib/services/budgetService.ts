@@ -29,19 +29,8 @@ function safeNumber(val: unknown): number {
 export async function getMonthlyTally(year?: number) {
   const currentYear = year || new Date().getFullYear();
   
-  // 0. Run lazy provisioning
+  // 0. Run lazy provisioning (cached per month in memory)
   await runMonthlyProvisioning(currentYear);
-
-  // 0.1 Enforce invariant: If not shown in sidebar, must be off-budget (exclude from surplus)
-  await prisma.account.updateMany({
-    where: {
-      showInSidebar: false,
-      excludeFromSurplus: false
-    },
-    data: {
-      excludeFromSurplus: true
-    }
-  });
 
   // 1. Get the current active budget year
   let budgetYear = await prisma.budgetYear.findUnique({
@@ -54,35 +43,67 @@ export async function getMonthlyTally(year?: number) {
     });
   }
 
-  // 2. Sum up ALL transaction splits for this year
-  // ONLY include categories that have a config for this specific year
-  const categories = await prisma.category.findMany({
-    orderBy: [
-      { displayOrder: 'asc' },
-      { name: 'asc' }
-    ],
-    include: {
-      configs: {
-        where: { yearId: budgetYear.id }
-      },
-      tiedAccount: {
-        select: {
-          excludeFromSurplus: true
-        }
-      },
-      commitments: true,
-      splits: {
-        where: {
-          transaction: {
-            date: {
-              gte: new Date(currentYear, 0, 1),
-              lte: new Date(currentYear, 11, 31)
-            }
+  const yearStart = new Date(currentYear, 0, 1);
+  const yearEnd = new Date(currentYear, 11, 31, 23, 59, 59, 999);
+
+  // 2. Fetch categories, DB-aggregated split sums, and independent settings/accounts in parallel
+  const [
+    categories,
+    provisionGroups,
+    spendingGroups,
+    settings,
+    accounts,
+    commitments,
+  ] = await Promise.all([
+    prisma.category.findMany({
+      orderBy: [
+        { displayOrder: 'asc' },
+        { name: 'asc' }
+      ],
+      include: {
+        configs: {
+          where: { yearId: budgetYear.id }
+        },
+        tiedAccount: {
+          select: {
+            excludeFromSurplus: true
           }
-        }
+        },
+        commitments: true,
       }
-    }
-  });
+    }),
+    prisma.transactionSplit.groupBy({
+      by: ['categoryId'],
+      where: {
+        categoryId: { not: null },
+        amount: { gt: 0 },
+        transaction: { date: { gte: yearStart, lte: yearEnd } }
+      },
+      _sum: { amount: true }
+    }),
+    prisma.transactionSplit.groupBy({
+      by: ['categoryId'],
+      where: {
+        categoryId: { not: null },
+        amount: { lt: 0 },
+        transaction: { date: { gte: yearStart, lte: yearEnd } }
+      },
+      _sum: { amount: true }
+    }),
+    prisma.settings.findUnique({ where: { id: 'global' } }),
+    prisma.account.findMany(),
+    prisma.commitment.findMany(),
+  ]);
+
+  const provisionsByCat = new Map<string, number>();
+  for (const g of provisionGroups) {
+    if (g.categoryId) provisionsByCat.set(g.categoryId, safeNumber(g._sum.amount));
+  }
+
+  const spendingByCat = new Map<string, number>();
+  for (const g of spendingGroups) {
+    if (g.categoryId) spendingByCat.set(g.categoryId, Math.abs(safeNumber(g._sum.amount)));
+  }
 
   const categoryTallies = categories.map(c => {
     const config = c.configs[0];
@@ -98,16 +119,8 @@ export async function getMonthlyTally(year?: number) {
       return acc + monthly;
     }, 0) || 0;
     
-    // Provisions are positive amounts (deposits/allocations)
-    // Spending are negative amounts (purchases)
-    const provisions = c.splits
-      .filter(s => safeNumber(s.amount) > 0)
-      .reduce((acc, s) => acc + safeNumber(s.amount), 0);
-      
-    const spending = c.splits
-      .filter(s => safeNumber(s.amount) < 0)
-      .reduce((acc, s) => acc + Math.abs(safeNumber(s.amount)), 0);
-
+    const provisions = provisionsByCat.get(c.id) || 0;
+    const spending = spendingByCat.get(c.id) || 0;
     const remaining = rollover + provisions - spending;
 
     const today = new Date();
@@ -137,8 +150,6 @@ export async function getMonthlyTally(year?: number) {
   const onBudgetTallies = categoryTallies.filter(c => !c.isOffBudget);
   const totalBudgeted = onBudgetTallies.reduce((acc, c) => acc + c.budget, 0);
   const currentTally = onBudgetTallies.reduce((acc, c) => acc + c.remaining, 0);
-
-  const settings = await prisma.settings.findUnique({ where: { id: 'global' } });
   
   let savingsTarget = safeNumber(settings?.savingsTarget || 650);
   
@@ -156,7 +167,6 @@ export async function getMonthlyTally(year?: number) {
     }
   }
 
-  const accounts = await prisma.account.findMany();
   const inclusionAccounts = accounts.filter(a => !a.excludeFromSurplus && a.showInSidebar);
 
   // Liquid Cash = Accounts NOT marked as debt
@@ -199,7 +209,6 @@ export async function getMonthlyTally(year?: number) {
   }
 
   // 5. Forecast
-  const commitments = await prisma.commitment.findMany();
   const nextMonthCommitments = commitments.reduce((acc, c) => {
     let monthly = safeNumber(c.amount);
     if (c.frequency === "YEARLY") monthly = monthly / 12;

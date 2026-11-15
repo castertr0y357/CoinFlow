@@ -4,13 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const navItems = [
-  { label: "General", href: "/settings/general", icon: "⚙️" },
+  { label: "Budget & Income", href: "/settings/general", icon: "💰" },
+  { label: "Categories & Years", href: "/settings/categories", icon: "🏷️" },
+  { label: "Integrations & API", href: "/settings/integrations", icon: "🔌" },
   { label: "AI Assistant", href: "/settings/ai", icon: "✨" },
-  { label: "Categories", href: "/settings/categories", icon: "🏷️" },
-  { label: "API & Security", href: "/settings/api", icon: "🔑" },
-  { label: "Maintenance", href: "/settings/maintenance", icon: "🛠️" },
-  { label: "Browser Extension", href: "/settings/extension", icon: "🧩" },
-  { label: "Tools & Archives", href: "/settings/tools", icon: "🧰" },
+  { label: "Backups & Data", href: "/settings/maintenance", icon: "🗄️" },
 ];
 
 export default function SettingsNav() {

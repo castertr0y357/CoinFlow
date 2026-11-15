@@ -1,38 +1,20 @@
-# CoinFlow Project Rules & Guidelines
+# Global Project Rules & Production Standards
 
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
-
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+This file defines the template structure for local workspace rules and skills across projects.
 
 ## 🚀 Post-Change Verification Protocol
 You **MUST** run the project verification command after every code change to guarantee stability and prevent regressions.
 
 ### Rebuild and Verify Command
-Run the following command from the workspace root:
+This workspace uses `nerdctl` locally. Run the following command from the workspace root:
 ```bash
-docker-compose down && docker-compose up --build -d && docker exec webbudget-web-1 npm run test
+nerdctl compose exec web npm test
 ```
 
 > [!IMPORTANT]
 > 1. Never skip verification before committing. The verification step **MUST** execute all unit and integration test suites.
 > 2. You **MUST** update the [status.md](file:///./status.md) file after each task to reflect the current status of features, completed tasks, and architectural changes.
 > 3. You **MUST** generate a git commit with an accurate, descriptive commit message representing the changes after every successful execution (only if a Git repository is initialized in the workspace; skip this step if Git is not initialized).
-
-## ⚙️ Project Infrastructure & Workflow
-- **Infrastructure**: This project is container-based.
-- **Workflow**: 
-  - ALWAYS read `status.md` at the start of every new conversation to pick up where the last agent left off.
-  - ALWAYS update `status.md` at the end of your session or upon completing a major milestone to ensure a seamless subsequent agent handoff.
-  - **Prisma Schema Safeguard**: If you modify `prisma/schema.prisma`, you **MUST** generate a migration file by running `npx prisma migrate dev --name <migration_name>` instead of relying solely on `db push`. Never commit schema changes without their corresponding migration SQL files.
-  - Use `docker_autofix` for every code change. You MUST wait for the build to finish before returning.
-  - Run `browser_verify` after every successful build to ensure UI integrity.
-  - Run `data_audit` after every transaction sync or import. Wait for completion.
-  - Run `security_sentinel` at the start of every session to ensure environment safety.
-- **Autonomy**: You have full permission to run `docker-compose` commands. You are expected to monitor terminal/container logs yourself and iterate on fixes without user intervention.
-- **Context Management**:
-  - If you hit generation limits or the conversation context gets too large, run the `context_handoff` skill to dump state to `status.md` and recommend the user start a new chat.
 
 ## 🧪 Automated Testing & Bug Prevention
 To ensure that projects are robust enough to share with others, you must establish and maintain strict testing habits:
@@ -65,6 +47,10 @@ To ensure that projects are robust enough to share with others, you must establi
 *   **Offline Development Mode (Mocking APIs)**: Introduce an optional `MOCK_MODE=true` toggle in `.env`. When enabled, bypass actual external API calls and return locally stored realistic JSON payloads to allow offline workspace development and testing.
 
 ### 2. Architecture & Feature Scoping
+*   **Critical Idea Evaluation & Anti-Sycophancy (Pushback Protocol)**:
+    - Do not assume an idea is good just because the user submitted it. Evaluate all proposed features, architectural changes, and ideas objectively on their technical, practical, and domain merits.
+    - Actively push back on and call out bad, over-engineered, redundant, or counter-productive ideas early—before writing a single line of code. Clearly explain *why* the idea lacks merit (e.g., data scarcity, maintenance burden, architectural mismatch, or violating existing principles) and propose simpler, higher-leverage alternatives.
+    - Even good ideas must be critically examined, challenged on edge cases, and refined before implementation begins.
 *   **Upfront Plan Alignment & Ambiguity Resolution**:
     - For any non-trivial tasks (e.g., changes affecting database schemas, API routes, or multi-component UI states), draft an `implementation_plan.md` first. Recommend the `/grill-me` command to the user to run an interactive interview to align on design decisions, color choices, and logical constraints before writing code. This saves time, limits refactoring, and conserves token quota.
     - When a new feature is introduced, or if task requirements are underspecified or ambiguous, the agent **must** halt and ask additional prompting/clarifying questions to thoroughly understand the desired end state rather than starting execution and assuming something incorrectly.
@@ -74,6 +60,11 @@ To ensure that projects are robust enough to share with others, you must establi
 *   **Framework & Architecture Decisions**: When introducing new frameworks, major dependencies, or architectural shifts, present 2-3 viable options detailing the pros, cons, and trade-offs of each, and wait for user approval before executing.
 *   **Separation of Infrastructure and Application Settings**: Keep a clear separation between infrastructure settings and application preferences. Settings required to run the application process and container (such as database URLs, ports, volume mounts, and path locations) must live in `.env` or system environment configurations. Conversely, application-level configurations and feature toggles (such as UI preferences, AI model configurations, and functional toggles) must live within the application's settings dashboard/database rather than environment files.
 *   **Modular Architecture & Code Separation**: Avoid monolithic files. Keep files modular by separating logic into distinct files and sub-modules. Limit file sizes (ideally under 500 lines) and function/method complexity. Extend base objects or classes by importing them locally and building extensions in separate files rather than piling all behavior into a single base definition file.
+    - **Package-First Structure (Django Standard)**: Organize apps using Python packages (directories with `__init__.py` and focused submodules such as `models/`, `views/`, `forms/`, `urls/`, `services/`, `selectors/`, `mixins/`, and `tests/`) rather than cramming everything into single `models.py`, `views.py`, or `tests.py` mega-files. Mirror the app's package layout inside `tests/` (e.g., `tests/test_models/`, `tests/test_views/`).
+    - **Class-Based Views & Mixins**: Prefer Django Class-Based Views (CBVs) over function-based views. Extract shared view, permission, ownership, and model behaviors into reusable mixins (`mixins/`) rather than duplicating logic.
+    - **Service / Selector Layer & Custom QuerySets**: Keep business logic and complex queries out of both views and models. Place mutations/business logic in `services/` and read/query logic in `selectors/`, and encapsulate common filters (such as `active()` for `deleted_at IS NULL` or `for_user(user)`) in custom `QuerySet` / `Manager` classes.
+    - **Split Settings Package**: Use a `settings/` package (`base.py`, `local.py`, `production.py`, `test.py`) instead of a single monolithic `settings.py`.
+    - **Reusable Templates & Page-Scoped Assets**: All page templates must inherit from a `base.html` template, and repeated UI blocks (cards, modals, forms, tables) must be extracted into reusable `partials/` (`{% include %}`) or custom template tags. Maintain baseline CSS and JS templates/modules for shared functionality, and only create page-specific CSS or JS files when a page has unique elements. Namespace app templates and static assets under `templates/<app_name>/` and `static/<app_name>/` (`css/`, `js/`).
 *   **Database Relationships & Indexing**: Every database foreign key column must have a database index defined. All database relationships must explicitly define their deletion behavior (such as `ON DELETE CASCADE` or `ON DELETE SET NULL`) to prevent slow query performance and orphaned data.
 *   **Asynchronous Workflows & Dynamic UI Updates**:
     - **Heavy Task Offloading**: Keep the HTTP request-response cycle under 500ms. Offload heavy processing (e.g., file generation, email dispatch, slow external API queries) to background queues/workers, immediately returning a `202 Accepted` status and a `task_id` to the client.

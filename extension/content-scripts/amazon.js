@@ -145,6 +145,7 @@
     } else {
       const orderCards = document.querySelectorAll('.order-card, .js-order-card, .order, [id^="orderCard"], .a-box-group.a-spacing-base');
       console.log(`CoinFlow [Amazon]: Found ${orderCards.length} potential order containers.`);
+      const tasks = [];
       
       for (const card of orderCards) {
         try {
@@ -157,55 +158,58 @@
           processedOrderIds.add(orderId);
 
           if (syncedOrders[orderId]) {
-            console.log(`CoinFlow [Amazon]: Order ${orderId} already synced. Allowing re-sync.`);
-            card.style.borderLeft = '4px solid #10b981'; // Green border for already synced
+            console.log(`CoinFlow [Amazon]: Skipping ${orderId} - Already synced`);
+            card.style.opacity = '0.5';
+            card.style.borderLeft = '4px solid #10b981';
+            continue;
           }
 
-          console.log(`CoinFlow [Amazon]: Processing ${orderId}...`);
-          
-          // Attempt Deep Sync
-          const detailsLink = card.querySelector('a[href*="order-details"], a[href*="order-history/item-view"], a[href*="vieworder"]');
-          if (detailsLink && detailsLink.href) {
-            try {
-              console.log(`CoinFlow [Amazon]: Fetching deep details for ${orderId}...`);
-              await new Promise(r => setTimeout(r, 600 + Math.random() * 800));
-              
-              const response = await fetch(detailsLink.href);
-              const html = await response.text();
-              const doc = new DOMParser().parseFromString(html, "text/html");
-              const order = scrapeDetailsFromDoc(doc);
-              if (order) {
-                orders.push(order);
-                card.style.borderLeft = '4px solid #6366f1';
-                continue;
+          tasks.push(async () => {
+            console.log(`CoinFlow [Amazon]: Processing ${orderId}...`);
+            const detailsLink = card.querySelector('a[href*="order-details"], a[href*="order-history/item-view"], a[href*="vieworder"]');
+            if (detailsLink && detailsLink.href) {
+              try {
+                const response = await fetch(detailsLink.href);
+                const html = await response.text();
+                const doc = new DOMParser().parseFromString(html, "text/html");
+                const order = scrapeDetailsFromDoc(doc);
+                if (order) {
+                  card.style.borderLeft = '4px solid #6366f1';
+                  return order;
+                }
+              } catch (fetchErr) {
+                console.warn(`CoinFlow [Amazon]: Deep Fetch failed for ${orderId}`, fetchErr);
               }
-            } catch (fetchErr) {
-              console.warn(`CoinFlow [Amazon]: Deep Fetch failed for ${orderId}`, fetchErr);
             }
-          }
 
-          // Fallback to card summary
-          const totalEl = card.querySelector('.yohtmlc-order-total .value, .a-column.a-span-2 .value, .a-color-secondary.value, .a-text-bold');
-          const dateEl = card.querySelector('.yohtmlc-order-date .value, .a-column.a-span-3 .value, .a-color-secondary.value');
-          
-          const totalStr = totalEl?.innerText.trim();
-          const dateStr = dateEl?.innerText.trim();
+            // Fallback to card summary
+            const totalEl = card.querySelector('.yohtmlc-order-total .value, .a-column.a-span-2 .value, .a-color-secondary.value, .a-text-bold');
+            const dateEl = card.querySelector('.yohtmlc-order-date .value, .a-column.a-span-3 .value, .a-color-secondary.value');
+            
+            const totalStr = totalEl?.innerText.trim();
+            const dateStr = dateEl?.innerText.trim();
 
-          if (orderId && totalStr) {
-            console.log(`CoinFlow [Amazon]: Falling back to card summary for ${orderId}: ${totalStr} on ${dateStr}`);
-            orders.push({
-              orderId,
-              date: CoinFlowUtils.parseDate(dateStr),
-              totalAmount: CoinFlowUtils.parsePrice(totalStr),
-              items: [] 
-            });
-            card.style.borderLeft = '4px solid #6366f1';
-          } else {
+            if (orderId && totalStr) {
+              console.log(`CoinFlow [Amazon]: Falling back to card summary for ${orderId}: ${totalStr} on ${dateStr}`);
+              card.style.borderLeft = '4px solid #6366f1';
+              return {
+                orderId,
+                date: CoinFlowUtils.parseDate(dateStr),
+                totalAmount: CoinFlowUtils.parsePrice(totalStr),
+                items: [] 
+              };
+            }
             console.warn(`CoinFlow [Amazon]: Failed to extract basic data for ${orderId}. Total found: ${!!totalStr}, Date found: ${!!dateStr}`);
-          }
+            return null;
+          });
         } catch (e) {
-          console.error(`CoinFlow [Amazon]: Error processing card ${orderId}`, e);
+          console.error(`CoinFlow [Amazon]: Error queuing card`, e);
         }
+      }
+
+      const scraped = await CoinFlowUtils.runWithConcurrency(tasks, 3, 150);
+      for (const order of scraped) {
+        if (order) orders.push(order);
       }
     }
     
@@ -219,37 +223,27 @@
       return;
     }
 
-    const totalToSync = orders.length;
-    let successCount = 0;
+    btn.querySelector('.cf-text').innerText = `Syncing ${orders.length} orders...`;
 
-    for (let i = 0; i < orders.length; i++) {
-      const order = orders[i];
-      btn.querySelector('.cf-text').innerText = `Syncing ${i + 1}/${totalToSync}...`;
+    try {
+      const response = await new Promise(resolve => {
+        chrome.runtime.sendMessage({ 
+          action: 'syncOrders', 
+          source: 'AMAZON', 
+          orders 
+        }, resolve);
+      });
 
-      try {
-        const response = await new Promise(resolve => {
-          chrome.runtime.sendMessage({ 
-            action: 'syncOrders', 
-            source: 'AMAZON', 
-            orders: [order] 
-          }, resolve);
-        });
-
-        if (response && response.success) {
-          successCount++;
-          await CoinFlowUtils.markOrderSynced(order.orderId);
-        }
-      } catch (err) {
-        console.error(`CoinFlow: Failed to sync Amazon order ${order.orderId}`, err);
+      if (response && response.success) {
+        await CoinFlowUtils.markOrdersSyncedBatch(orders.map(o => o.orderId));
+        CoinFlowUtils.notify(`Successfully synced ${orders.length} Amazon orders!`);
+        const textEl = btn.querySelector('.cf-text');
+        if (textEl) textEl.innerText = 'Synced!';
+        return;
       }
-    }
-
-    if (successCount > 0) {
-      CoinFlowUtils.notify(`Successfully synced ${successCount} Amazon orders!`);
-      const textEl = btn.querySelector('.cf-text');
-      if (textEl) textEl.innerText = 'Synced!';
-      // Removed location.reload() to preserve console logs for debugging
-    } else {
+      throw new Error(response?.error || "Unknown sync error");
+    } catch (err) {
+      console.error("CoinFlow: Failed to sync Amazon orders", err);
       CoinFlowUtils.notify("Sync failed. Check console for details.", "error");
       const textEl = btn.querySelector('.cf-text');
       if (textEl) textEl.innerText = 'Sync Failed';

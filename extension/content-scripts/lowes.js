@@ -111,13 +111,10 @@
         return;
       }
 
-      let successCount = 0;
-      const totalToSync = orders.length;
+      btn.querySelector('.cf-text').innerText = `Fetching ${orders.length} details...`;
 
-      for (let i = 0; i < orders.length; i++) {
-        const order = orders[i];
-        btn.querySelector('.cf-text').innerText = `Syncing ${i + 1}/${totalToSync}...`;
-
+      // Fetch order details concurrently (3 at a time)
+      const detailTasks = orders.map((order) => async () => {
         try {
           const detailsLink = document.querySelector(`a[href*="${order.orderId}"]`)?.href;
           if (detailsLink) {
@@ -126,38 +123,41 @@
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
             const details = scrapeDetailsFromDoc(doc);
-            
-            if (details.items) {
+
+            if (details?.items) {
               order.items = details.items;
               order.totalAmount = details.totalAmount || order.totalAmount;
             }
           }
-
-          const response = await new Promise(resolve => {
-            chrome.runtime.sendMessage({ 
-              action: 'syncOrders', 
-              source: 'LOWES', 
-              orders: [order] 
-            }, resolve);
-          });
-
-          if (response && response.success) {
-            successCount++;
-            await CoinFlowUtils.markOrderSynced(order.orderId);
-          }
         } catch (err) {
-          console.error(`CoinFlow: Failed to sync Lowe's order ${order.orderId}`, err);
+          console.warn(`CoinFlow: Detail fetch failed for Lowe's order ${order.orderId}`, err);
         }
+      });
 
-        await new Promise(r => setTimeout(r, 600 + Math.random() * 800));
-      }
+      await CoinFlowUtils.runWithConcurrency(detailTasks, 3, 150);
 
-      if (successCount > 0) {
-        CoinFlowUtils.notify(`Successfully synced ${successCount} Lowe's orders!`);
-        const textEl = btn.querySelector('.cf-text');
-        if (textEl) textEl.innerText = 'Synced!';
-        setTimeout(() => location.reload(), 1500);
-      } else {
+      btn.querySelector('.cf-text').innerText = `Syncing ${orders.length} orders...`;
+
+      try {
+        const response = await new Promise(resolve => {
+          chrome.runtime.sendMessage({ 
+            action: 'syncOrders', 
+            source: 'LOWES', 
+            orders 
+          }, resolve);
+        });
+
+        if (response && response.success) {
+          await CoinFlowUtils.markOrdersSyncedBatch(orders.map(o => o.orderId));
+          CoinFlowUtils.notify(`Successfully synced ${orders.length} Lowe's orders!`);
+          const textEl = btn.querySelector('.cf-text');
+          if (textEl) textEl.innerText = 'Synced!';
+          setTimeout(() => location.reload(), 1500);
+          return;
+        }
+        throw new Error(response?.error || "Unknown sync error");
+      } catch (err) {
+        console.error("CoinFlow: Failed to sync Lowe's orders", err);
         CoinFlowUtils.notify("Sync failed. Check console for details.", "error");
         const textEl = btn.querySelector('.cf-text');
         if (textEl) textEl.innerText = 'Sync Failed';

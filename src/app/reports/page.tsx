@@ -5,17 +5,28 @@ export const metadata = {
   title: "Yearly Analysis | CoinFlow",
 };
 
-export default async function ReportsPage() {
-  const years = await prisma.transaction.findMany({
-    select: { date: true },
-    distinct: ['date'],
-    orderBy: { date: 'desc' }
-  });
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ year?: string }>;
+}) {
+  const params = await searchParams;
+  const [budgetYears, dateRange] = await Promise.all([
+    prisma.budgetYear.findMany({ orderBy: { year: 'desc' }, select: { year: true } }),
+    prisma.transaction.aggregate({ _min: { date: true }, _max: { date: true } }),
+  ]);
 
-  const availableYears = Array.from(new Set(years.map(y => y.date.getFullYear())));
-  const currentYear = new Date().getFullYear();
+  const yearSet = new Set(budgetYears.map(y => y.year));
+  if (dateRange._min.date && dateRange._max.date) {
+    const minY = dateRange._min.date.getFullYear();
+    const maxY = dateRange._max.date.getFullYear();
+    for (let y = minY; y <= maxY; y++) yearSet.add(y);
+  }
+  const availableYears = Array.from(yearSet).sort((a, b) => b - a);
+  const parsedYear = params.year ? parseInt(params.year, 10) : NaN;
+  const currentYear = !isNaN(parsedYear) ? parsedYear : new Date().getFullYear();
   const yearStart = new Date(currentYear, 0, 1);
-  const yearEnd = new Date(currentYear, 11, 31);
+  const yearEnd = new Date(currentYear, 11, 31, 23, 59, 59, 999);
 
   const categories = await prisma.category.findMany({
     include: {
@@ -49,6 +60,7 @@ export default async function ReportsPage() {
 
       <ReportsClient 
         availableYears={availableYears}
+        selectedYear={currentYear}
         initialCategories={categories.map(c => {
           const config = c.configs[0];
           const rollover = Number(config?.rollover || 0);

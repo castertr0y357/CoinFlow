@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/api-utils";
-import { processScrapedOrder, isOrderAlreadyMatched } from "@/lib/external-orders";
-import { normalizeItemNames } from "@/lib/services/aiService";
+import { processScrapedOrder, getAlreadyMatchedOrderIds } from "@/lib/external-orders";
+import { cleanRetailItemTitleDeterministic } from "@/lib/normalizer";
 import { logger } from "@/lib/logger";
 
 interface SyncOrderItem {
@@ -41,10 +41,13 @@ export async function POST(req: NextRequest) {
         skippedDuplicates: 0,
       };
 
-      // 1. Filter out orders that are already matched (duplicate scan protection)
+      // 1. Batch filter out orders that are already matched (duplicate scan protection)
+      const incomingOrderIds = orders.map(o => o.orderId).filter(Boolean);
+      const alreadyMatchedIds = await getAlreadyMatchedOrderIds(incomingOrderIds);
+
       const nonDuplicateOrders: SyncOrder[] = [];
       for (const order of orders) {
-        if (await isOrderAlreadyMatched(order.orderId)) {
+        if (alreadyMatchedIds.has(order.orderId)) {
           logger.info("ExternalOrderSync", `Order ${order.orderId} already matched. Discarding duplicate scan.`);
           results.skippedDuplicates++;
         } else {
@@ -56,20 +59,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(results);
       }
 
-      // 2. Extract all unique titles across remaining orders for batch normalization
-      const allTitles = new Set<string>();
-      for (const order of nonDuplicateOrders) {
-        if (order.items && Array.isArray(order.items)) {
-          order.items.forEach((item: SyncOrderItem) => {
-            if (item.title) allTitles.add(item.title);
-          });
-        }
-      }
-
-      logger.info("ExternalOrderSync", `Normalizing ${allTitles.size} unique titles...`);
-      const normalizedTitles = await normalizeItemNames(Array.from(allTitles));
-
-      // 3. Process each order
+      // 2. Process each order with instant deterministic item title cleaning
       for (const order of nonDuplicateOrders) {
         const { orderId, date, totalAmount, items } = order;
 
@@ -81,7 +71,7 @@ export async function POST(req: NextRequest) {
         );
 
         const normalizedItems = uniqueItems.map(item => ({
-          title: normalizedTitles[item.title] || item.title,
+          title: cleanRetailItemTitleDeterministic(item.title),
           rawTitle: item.title,
           price: item.price,
           quantity: item.quantity || 1,

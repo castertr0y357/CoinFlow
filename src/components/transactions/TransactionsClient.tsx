@@ -5,8 +5,10 @@ import { useSearchParams } from "next/navigation";
 import { useTransactions } from "@/hooks/useTransactions";
 import TransactionList from "./TransactionList";
 import Button from "@/components/ui/Button";
+import AddTransactionModal from "@/components/transactions/AddTransactionModal";
+import { useNotification } from "@/components/ui/NotificationProvider";
 import { Category, Transaction } from "@/types";
-import { applyTransactionSplits, bulkCategorizeTransactions } from "@/app/transactions/actions";
+import { applyBulkCategorySuggestions, bulkCategorizeTransactions } from "@/app/transactions/actions";
 
 export default function TransactionsClient({ 
   categories, 
@@ -17,6 +19,8 @@ export default function TransactionsClient({
   accounts: { id: string; name: string; displayName: string | null }[];
   aiEnabled: boolean; 
 }) {
+  const { showToast } = useNotification();
+  const [showAddModal, setShowAddModal] = useState(false);
   const [view, setView] = useState<'inbox' | 'all' | 'hidden'>('inbox');
   const { transactions, isLoading, refresh } = useTransactions(
     view === 'inbox', 
@@ -34,7 +38,15 @@ export default function TransactionsClient({
   const [isNormalizeLoading, setIsNormalizeLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [isBulkLoading, setIsBulkLoading] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkCategoryId, setBulkCategoryId] = useState<string>("floating");
   const [sortBy, setSortBy] = useState<'date' | 'amount' | 'payee'>('date');
@@ -66,15 +78,15 @@ export default function TransactionsClient({
       });
       const data = await res.json();
       if (data.success) {
-        alert(`Successfully normalized ${data.count} payee names!`);
+        showToast(`Successfully normalized ${data.count} payee names!`, "success");
         setSelectedIds(new Set());
         refresh();
       } else {
-        alert("Normalization failed: " + (data.error || "Unknown error"));
+        showToast("Normalization failed: " + (data.error || "Unknown error"), "error");
       }
     } catch (error) {
       console.error("Payee Normalization Error:", error);
-      alert("Error running normalization");
+      showToast("Error running normalization", "error");
     } finally {
       setIsNormalizeLoading(false);
     }
@@ -115,17 +127,7 @@ export default function TransactionsClient({
 
     setIsBulkLoading(true);
     try {
-      for (const txId in suggestions) {
-        const categoryId = suggestions[txId];
-        const tx = (transactions as Transaction[]).find(t => t.id === txId);
-        if (tx && tx.splits.length === 1 && !tx.splits[0].categoryId) {
-          await applyTransactionSplits(txId, [{
-            categoryId,
-            amount: Number(tx.amount),
-            memo: tx.payee
-          }]);
-        }
-      }
+      await applyBulkCategorySuggestions(suggestions);
       setSuggestions({});
       refresh();
     } catch (error) {
@@ -180,9 +182,10 @@ export default function TransactionsClient({
   };
 
   const filteredTransactions = (transactions as Transaction[])?.filter(tx => {
-    const matchesSearch = tx.payee.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      tx.amount.toString().includes(searchQuery) ||
-      tx.splits.some(s => s.memo?.toLowerCase().includes(searchQuery.toLowerCase()));
+    const query = debouncedSearchQuery.toLowerCase();
+    const matchesSearch = !query || tx.payee.toLowerCase().includes(query) ||
+      tx.amount.toString().includes(query) ||
+      tx.splits.some(s => s.memo?.toLowerCase().includes(query));
 
     const matchesAccount = selectedAccountId === "all" || tx.accountId === selectedAccountId;
 
@@ -256,33 +259,35 @@ export default function TransactionsClient({
             👁️ Hidden
           </Button>
           
-          {aiEnabled && Object.keys(suggestions).length > 0 && (
+          <Button 
+            variant="primary" 
+            onClick={() => setShowAddModal(true)}
+          >
+            + Add Transaction
+          </Button>
+          {Object.keys(suggestions).length > 0 && (
             <Button 
               variant="glass" 
               onClick={handleApplyAllSuggestions}
               disabled={isBulkLoading}
             >
-              {isBulkLoading ? "✅ Applying..." : "✅ Apply All AI"}
+              {isBulkLoading ? "✅ Applying..." : `✅ Apply All (${Object.keys(suggestions).length})`}
             </Button>
           )}
-          {aiEnabled && (
-            <Button 
-              variant="glass" 
-              onClick={handleNormalizePayees} 
-              disabled={isNormalizeLoading || isLoading}
-            >
-              {isNormalizeLoading ? "🧹 Normalizing..." : "🧹 Normalize Payees"}
-            </Button>
-          )}
-          {aiEnabled && (
-            <Button 
-              variant="glass" 
-              onClick={handleAiCategorize} 
-              disabled={isAiLoading || isLoading}
-            >
-              {isAiLoading ? "✨ Thinking..." : "✨ Suggest Categories"}
-            </Button>
-          )}
+          <Button 
+            variant="glass" 
+            onClick={handleNormalizePayees} 
+            disabled={isNormalizeLoading || isLoading}
+          >
+            {isNormalizeLoading ? "🧹 Cleaning..." : "🧹 Clean Payees"}
+          </Button>
+          <Button 
+            variant="glass" 
+            onClick={handleAiCategorize} 
+            disabled={isAiLoading || isLoading}
+          >
+            {isAiLoading ? "⚡ Matching..." : aiEnabled ? "✨ Suggest Categories" : "⚡ Auto-Categorize"}
+          </Button>
         </div>
       </div>
 
@@ -349,6 +354,17 @@ export default function TransactionsClient({
           onSort={handleSort}
           aiEnabled={aiEnabled}
           onAccountClick={(accountId) => setSelectedAccountId(accountId)}
+        />
+      )}
+      {showAddModal && (
+        <AddTransactionModal
+          categoryId={categories[0]?.id || ""}
+          categoryName={categories[0]?.name || "General"}
+          onClose={() => setShowAddModal(false)}
+          onSuccess={() => {
+            setShowAddModal(false);
+            refresh();
+          }}
         />
       )}
     </>

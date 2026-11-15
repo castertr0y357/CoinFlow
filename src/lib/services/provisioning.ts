@@ -4,11 +4,22 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { logger } from "@/lib/logger";
 
+let lastProvisionedKey: string | null = null;
+
+export async function invalidateProvisioningCache() {
+  lastProvisionedKey = null;
+}
+
 export async function runMonthlyProvisioning(targetYear?: number) {
   const now = new Date();
   const yearNum = targetYear || now.getFullYear();
   const isCurrentYear = yearNum === now.getFullYear();
   const maxMonth = isCurrentYear ? now.getMonth() : 11; // 0-indexed month
+  const cacheKey = `${yearNum}-${maxMonth}`;
+
+  if (lastProvisionedKey === cacheKey) {
+    return;
+  }
   
   // 1. Ensure the BudgetYear exists
   let budgetYear = await prisma.budgetYear.findUnique({
@@ -103,4 +114,6 @@ export async function runMonthlyProvisioning(targetYear?: number) {
       // Ignore if not in Next environment
     }
   }
+
+  lastProvisionedKey = cacheKey;
 }

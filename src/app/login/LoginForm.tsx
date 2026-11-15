@@ -1,12 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Button from "@/components/ui/Button";
 
 export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [oidcEnabled, setOidcEnabled] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch("/api/v1/auth/config")
+      .then((res) => res.json())
+      .then((data) => {
+        setOidcEnabled(data.oidcEnabled);
+        if (data.oidcEnabled) {
+          // If no explicit error in URL, auto-redirect to Authentik OIDC
+          const urlParams = new URLSearchParams(window.location.search);
+          if (!urlParams.get("error")) {
+            window.location.href = data.oidcLoginUrl || "/api/v1/auth/oidc/login";
+          }
+        }
+      })
+      .catch(() => setOidcEnabled(false));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +40,8 @@ export default function LoginForm() {
       if (res.ok) {
         window.location.href = "/";
       } else {
-        setError("Invalid master password. Please try again.");
+        const data = await res.json().catch(() => null);
+        setError(data?.error || "Invalid master password. Please try again.");
       }
     } catch {
       setError("An unexpected error occurred.");
@@ -31,6 +49,26 @@ export default function LoginForm() {
       setIsLoading(false);
     }
   };
+
+  if (oidcEnabled) {
+    return (
+      <div className="login-form">
+        <p className="text-sm text-gray-300 text-center mb-2">
+          Protected Vault — Single Sign-On required.
+        </p>
+        <Button
+          type="button"
+          variant="primary"
+          className="w-full"
+          onClick={() => {
+            window.location.href = "/api/v1/auth/oidc/login";
+          }}
+        >
+          Sign in with Authentik
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="login-form">

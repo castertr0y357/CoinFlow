@@ -19,7 +19,8 @@ export function getSyncTaskStatus(taskId: string): SyncTask | undefined {
   return activeTasks.get(taskId);
 }
 
-export function startSyncSimpleFinTask(): string {
+export function startSyncSimpleFinTask(options: { fullSync?: boolean } = {}): string {
+  const { fullSync = false } = options;
   const taskId = randomUUID();
   const task: SyncTask = {
     id: taskId,
@@ -31,7 +32,7 @@ export function startSyncSimpleFinTask(): string {
 
   logger.info("SyncService", `Enqueued SimpleFIN sync task ${taskId}`, {
     action: "sync.simplefin.enqueue",
-    context: { taskId },
+    context: { taskId, fullSync },
   });
 
   // Trigger sync asynchronously in the background
@@ -41,7 +42,7 @@ export function startSyncSimpleFinTask(): string {
     const startTime = Date.now();
     logger.info("SyncService", `Started SimpleFIN sync task ${taskId}`, {
       action: "sync.simplefin.start",
-      context: { taskId, isMock: isMockMode() },
+      context: { taskId, fullSync, isMock: isMockMode() },
     });
 
     try {
@@ -50,7 +51,7 @@ export function startSyncSimpleFinTask(): string {
         await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate latency
         result = getMockSimpleFinSync();
       } else {
-        result = await performSimpleFinSync();
+        result = await performSimpleFinSync({ fullSync });
       }
       task.status = "completed";
       task.progress = 100;

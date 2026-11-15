@@ -43,6 +43,8 @@ export default function TransactionRow({
 }) {
   const [isPending, setIsPending] = useState(false);
   const [isAiSplitting, setIsAiSplitting] = useState(false);
+  const [isAddingSplit, setIsAddingSplit] = useState(false);
+  const [newSplitAmount, setNewSplitAmount] = useState("");
   const [showRaw, setShowRaw] = useState(false);
   const [refundCandidates, setRefundCandidates] = useState<RefundCandidate[] | null>(null);
   const [showRefundMatcher, setShowRefundMatcher] = useState(false);
@@ -103,11 +105,13 @@ export default function TransactionRow({
     if (onCategorized) onCategorized();
   };
 
-  const handleAddSplit = async () => {
-    const amountStr = prompt("Enter amount for new split:");
-    if (!amountStr) return;
-    
-    const amount = parseFloat(amountStr);
+  const handleAddSplit = () => {
+    setIsAddingSplit(true);
+    setNewSplitAmount("");
+  };
+
+  const handleConfirmAddSplit = async () => {
+    const amount = parseFloat(newSplitAmount);
     if (isNaN(amount) || amount <= 0) {
       showToast("Please enter a valid positive amount.", "error");
       return;
@@ -115,9 +119,10 @@ export default function TransactionRow({
 
     setIsPending(true);
     try {
-      // For expenses, we send a negative amount to match the transaction sign
       const splitAmount = Number(tx.amount) < 0 ? -Math.abs(amount) : Math.abs(amount);
       await addSplit(tx.id, splitAmount, null);
+      setIsAddingSplit(false);
+      setNewSplitAmount("");
       if (onCategorized) onCategorized();
       showToast("Split added successfully", "success");
     } catch (error) {
@@ -249,17 +254,15 @@ export default function TransactionRow({
                 {(tx.externalOrderId || tx.matchedOrderId) && (
                   <div onClick={(e) => e.stopPropagation()} style={{ display: 'inline-block' }}>
                     <div className="external-order-info">
-                      {aiEnabled && (
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="smart-split-btn"
-                          onClick={() => handleSmartSplit()}
-                          disabled={isAiSplitting || isPending}
-                        >
-                          {isAiSplitting ? "✨ Analyzing..." : "✨ Smart Split"}
-                        </Button>
-                      )}
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="smart-split-btn"
+                        onClick={() => handleSmartSplit()}
+                        disabled={isAiSplitting || isPending}
+                      >
+                        {isAiSplitting ? "⚡ Splitting..." : aiEnabled ? "✨ Smart Split" : "⚡ Smart Split"}
+                      </Button>
                       {(!!tx.externalOrder || !!tx.matchedOrderId) && (
                         <div className="order-details-popover glass">
                           <div className="order-header">
@@ -315,8 +318,42 @@ export default function TransactionRow({
               )}
             </div>
 
-            {aiEnabled && suggestion && !tx.splits.every(s => s.categoryId) && (
-              <span className="ai-badge animate-pulse" style={{ marginTop: '0.25rem' }}>✨ AI Suggested: {suggestedCategory?.name}</span>
+            {isAddingSplit && (
+              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginTop: "0.35rem" }}>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  autoFocus
+                  placeholder="Split amount..."
+                  value={newSplitAmount}
+                  onChange={(e) => setNewSplitAmount(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleConfirmAddSplit();
+                    if (e.key === "Escape") setIsAddingSplit(false);
+                  }}
+                  style={{ width: "7rem", padding: "2px 6px", borderRadius: "4px", border: "1px solid var(--accent)", background: "rgba(0,0,0,0.35)", color: "var(--text-main)", fontSize: "0.8rem" }}
+                />
+                <Button size="sm" variant="primary" onClick={handleConfirmAddSplit} disabled={isPending}>Add</Button>
+                <Button size="sm" variant="ghost" onClick={() => setIsAddingSplit(false)}>Cancel</Button>
+              </div>
+            )}
+            {suggestion && suggestedCategory && !tx.splits.every(s => s.categoryId) && (
+              <button
+                type="button"
+                className="ai-badge"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (tx.splits[0]) {
+                    handleCategoryChange(tx.splits[0].id, suggestion);
+                  }
+                }}
+                disabled={isPending}
+                title="Click to accept this category"
+                style={{ marginTop: '0.25rem', cursor: 'pointer', border: 'none' }}
+              >
+                ✓ Accept: {suggestedCategory.name}
+              </button>
             )}
           </div>
           <div className="tx-account">
