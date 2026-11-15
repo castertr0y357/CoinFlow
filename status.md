@@ -1,6 +1,10 @@
-# Project Status: CoinFlow Browser Extension (v2.34.0)
+# Project Status: CoinFlow Browser Extension (v2.35.0)
 
 ## Current Progress
+- [x] **Amazon Per-Shipment Card Charge Matching (v2.35.0)**:
+  - **Extension Scraping (`extension/content-scripts/amazon.js`)**: Extracted the `"Credit Card transactions"` section from Amazon's Order Details page (`charges: [{ date, amount }]`) to capture exact per-shipment card charges rather than just the order total.
+  - **Split-Shipment Expansion (`src/app/api/v1/external-orders/sync/route.ts`)**: Expanded multi-charge orders into individual matchable sub-orders (`${orderId}#1`, `${orderId}#2`, etc.) using each charge's exact `amount` and `date` without requiring a database schema migration; single-charge orders also use the actual charge date/amount.
+  - **Widened Matching Window (`src/lib/external-orders.ts`, `src/lib/external-orders.test.ts`)**: Widened the external order matching window from `-3`..`+10` days to `-3`..`+21` days to accommodate delayed shipments and Subscribe & Save orders, verified with unit tests.
 - [x] **Sync Error Detection Fix, Sidebar & Dashboard Upgrade, and Feature Cleanup (v2.34.0)**:
   - **SimpleFIN Sync Error Detection (`src/lib/simplefin.ts`, `src/lib/services/budgetService.ts`, `DashboardClient.tsx`, `AccountsClient.tsx`, `Sidebar.tsx`)**: Parsed SimpleFIN's top-level `errors[]` array and matched errors to accounts via `org.name`, `org.domain`, `account.name`, or stale `balance-date`; included `syncError` in `getMonthlyTally()`; surfaced sync errors via toast notifications, a Dashboard Bank Sync Issue banner, and visible error badges on `/accounts`.
   - **Sidebar & Dashboard Upgrades (`Sidebar.tsx`, `DashboardClient.tsx`, `CategorySpreadsheet.tsx`)**: Added a live Inbox counter pill on `Transactions` via SWR, un-nested `Reports` and `Settings` from the `Tools` submenu, compacted `Sync` + `Full Year` into a side-by-side bar, added a `This Month` spending column with progress bars to `CategorySpreadsheet`, and added `+ Add Transaction` to the Dashboard header.

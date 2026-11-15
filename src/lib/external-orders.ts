@@ -101,7 +101,7 @@ export async function processScrapedOrder(order: ProcessOrderPayload): Promise<{
   startDate.setHours(0, 0, 0, 0);
 
   const endDate = new Date(parsedDate);
-  endDate.setDate(endDate.getDate() + 10);
+  endDate.setDate(endDate.getDate() + 21);
   endDate.setHours(23, 59, 59, 999);
 
   const payeeFilter = getPayeeFilterForSource(source);
@@ -205,7 +205,7 @@ export async function matchTransactionToPendingOrder(transactionId: string): Pro
 
   // Range: [TransactionDate - 10 days, TransactionDate + 3 days]
   const startDate = new Date(tx.date);
-  startDate.setDate(startDate.getDate() - 10);
+  startDate.setDate(startDate.getDate() - 21);
   startDate.setHours(0, 0, 0, 0);
 
   const endDate = new Date(tx.date);

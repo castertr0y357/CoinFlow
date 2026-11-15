@@ -10,11 +10,17 @@ interface SyncOrderItem {
   quantity?: number;
 }
 
+interface SyncOrderCharge {
+  date: string;
+  amount: number;
+}
+
 interface SyncOrder {
   orderId: string;
   date: string;
   totalAmount: number;
   items: SyncOrderItem[];
+  charges?: SyncOrderCharge[];
 }
 
 interface SyncPayload {
@@ -41,12 +47,35 @@ export async function POST(req: NextRequest) {
         skippedDuplicates: 0,
       };
 
+      // 0. Expand split-shipment charges into individual matchable sub-orders
+      const expandedOrders: SyncOrder[] = [];
+      for (const order of orders) {
+        if (order.charges && order.charges.length > 1) {
+          order.charges.forEach((charge, idx) => {
+            expandedOrders.push({
+              ...order,
+              orderId: `${order.orderId}#${idx + 1}`,
+              date: charge.date,
+              totalAmount: charge.amount,
+            });
+          });
+        } else if (order.charges && order.charges.length === 1) {
+          expandedOrders.push({
+            ...order,
+            date: order.charges[0].date,
+            totalAmount: order.charges[0].amount,
+          });
+        } else {
+          expandedOrders.push(order);
+        }
+      }
+
       // 1. Batch filter out orders that are already matched (duplicate scan protection)
-      const incomingOrderIds = orders.map(o => o.orderId).filter(Boolean);
+      const incomingOrderIds = expandedOrders.map(o => o.orderId).filter(Boolean);
       const alreadyMatchedIds = await getAlreadyMatchedOrderIds(incomingOrderIds);
 
       const nonDuplicateOrders: SyncOrder[] = [];
-      for (const order of orders) {
+      for (const order of expandedOrders) {
         if (alreadyMatchedIds.has(order.orderId)) {
           logger.info("ExternalOrderSync", `Order ${order.orderId} already matched. Discarding duplicate scan.`);
           results.skippedDuplicates++;

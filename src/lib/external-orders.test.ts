@@ -236,4 +236,54 @@ describe("Two-Way External Order Matching and Auto-Pruning", () => {
     });
     expect(orderInDb).toBeNull();
   });
+
+  it("Scenario 4: Matches delayed (+18d) and split-shipment (#1, #2) charges", async () => {
+    const orderDate = new Date("2026-10-01T12:00:00Z");
+    const delayedChargeDate = new Date("2026-10-19T12:00:00Z"); // +18 days
+
+    const tx1 = await prisma.transaction.create({
+      data: {
+        accountId: testAccount.id,
+        date: delayedChargeDate,
+        amount: -21.59,
+        payee: "AMAZON MKTPL*1122",
+        posted: true,
+        splits: { create: { amount: -21.59, categoryId: null } },
+      },
+    });
+
+    const tx2 = await prisma.transaction.create({
+      data: {
+        accountId: testAccount.id,
+        date: new Date("2026-10-03T12:00:00Z"),
+        amount: -14.00,
+        payee: "AMAZON MKTPL*3344",
+        posted: true,
+        splits: { create: { amount: -14.00, categoryId: null } },
+      },
+    });
+
+    const res1 = await processScrapedOrder({
+      orderId: "TEST-ORDER-004#1",
+      source: "AMAZON",
+      date: orderDate,
+      totalAmount: 21.59,
+      items: [{ title: "Delayed Item", price: 21.59, quantity: 1 }],
+    });
+    expect(res1.matched).toBe(true);
+
+    const res2 = await processScrapedOrder({
+      orderId: "TEST-ORDER-004#2",
+      source: "AMAZON",
+      date: new Date("2026-10-03T12:00:00Z"),
+      totalAmount: 14.00,
+      items: [{ title: "Fast Item", price: 14.00, quantity: 1 }],
+    });
+    expect(res2.matched).toBe(true);
+
+    const updatedTx1 = await prisma.transaction.findUnique({ where: { id: tx1.id } });
+    const updatedTx2 = await prisma.transaction.findUnique({ where: { id: tx2.id } });
+    expect(updatedTx1?.matchedOrderId).toBe("TEST-ORDER-004#1");
+    expect(updatedTx2?.matchedOrderId).toBe("TEST-ORDER-004#2");
+  });
 });

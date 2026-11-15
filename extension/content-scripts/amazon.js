@@ -105,6 +105,27 @@
         if (totalAmount > 0) console.log(`CoinFlow [Amazon]: Calculated Total from item sum: $${totalAmount}`);
       }
 
+      // Extract per-shipment "Credit Card transactions" (e.g. "Nov 12, 2026: $21.59")
+      const charges = [];
+      const bodyText = doc.body?.innerText || '';
+      const ccSectionMatch = bodyText.match(/Credit Card transactions([\s\S]*?)(?:\n\s*\n|$)/i);
+      if (ccSectionMatch) {
+        const ccLines = ccSectionMatch[1].split('\n');
+        for (const line of ccLines) {
+          const chargeMatch = line.match(/([A-Za-z]+\s+\d{1,2},\s+\d{4})\s*:\s*\$?([\d,]+\.\d{2})/);
+          if (chargeMatch) {
+            const parsedDate = new Date(chargeMatch[1]);
+            const parsedAmount = parseFloat(chargeMatch[2].replace(/,/g, ''));
+            if (!isNaN(parsedDate.getTime()) && !isNaN(parsedAmount) && parsedAmount > 0) {
+              charges.push({
+                date: parsedDate.toISOString(),
+                amount: parsedAmount,
+              });
+            }
+          }
+        }
+      }
+
       if (cleanOrderId) {
         // Skip cancelled orders
         if (dateStr?.toLowerCase().includes('cancelled') || totalAmount === 0) {
@@ -119,8 +140,8 @@
           ))
         );
 
-        console.log(`CoinFlow [Amazon]: Final details for ${cleanOrderId}: $${totalAmount}, Items: ${finalItems.length}`);
-        return { orderId: cleanOrderId, date, totalAmount, items: finalItems };
+        console.log(`CoinFlow [Amazon]: Final details for ${cleanOrderId}: $${totalAmount}, Items: ${finalItems.length}, Charges: ${charges.length}`);
+        return { orderId: cleanOrderId, date, totalAmount, items: finalItems, charges };
       } else {
         const preview = doc.body?.innerText?.substring(0, 200) || "Empty body";
         console.warn(`CoinFlow [Amazon]: Details scrape failed for doc. Preview: ${preview}`);
