@@ -45,12 +45,17 @@ export async function getMonthlyTally(year?: number) {
 
   const yearStart = new Date(currentYear, 0, 1);
   const yearEnd = new Date(currentYear, 11, 31, 23, 59, 59, 999);
+  const now = new Date();
+  const targetMonth = currentYear === now.getFullYear() ? now.getMonth() : 11;
+  const monthStart = new Date(currentYear, targetMonth, 1);
+  const monthEnd = new Date(currentYear, targetMonth + 1, 0, 23, 59, 59, 999);
 
   // 2. Fetch categories, DB-aggregated split sums, and independent settings/accounts in parallel
   const [
     categories,
     provisionGroups,
     spendingGroups,
+    monthSpendingGroups,
     settings,
     accounts,
     commitments,
@@ -90,6 +95,17 @@ export async function getMonthlyTally(year?: number) {
       },
       _sum: { amount: true }
     }),
+    prisma.transactionSplit.groupBy({
+      by: ['categoryId'],
+      where: {
+        categoryId: { not: null },
+        transaction: {
+          date: { gte: monthStart, lte: monthEnd },
+          NOT: { payee: { startsWith: "Month Start Provision" } }
+        }
+      },
+      _sum: { amount: true }
+    }),
     prisma.settings.findUnique({ where: { id: 'global' } }),
     prisma.account.findMany(),
     prisma.commitment.findMany(),
@@ -103,6 +119,15 @@ export async function getMonthlyTally(year?: number) {
   const spendingByCat = new Map<string, number>();
   for (const g of spendingGroups) {
     if (g.categoryId) spendingByCat.set(g.categoryId, Math.abs(safeNumber(g._sum.amount)));
+  }
+
+  const monthSpendingByCat = new Map<string, number>();
+  for (const g of monthSpendingGroups) {
+    if (g.categoryId) {
+      // Negative net sum means outflow; positive refunds reduce net spending
+      const net = safeNumber(g._sum.amount);
+      monthSpendingByCat.set(g.categoryId, net < 0 ? Math.abs(net) : 0);
+    }
   }
 
   const categoryTallies = categories.map(c => {
@@ -139,6 +164,7 @@ export async function getMonthlyTally(year?: number) {
       provisions: safeNumber(provisions),
       rollover: rollover,
       spent: parseFloat(averageSpent.toFixed(2)),
+      spentThisMonth: parseFloat((monthSpendingByCat.get(c.id) || 0).toFixed(2)),
       remaining: safeNumber(remaining),
       tiedAccountId: c.tiedAccountId,
       isOffBudget: !!c.tiedAccount?.excludeFromSurplus,
@@ -371,7 +397,8 @@ export async function getMonthlyTally(year?: number) {
       isDebt: a.isDebt,
       showInSidebar: a.showInSidebar,
       excludeFromAssetCalculation: a.excludeFromAssetCalculation,
-      showTransactions: a.showTransactions
+      showTransactions: a.showTransactions,
+      syncError: a.syncError
     }))
   };
 }

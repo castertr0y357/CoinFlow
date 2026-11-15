@@ -13,6 +13,7 @@ interface Category {
   provisions: number;
   rollover: number;
   spent: number;
+  spentThisMonth?: number;
   remaining: number;
   tiedAccountId?: string | null;
   isOffBudget: boolean;
@@ -94,6 +95,7 @@ export default function CategorySpreadsheet({ categories, integrityWarnings = []
               {isEditingOrder && <th className="order-th">Order</th>}
               <th className="sticky-col">Category</th>
               <th className="text-right">Budgeted</th>
+              <th className="text-right">This Month</th>
               <th className="text-right">Balance</th>
               <th className="text-right">Average Spending</th>
             </tr>
@@ -171,6 +173,31 @@ export default function CategorySpreadsheet({ categories, integrityWarnings = []
                         </span>
                       )}
                     </div>
+                  </td>
+                  <td className="text-right">
+                    {(() => {
+                      const monthSpent = cat.spentThisMonth ?? 0;
+                      const pct = cat.budget > 0 ? Math.min(100, Math.round((monthSpent / cat.budget) * 100)) : 0;
+                      const isOver = cat.budget > 0 && monthSpent > cat.budget;
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
+                          <span className="font-mono" style={{ color: isOver ? 'var(--danger)' : 'var(--text-main)', fontSize: '0.88rem' }}>
+                            ${monthSpent.toLocaleString()}
+                          </span>
+                          {cat.budget > 0 && (
+                            <div style={{ width: '64px', height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
+                              <div
+                                style={{
+                                  width: `${pct}%`,
+                                  height: '100%',
+                                  background: isOver ? 'var(--danger)' : pct > 85 ? 'var(--warning)' : 'var(--accent)',
+                                }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className={`text-right balance-cell ${cat.remaining < 0 ? 'neg' : 'pos'}`}>
                     ${cat.remaining.toLocaleString()}

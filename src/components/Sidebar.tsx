@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { mutate } from "swr";
+import useSWR, { mutate } from "swr";
 import Image from "next/image";
 import { useNotification } from "@/components/ui/NotificationProvider";
+
+const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null));
 
 interface Account {
   id: string;
@@ -25,12 +27,18 @@ interface SidebarProps {
   accounts: Account[];
 }
 
-export default function Sidebar({ accounts }: SidebarProps) {
+export default function Sidebar({ accounts: initialAccounts }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [isSyncing, setIsSyncing] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const { showToast } = useNotification();
+  const { data: tally } = useSWR("/api/v1/budget/tally", fetcher, {
+    revalidateOnFocus: false,
+  });
+
+  const accounts: Account[] = Array.isArray(tally?.accounts) ? tally.accounts : initialAccounts;
+  const inboxCount: number = tally?.inbox?.count || 0;
 
   const handleSync = async (fullSync = false) => {
     setIsSyncing(true);
@@ -63,7 +71,12 @@ export default function Sidebar({ accounts }: SidebarProps) {
           if (task.status === "completed") {
             const newCount = task.result?.newTransactionCount ?? task.result?.transactionCount ?? 0;
             const scannedCount = task.result?.transactionCount ?? 0;
-            showToast(`Synced ${newCount} new transactions (scanned ${scannedCount})`, "success");
+            const syncErrors: string[] = Array.isArray(task.result?.syncErrors) ? task.result.syncErrors : [];
+            if (syncErrors.length > 0) {
+              showToast(`Synced ${newCount} new tx, but SimpleFIN reported: ${syncErrors[0]}`, "error");
+            } else {
+              showToast(`Synced ${newCount} new transactions (scanned ${scannedCount})`, "success");
+            }
             break;
           }
           if (task.status === "failed") {
@@ -104,19 +117,18 @@ export default function Sidebar({ accounts }: SidebarProps) {
 
   const mainLinks = [
     { label: "Dashboard", href: "/", icon: "📊" },
-    { label: "Transactions", href: "/transactions", icon: "💸" },
-    { label: "Goals", href: "/goals", icon: "🎯" },
+    { label: "Transactions", href: "/transactions", icon: "💸", badge: inboxCount },
+    { label: "Reports", href: "/reports", icon: "📈" },
     { label: "Commitments", href: "/commitments", icon: "📜" },
+    { label: "Goals", href: "/goals", icon: "🎯" },
     { label: "Accounts", href: "/accounts", icon: "💳" },
   ];
 
   const toolLinks = [
+    { label: "Net Worth", href: "/net-worth", icon: "💼" },
     { label: "Mortgage", href: "/mortgage", icon: "🏠" },
     { label: "Debts", href: "/debts", icon: "⚖️" },
     { label: "Fire Drill", href: "/fire-drill", icon: "🚨" },
-    { label: "Net Worth", href: "/net-worth", icon: "💼" },
-    { label: "Reports", href: "/reports", icon: "📈" },
-    { label: "Settings", href: "/settings", icon: "⚙️" },
   ];
 
   const isToolActive = toolLinks.some(link => 
@@ -172,7 +184,22 @@ export default function Sidebar({ accounts }: SidebarProps) {
               onClick={() => setIsOpen(false)}
             >
               <span className="icon">{link.icon}</span>
-              <span className="label">{link.label}</span>
+              <span className="label" style={{ flex: 1 }}>{link.label}</span>
+              {typeof link.badge === "number" && link.badge > 0 && (
+                <span
+                  style={{
+                    background: "rgba(245, 158, 11, 0.2)",
+                    color: "#f59e0b",
+                    border: "1px solid rgba(245, 158, 11, 0.4)",
+                    borderRadius: "999px",
+                    fontSize: "0.7rem",
+                    fontWeight: 700,
+                    padding: "1px 7px",
+                  }}
+                >
+                  {link.badge}
+                </span>
+              )}
             </Link>
           ))}
 
@@ -182,7 +209,7 @@ export default function Sidebar({ accounts }: SidebarProps) {
             className={`sidebar-link dropdown-toggle ${isToolActive ? 'active-parent' : ''}`}
           >
             <span className="icon">🛠️</span>
-            <span className="label" style={{ flex: 1, textAlign: 'left' }}>Tools</span>
+            <span className="label" style={{ flex: 1, textAlign: 'left' }}>Planning</span>
             <span className="arrow">{toolsOpen ? "▼" : "▶"}</span>
           </button>
 
@@ -211,25 +238,26 @@ export default function Sidebar({ accounts }: SidebarProps) {
 
         <div className="sidebar-divider"></div>
 
-        <div className="sidebar-actions">
+        <div className="sidebar-actions" style={{ flexDirection: 'row', gap: '0.4rem' }}>
           <button 
             className="sidebar-action-btn" 
             onClick={(e) => handleSync(e.shiftKey)}
             disabled={isSyncing}
+            style={{ flex: 1, justifyContent: 'center', padding: '0.5rem 0.4rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)' }}
             title="Click for fast incremental sync (Shift+Click for full-year lookback)"
           >
             <span className="icon">🏦</span>
-            <span className="label">{isSyncing ? "Syncing..." : "Sync Banks"}</span>
+            <span className="label">{isSyncing ? "Syncing..." : "Sync"}</span>
           </button>
           <button
             className="sidebar-action-btn"
             onClick={() => handleSync(true)}
             disabled={isSyncing}
-            style={{ fontSize: '0.8rem', opacity: 0.8 }}
+            style={{ fontSize: '0.78rem', padding: '0.5rem 0.6rem', width: 'auto', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)' }}
             title="Pull transactions from Jan 1st of this year"
           >
             <span className="icon">📅</span>
-            <span className="label">{isSyncing ? "Syncing..." : "Full Year Sync"}</span>
+            <span className="label">Full Year</span>
           </button>
         </div>
       </nav>
@@ -317,13 +345,23 @@ export default function Sidebar({ accounts }: SidebarProps) {
         })}
       </div>
 
-      <div className="sidebar-footer">
+      <div className="sidebar-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+        <Link
+          href="/settings"
+          className={`logout-link ${pathname.startsWith('/settings') ? 'active' : ''}`}
+          onClick={() => setIsOpen(false)}
+          style={{ width: 'auto', color: pathname.startsWith('/settings') ? 'var(--primary)' : undefined }}
+        >
+          <span className="icon">⚙️</span>
+          <span className="label">Settings</span>
+        </Link>
         <button 
           onClick={async () => {
             await fetch('/api/v1/auth/logout', { method: 'POST' });
             window.location.href = '/login';
           }} 
           className="logout-link"
+          style={{ width: 'auto', background: 'none', border: 'none', cursor: 'pointer' }}
         >
           <span className="icon">🚪</span>
           <span className="label">Logout</span>

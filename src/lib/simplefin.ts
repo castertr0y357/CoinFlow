@@ -18,13 +18,62 @@ interface SimpleFinAccount {
   name: string;
   balance: string;
   currency: string;
+  "balance-date"?: number;
+  org?: {
+    name?: string;
+    domain?: string;
+    id?: string;
+  };
   transactions: SimpleFinTransaction[];
   err?: string;
   error?: string;
 }
 
 interface SimpleFinResponse {
+  errors?: string[];
   accounts: SimpleFinAccount[];
+}
+
+/**
+ * Matches top-level SimpleFIN `errors[]` messages to a specific account
+ * using `org.name`, `org.domain`, `account.name`, or stale `balance-date`.
+ */
+export function matchSimpleFinAccountError(
+  remoteAccount: SimpleFinAccount,
+  topLevelErrors: string[] = []
+): string | null {
+  if (remoteAccount.err || remoteAccount.error) {
+    return remoteAccount.err || remoteAccount.error || null;
+  }
+  if (!topLevelErrors || topLevelErrors.length === 0) return null;
+
+  const candidates = [
+    remoteAccount.org?.name,
+    remoteAccount.org?.domain,
+    remoteAccount.name,
+  ]
+    .filter((s): s is string => !!s && s.trim().length >= 3)
+    .map((s) => s.toLowerCase().trim());
+
+  const matched = topLevelErrors.filter((err) => {
+    const lowerErr = err.toLowerCase();
+    return candidates.some((c) => lowerErr.includes(c));
+  });
+
+  if (matched.length > 0) {
+    return matched.join("; ");
+  }
+
+  // Fallback: if balance-date is > 3 days old and there are general errors, flag as potentially stale
+  const balanceDate = remoteAccount["balance-date"];
+  if (balanceDate) {
+    const ageDays = (Date.now() / 1000 - balanceDate) / 86400;
+    if (ageDays > 3) {
+      return topLevelErrors[0];
+    }
+  }
+
+  return null;
 }
 
 export interface SimpleFinSyncOptions {
@@ -100,6 +149,10 @@ export async function syncSimpleFin(options: SimpleFinSyncOptions = {}) {
     }
 
     const data: SimpleFinResponse = await response.json();
+    const topLevelErrors = Array.isArray(data.errors) ? data.errors : [];
+    if (topLevelErrors.length > 0) {
+      logger.warn("SimpleFIN", `SimpleFIN returned ${topLevelErrors.length} connection error(s): ${topLevelErrors.join(" | ")}`);
+    }
     logger.info("SimpleFIN", `Found ${data.accounts.length} accounts.`);
 
     // 1. Collect all incoming remote transaction IDs across all accounts
@@ -177,20 +230,21 @@ export async function syncSimpleFin(options: SimpleFinSyncOptions = {}) {
     let newTransactionCount = 0;
 
     for (const remoteAccount of data.accounts) {
+      const accountSyncError = matchSimpleFinAccountError(remoteAccount, topLevelErrors);
       const account = await prisma.account.upsert({
         where: { remoteId: remoteAccount.id },
         update: {
           name: remoteAccount.name,
           balance: remoteAccount.balance,
           currency: remoteAccount.currency,
-          syncError: remoteAccount.err || remoteAccount.error || null,
+          syncError: accountSyncError,
         },
         create: {
           remoteId: remoteAccount.id,
           name: remoteAccount.name,
           balance: remoteAccount.balance,
           currency: remoteAccount.currency,
-          syncError: remoteAccount.err || remoteAccount.error || null,
+          syncError: accountSyncError,
         },
       });
 
@@ -253,6 +307,7 @@ export async function syncSimpleFin(options: SimpleFinSyncOptions = {}) {
       accountCount: data.accounts.length,
       transactionCount: totalTransactions,
       newTransactionCount,
+      syncErrors: topLevelErrors,
     };
   } catch (err) {
     clearTimeout(timeoutId);

@@ -295,6 +295,11 @@ export default function AccountsClient({ initialAccounts }: AccountsClientProps)
                     <span className="account-sub-type">
                       {acc.type}{acc.displayName ? ` (${acc.name})` : ""}{acc.isManual ? " [Manual]" : ""}
                     </span>
+                    {acc.syncError && (
+                      <div style={{ fontSize: '0.75rem', color: '#f87171', marginTop: '2px' }}>
+                        ⚠️ Sync issue: {acc.syncError}
+                      </div>
+                    )}
                   </div>
 
                   <div className="col-balance font-mono text-success">
@@ -445,6 +450,11 @@ export default function AccountsClient({ initialAccounts }: AccountsClientProps)
                     <span className="account-sub-type">
                       {acc.type}{acc.displayName ? ` (${acc.name})` : ""}{acc.isManual ? " [Manual]" : ""}
                     </span>
+                    {acc.syncError && (
+                      <div style={{ fontSize: '0.75rem', color: '#f87171', marginTop: '2px' }}>
+                        ⚠️ Sync issue: {acc.syncError}
+                      </div>
+                    )}
                   </div>
 
                   <div className="col-balance font-mono text-danger">

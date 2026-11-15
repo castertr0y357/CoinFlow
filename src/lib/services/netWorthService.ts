@@ -63,7 +63,9 @@ export async function getNetWorthData() {
       const histBalance = balance - sumAfter;
 
       if (acc.isDebt) {
-        monthDebts += Math.abs(histBalance);
+        // Debt accounts may be stored as negative (e.g. -1500) or positive (e.g. 1500)
+        const normalizedDebt = balance < 0 ? Math.abs(Math.min(0, histBalance)) : Math.max(0, histBalance);
+        monthDebts += normalizedDebt;
       } else {
         monthAssets += histBalance;
       }

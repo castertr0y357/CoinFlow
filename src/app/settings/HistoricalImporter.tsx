@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import { useNotification } from "@/components/ui/NotificationProvider";
 
 interface Mapping {
   sheetName: string;
@@ -14,6 +15,7 @@ interface Mapping {
 }
 
 export default function HistoricalImporter() {
+  const { showToast } = useNotification();
   const [file, setFile] = useState<File | null>(null);
   const [year, setYear] = useState(new Date().getFullYear() - 1);
   const [step, setStep] = useState(1); // 1: Upload, 2: Mapping, 3: Success
@@ -42,11 +44,11 @@ export default function HistoricalImporter() {
         setMappings(data.suggestions);
         setStep(2);
       } else {
-        alert("Failed to analyze spreadsheet structure.");
+        showToast("Failed to analyze spreadsheet structure.", "error");
       }
     } catch (err) {
       console.error(err);
-      alert("Error analyzing file.");
+      showToast("Error analyzing file.", "error");
     } finally {
       setIsProcessing(false);
     }
@@ -71,7 +73,7 @@ export default function HistoricalImporter() {
       setStep(3);
     } catch (err) {
       console.error(err);
-      alert("Import failed.");
+      showToast("Import failed.", "error");
     } finally {
       setIsProcessing(false);
     }

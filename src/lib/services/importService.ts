@@ -12,7 +12,7 @@ interface HistoricalMapping {
 }
 
 export async function analyzeXlsx(buffer: Buffer) {
-  const workbook = XLSX.read(buffer, { type: 'buffer' });
+  const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
   const sheetInfo = workbook.SheetNames.map(name => {
     const sheet = workbook.Sheets[name];
     const data = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as unknown[][];
@@ -31,12 +31,42 @@ export async function analyzeXlsx(buffer: Buffer) {
     return { name, headers, samples: mappedSamples };
   });
 
-  const categories = await prisma.category.findMany();
-  const suggestions = await suggestHistoricalMapping(sheetInfo, categories);
+  // Deterministic header detection first so importer works without AI
+  const deterministicMappings: HistoricalMapping[] = sheetInfo.map((s) => {
+    const findCol = (patterns: string[]) =>
+      s.headers.find((h) => patterns.some((p) => h.toLowerCase().includes(p))) || "";
+
+    const dateColumn = findCol(["date", "posted", "time"]);
+    const payeeColumn = findCol(["payee", "description", "merchant", "name", "memo"]);
+    const amountColumn = findCol(["amount", "cost", "price", "debit", "total", "spent"]);
+
+    return {
+      isTransactionSheet: !!(dateColumn && payeeColumn && amountColumn),
+      sheetName: s.name,
+      suggestedCategory: s.name,
+      dateColumn,
+      payeeColumn,
+      amountColumn,
+    };
+  });
+
+  const allMapped = deterministicMappings.length > 0 && deterministicMappings.every((m) => m.isTransactionSheet);
+  if (allMapped) {
+    return { sheetInfo, suggestions: deterministicMappings };
+  }
+
+  const settings = await prisma.settings.findUnique({ where: { id: "global" } });
+  if (settings?.aiEnabled) {
+    const categories = await prisma.category.findMany();
+    const suggestions = await suggestHistoricalMapping(sheetInfo, categories);
+    if (suggestions?.mappings?.length) {
+      return { sheetInfo, suggestions: suggestions.mappings };
+    }
+  }
 
   return {
     sheetInfo,
-    suggestions: suggestions.mappings
+    suggestions: deterministicMappings,
   };
 }
 
@@ -45,7 +75,7 @@ export async function executeHistoricalImport(
   year: number, 
   mappings: HistoricalMapping[]
 ) {
-  const workbook = XLSX.read(buffer, { type: 'buffer' });
+  const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
   
   // 1. Ensure the Year exists
   let budgetYear = await prisma.budgetYear.findUnique({ where: { year } });

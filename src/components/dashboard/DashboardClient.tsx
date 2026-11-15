@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { useBudget } from "@/hooks/useBudget";
 import CashHealth from "./CashHealth";
 import CategorySpreadsheet from "./CategorySpreadsheet";
 import Link from "next/link";
+import Button from "@/components/ui/Button";
+import AddTransactionModal from "@/components/transactions/AddTransactionModal";
 
 import ForecastCard from "./ForecastCard";
 import GoalsSummaryCard from "./GoalsSummaryCard";
@@ -12,6 +15,7 @@ import { formatDistanceToNow } from 'date-fns';
 
 export default function DashboardClient({ year }: { year?: number }) {
   const { tally, isLoading: budgetLoading, isError: budgetError, refresh: refreshBudget } = useBudget(year);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   if (budgetError || (tally && tally.error)) {
     return (
@@ -28,6 +32,8 @@ export default function DashboardClient({ year }: { year?: number }) {
     return null;
   }
 
+  const syncErrorAccounts = (tally.accounts || []).filter((a: { syncError?: string | null }) => !!a.syncError);
+
   return (
     <div className="dashboard-layout-content animate-fade-in">
       <header className="page-header-flex">
@@ -35,12 +41,45 @@ export default function DashboardClient({ year }: { year?: number }) {
           <h1>Dashboard</h1>
           <p className="text-dim">Overview of your liquid capital, commitments, and goals.</p>
         </div>
-        {tally.lastSync && (
-          <div className="text-right text-xs text-muted animate-fade-in" style={{ opacity: 0.7 }}>
-            🔄 Last synced: {formatDistanceToNow(new Date(tally.lastSync), { addSuffix: true })}
-          </div>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {tally.lastSync && (
+            <div className="text-right text-xs text-muted animate-fade-in" style={{ opacity: 0.7 }}>
+              🔄 Last synced: {formatDistanceToNow(new Date(tally.lastSync), { addSuffix: true })}
+            </div>
+          )}
+          <Button variant="primary" size="sm" onClick={() => setShowAddModal(true)}>
+            + Add Transaction
+          </Button>
+        </div>
       </header>
+
+      {syncErrorAccounts.length > 0 && (
+        <div
+          className="glass animate-fade-in"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0.85rem 1.25rem',
+            marginBottom: '1.25rem',
+            borderRadius: '12px',
+            background: 'rgba(239, 68, 68, 0.08)',
+            border: '1px solid rgba(239, 68, 68, 0.35)',
+            gap: '1rem',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', fontSize: '0.88rem' }}>
+            <span>⚠️</span>
+            <span>
+              <strong>Bank sync issue</strong> on {syncErrorAccounts.length} account{syncErrorAccounts.length > 1 ? 's' : ''}:{' '}
+              {syncErrorAccounts.map((a: { displayName?: string | null; name: string; syncError?: string | null }) => `${a.displayName || a.name} (${a.syncError})`).join(' · ')}
+            </span>
+          </div>
+          <Link href="/accounts" className="btn-inbox" style={{ borderColor: 'rgba(239, 68, 68, 0.4)', color: '#f87171', background: 'rgba(239, 68, 68, 0.15)' }}>
+            View Accounts &rarr;
+          </Link>
+        </div>
+      )}
       <div className="budget-status-header">
         <CashHealth 
           liquidCash={tally.liquidCash}
@@ -81,6 +120,17 @@ export default function DashboardClient({ year }: { year?: number }) {
           onRefresh={refreshBudget} 
         />
       </div>
+      {showAddModal && (
+        <AddTransactionModal
+          categoryId={tally?.categories?.[0]?.id || ""}
+          categoryName={tally?.categories?.[0]?.name || "General"}
+          onClose={() => setShowAddModal(false)}
+          onSuccess={() => {
+            setShowAddModal(false);
+            refreshBudget();
+          }}
+        />
+      )}
       <style jsx>{`
         .budget-status-header {
           display: grid;
