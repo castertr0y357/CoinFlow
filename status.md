@@ -2,6 +2,7 @@
 
 ## Current Progress
 - [x] **Amazon Per-Shipment Card Charge Matching (v2.35.0)**:
+  - **Dynamic Sidebar Inbox Badge (`src/hooks/useTransactions.ts`)**: Updated `useTransactions().refresh()` to also revalidate `/api/v1/budget/tally` via SWR `globalMutate`, so the Sidebar's `Transactions` notification badge updates immediately whenever transactions are categorized, cleared/hidden, bulk-applied, deleted, or added.
   - **Extension Scraping (`extension/content-scripts/amazon.js`)**: Extracted the `"Credit Card transactions"` section from Amazon's Order Details page (`charges: [{ date, amount }]`) to capture exact per-shipment card charges rather than just the order total.
   - **Split-Shipment Expansion (`src/app/api/v1/external-orders/sync/route.ts`)**: Expanded multi-charge orders into individual matchable sub-orders (`${orderId}#1`, `${orderId}#2`, etc.) using each charge's exact `amount` and `date` without requiring a database schema migration; single-charge orders also use the actual charge date/amount.
   - **Widened Matching Window (`src/lib/external-orders.ts`, `src/lib/external-orders.test.ts`)**: Widened the external order matching window from `-3`..`+10` days to `-3`..`+21` days to accommodate delayed shipments and Subscribe & Save orders, verified with unit tests.
