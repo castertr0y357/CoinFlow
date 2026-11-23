@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
   return withAuth(req, async () => {
     try {
       const body = await req.json();
-      const { transactionIds } = body;
+      const { transactionIds, deterministicOnly = false } = body;
 
       if (!transactionIds || !Array.isArray(transactionIds)) {
         return NextResponse.json({ error: "Missing transactionIds array" }, { status: 400 });
@@ -65,8 +65,8 @@ export async function POST(req: NextRequest) {
         unmatchedTransactions.push(tx);
       }
 
-      // 3. Tier 2: On-Demand AI Fallback only for truly unknown merchants
-      if (unmatchedTransactions.length > 0) {
+      // 3. Tier 2: On-Demand AI Fallback only for truly unknown merchants (skipped on auto-load)
+      if (!deterministicOnly && unmatchedTransactions.length > 0) {
         const settings = await prisma.settings.findUnique({ where: { id: "global" }, select: { aiEnabled: true } });
         if (settings?.aiEnabled) {
           const examples = pastSplits.slice(0, 20).map(s => ({

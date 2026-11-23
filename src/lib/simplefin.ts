@@ -285,6 +285,13 @@ export async function syncSimpleFin(options: SimpleFinSyncOptions = {}) {
           syncError: accountSyncError,
         },
       });
+      if (account.muteSyncErrors && !accountSyncError) {
+        await prisma.account.update({
+          where: { id: account.id },
+          data: { muteSyncErrors: false },
+        });
+        logger.info("SimpleFIN", `Account ${remoteAccount.name} recovered from sync error; alerts automatically unmuted.`);
+      }
       if (accountSyncError && !account.muteSyncErrors) {
         unmutedSyncErrors.add(accountSyncError);
       }

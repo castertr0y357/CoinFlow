@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTransactions } from "@/hooks/useTransactions";
 import TransactionList from "./TransactionList";
@@ -51,6 +51,44 @@ export default function TransactionsClient({
   const [bulkCategoryId, setBulkCategoryId] = useState<string>("floating");
   const [sortBy, setSortBy] = useState<'date' | 'amount' | 'payee'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const autoSuggestedKeyRef = useRef<string>("");
+
+  // Zero-click deterministic category suggestions on Inbox load
+  useEffect(() => {
+    if (view !== "inbox" || !transactions) return;
+    const unassignedIds = (transactions as Transaction[])
+      .filter((tx) => tx.splits.some((s) => !s.categoryId))
+      .map((tx) => tx.id)
+      .sort();
+    if (unassignedIds.length === 0) return;
+
+    const key = unassignedIds.join(",");
+    if (key === autoSuggestedKeyRef.current) return;
+    autoSuggestedKeyRef.current = key;
+
+    let cancelled = false;
+    fetch("/api/v1/ai/categorize", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-KEY": process.env.NEXT_PUBLIC_INTERNAL_API_KEY || "",
+      },
+      body: JSON.stringify({ transactionIds: unassignedIds, deterministicOnly: true }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.suggestions) {
+          setSuggestions((prev) => ({ ...data.suggestions, ...prev }));
+        }
+      })
+      .catch(() => {
+        // Non-critical auto-suggestion failure
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [view, transactions]);
 
   const handleNormalizePayees = async () => {
     if (!transactions) return;
