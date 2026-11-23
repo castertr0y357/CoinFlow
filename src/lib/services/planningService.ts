@@ -13,7 +13,7 @@ export interface CashFlowEvent {
   dateLabel: string;
   name: string;
   amount: number; // positive = inflow, negative = outflow
-  type: "income" | "commitment" | "card";
+  type: "income" | "commitment" | "card" | "variable";
   runningBalance: number;
 }
 
@@ -45,6 +45,7 @@ export interface BuildCashFlowInput {
   paycheckFrequency: string;
   paycheckNextDate: Date | string | null;
   monthlyIncome: number;
+  monthlyVariableSpend?: number;
   commitments: CashFlowCommitmentInput[];
 }
 
@@ -172,6 +173,19 @@ export function buildCashFlowTimeline(input: BuildCashFlowInput) {
         name: "Credit Card Statement Payoffs",
         amount: -Math.abs(input.creditCardBalance),
         type: "card",
+      });
+    }
+  }
+
+  // 3b. Variable / Everyday Budget Spending (weekly slice of non-commitment monthly spend)
+  if (input.monthlyVariableSpend && input.monthlyVariableSpend > 0) {
+    const weeklyVariable = Math.round(((input.monthlyVariableSpend * 12) / 52) * 100) / 100;
+    for (let dayOffset = 7; dayOffset <= input.horizonDays; dayOffset += 7) {
+      const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + dayOffset);
+      pushEvent(d, {
+        name: "Everyday Budget / Avg Purchases",
+        amount: -weeklyVariable,
+        type: "variable",
       });
     }
   }
@@ -329,13 +343,69 @@ export function buildWealthProjection(input: WealthProjectionInput) {
   };
 }
 
+function toMonthlyCommitmentAmount(amount: number, frequency: string): number {
+  const freq = (frequency || "MONTHLY").toUpperCase();
+  if (freq === "WEEKLY") return (amount * 52) / 12;
+  if (freq === "BI_WEEKLY" || freq === "BIWEEKLY") return (amount * 26) / 12;
+  if (freq === "QUARTERLY") return amount / 3;
+  if (freq === "YEARLY" || freq === "ANNUAL") return amount / 12;
+  return amount;
+}
+
 export async function getCashFlowPageData() {
-  const [accounts, commitments, settings, mortgages] = await Promise.all([
+  const now = new Date();
+  const ninetyDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 90);
+
+  const [accounts, commitments, settings, mortgages, yearlyCategories] = await Promise.all([
     prisma.account.findMany({ orderBy: { name: "asc" } }),
     prisma.commitment.findMany({ orderBy: { nextDueDate: "asc" } }),
     prisma.settings.findUnique({ where: { id: "global" } }),
     prisma.mortgageDetail.findMany({ select: { accountId: true } }),
+    prisma.yearlyCategory.findMany({
+      where: { year: { year: now.getFullYear() }, category: { isPaused: false, tiedAccountId: null } },
+      select: { categoryId: true, monthlyBudget: true },
+    }),
   ]);
+
+  const activeCategoryIds = yearlyCategories.map((yc) => yc.categoryId);
+  const recentSplits = activeCategoryIds.length > 0
+    ? await prisma.transactionSplit.groupBy({
+        by: ["categoryId"],
+        where: {
+          categoryId: { in: activeCategoryIds },
+          amount: { lt: 0 },
+          transaction: { isHidden: false, date: { gte: ninetyDaysAgo } },
+        },
+        _sum: { amount: true },
+      })
+    : [];
+
+  const splitSumMap = new Map<string, number>();
+  for (const row of recentSplits) {
+    if (row.categoryId) {
+      splitSumMap.set(row.categoryId, Math.abs(safeNumber(row._sum.amount)));
+    }
+  }
+
+  const commitmentMonthlyByCat = new Map<string, number>();
+  for (const c of commitments) {
+    if (c.categoryId) {
+      const prev = commitmentMonthlyByCat.get(c.categoryId) || 0;
+      commitmentMonthlyByCat.set(c.categoryId, prev + toMonthlyCommitmentAmount(safeNumber(c.amount), c.frequency));
+    }
+  }
+
+  let monthlyVariableBudget = 0;
+  let monthlyAvgVariableSpend = 0;
+  for (const yc of yearlyCategories) {
+    const catCommitments = commitmentMonthlyByCat.get(yc.categoryId) || 0;
+    const catBudget = safeNumber(yc.monthlyBudget);
+    const catAvgSpend = (splitSumMap.get(yc.categoryId) || 0) / 3;
+    monthlyVariableBudget += Math.max(0, catBudget - catCommitments);
+    monthlyAvgVariableSpend += Math.max(0, catAvgSpend - catCommitments);
+  }
+  monthlyVariableBudget = Math.round(monthlyVariableBudget * 100) / 100;
+  monthlyAvgVariableSpend = Math.round(monthlyAvgVariableSpend * 100) / 100;
 
   const mortgageAccountIds = new Set(mortgages.map((m) => m.accountId));
 
@@ -363,6 +433,8 @@ export async function getCashFlowPageData() {
     paycheckFrequency: settings?.paycheckFrequency ?? "BI_WEEKLY",
     paycheckNextDate: settings?.paycheckNextDate ? settings.paycheckNextDate.toISOString() : null,
     monthlyIncome: safeNumber(settings?.monthlyIncome ?? 5000),
+    monthlyVariableBudget,
+    monthlyAvgVariableSpend,
     commitments: commitments.map((c) => ({
       id: c.id,
       name: c.name,

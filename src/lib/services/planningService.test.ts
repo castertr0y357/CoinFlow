@@ -32,6 +32,33 @@ describe("planningService", () => {
     expect(result.events.length).toBeGreaterThanOrEqual(4);
     expect(result.lowestBalance).toBeLessThanOrEqual(5000);
     expect(result.safeToSweep).toBe(Math.max(0, result.lowestBalance - 1000));
+
+    const withVariableSpend = buildCashFlowTimeline({
+      startDate: start,
+      horizonDays: 30,
+      startingCash: 5000,
+      safetyBuffer: 1000,
+      includeCreditCards: true,
+      creditCardBalance: 1200,
+      cardAutopayDay: 15,
+      paycheckEnabled: true,
+      paycheckAmount: 2500,
+      paycheckFrequency: "BI_WEEKLY",
+      paycheckNextDate: new Date(2026, 10, 6),
+      monthlyIncome: 5000,
+      monthlyVariableSpend: 2000,
+      commitments: [
+        {
+          id: "c1",
+          name: "Mortgage",
+          amount: 2000,
+          frequency: "MONTHLY",
+          nextDueDate: new Date(2026, 10, 10),
+        },
+      ],
+    });
+    expect(withVariableSpend.endingBalance).toBeLessThan(result.endingBalance);
+    expect(withVariableSpend.events.some((e) => e.type === "variable")).toBe(true);
   });
 
   it("buildWealthProjection models post-mortgage payment redirection boost", () => {

@@ -2,7 +2,7 @@
 
 ## Current Progress
 - [x] **Cash Flow Timeline, Wealth & FI Trajectory, and Net Worth Snapshots (v2.37.0)**:
-  - **Cash Flow Timeline (`/cash-flow`, `src/lib/services/planningService.ts`, `CashFlowClient.tsx`)**: Added a 30/60/90-day forward-looking checking balance timeline using live on-budget cash, Paycheck Forecasting schedules, Commitments, and optional credit card statement payoffs, highlighting **Safe to Sweep Now** above a configurable safety buffer.
+  - **Cash Flow Timeline (`/cash-flow`, `src/lib/services/planningService.ts`, `CashFlowClient.tsx`)**: Added a 30/60/90-day forward-looking checking balance timeline using live on-budget cash, Paycheck Forecasting schedules, Commitments, optional credit card statement payoffs, and non-commitment **Everyday / Variable Spend** (switchable between 3-month historical average, monthly category budgets minus commitments, or a custom monthly rate), highlighting **Safe to Sweep Now** above a configurable safety buffer.
   - **Wealth & FI Trajectory (`/wealth`, `WealthClient.tsx`, `planningService.ts`)**: Added a long-term investment growth & FI projector seeded with live 401(k)/IRA/brokerage balances, monthly contribution/return/horizon sliders, and mortgage payoff inflection modeling (redirecting freed mortgage payments into investments).
   - **Real Net Worth Snapshots (`prisma/schema.prisma`, `netWorthService.ts`, `simplefin.ts`)**: Added `NetWorthSnapshot` table (`20261122230500_add_net_worth_snapshots`), automatic monthly snapshot recording during SimpleFIN syncs and `/net-worth` visits, and snapshot-backed 6-month history in `getNetWorthData()`.
 - [x] **Live Inbox Badge Polling, Account Removal, and SimpleFIN v2 Sync Error Detection (v2.36.0)**:

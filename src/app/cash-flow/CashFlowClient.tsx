@@ -14,6 +14,8 @@ interface CashFlowClientProps {
     paycheckFrequency: string;
     paycheckNextDate: string | null;
     monthlyIncome: number;
+    monthlyVariableBudget: number;
+    monthlyAvgVariableSpend: number;
     commitments: CashFlowCommitmentInput[];
   };
 }
@@ -23,6 +25,19 @@ export default function CashFlowClient({ initialData }: CashFlowClientProps) {
   const [safetyBuffer, setSafetyBuffer] = useState<number>(1000);
   const [includeCreditCards, setIncludeCreditCards] = useState<boolean>(true);
   const [cardAutopayDay, setCardAutopayDay] = useState<number>(15);
+  const [spendMode, setSpendMode] = useState<"avg" | "budget" | "custom">(
+    initialData.monthlyAvgVariableSpend > 0 ? "avg" : "budget"
+  );
+  const [customVariableSpend, setCustomVariableSpend] = useState<number>(
+    Math.round(initialData.monthlyAvgVariableSpend || initialData.monthlyVariableBudget)
+  );
+
+  const activeVariableSpend =
+    spendMode === "avg"
+      ? initialData.monthlyAvgVariableSpend
+      : spendMode === "budget"
+      ? initialData.monthlyVariableBudget
+      : customVariableSpend;
 
   const timeline = useMemo(() => {
     return buildCashFlowTimeline({
@@ -38,9 +53,10 @@ export default function CashFlowClient({ initialData }: CashFlowClientProps) {
       paycheckFrequency: initialData.paycheckFrequency,
       paycheckNextDate: initialData.paycheckNextDate,
       monthlyIncome: initialData.monthlyIncome,
+      monthlyVariableSpend: activeVariableSpend,
       commitments: initialData.commitments,
     });
-  }, [initialData, horizonDays, safetyBuffer, includeCreditCards, cardAutopayDay]);
+  }, [initialData, horizonDays, safetyBuffer, includeCreditCards, cardAutopayDay, activeVariableSpend]);
 
   // SVG chart geometry
   const pts = timeline.points;
@@ -160,6 +176,43 @@ export default function CashFlowClient({ initialData }: CashFlowClientProps) {
                 style={{ width: "64px", padding: "0.35rem 0.5rem", borderRadius: "6px", background: "rgba(0,0,0,0.25)", border: "1px solid rgba(255,255,255,0.15)", color: "inherit" }}
               />
             </label>
+          )}
+        </div>
+
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", alignItems: "center", marginTop: "0.85rem", paddingTop: "0.85rem", borderTop: "1px solid rgba(255,255,255,0.08)", fontSize: "0.85rem" }}>
+          <span className="text-muted">Everyday / Variable Spend (excluding commitments):</span>
+          <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => setSpendMode("avg")}
+              className={`btn btn-sm ${spendMode === "avg" ? "btn-primary" : "btn-secondary"}`}
+            >
+              3-Mo Avg (${Math.round(initialData.monthlyAvgVariableSpend).toLocaleString()}/mo)
+            </button>
+            <button
+              type="button"
+              onClick={() => setSpendMode("budget")}
+              className={`btn btn-sm ${spendMode === "budget" ? "btn-primary" : "btn-secondary"}`}
+            >
+              Budgeted (${Math.round(initialData.monthlyVariableBudget).toLocaleString()}/mo)
+            </button>
+            <button
+              type="button"
+              onClick={() => setSpendMode("custom")}
+              className={`btn btn-sm ${spendMode === "custom" ? "btn-primary" : "btn-secondary"}`}
+            >
+              Custom
+            </button>
+          </div>
+          {spendMode === "custom" && (
+            <input
+              type="number"
+              min={0}
+              step={100}
+              value={customVariableSpend}
+              onChange={(e) => setCustomVariableSpend(Math.max(0, Number(e.target.value) || 0))}
+              style={{ width: "100px", padding: "0.35rem 0.5rem", borderRadius: "6px", background: "rgba(0,0,0,0.25)", border: "1px solid rgba(255,255,255,0.15)", color: "inherit" }}
+            />
           )}
         </div>
       </Card>
