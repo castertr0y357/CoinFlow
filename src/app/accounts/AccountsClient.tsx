@@ -20,6 +20,7 @@ interface Account {
   excludeFromAssetCalculation: boolean;
   showTransactions: boolean;
   syncError?: string | null;
+  muteSyncErrors?: boolean;
   isManual: boolean;
 }
 
@@ -36,6 +37,7 @@ interface AccountSettingsUpdate {
   isDebt?: boolean;
   showTransactions?: boolean;
   balance?: number;
+  muteSyncErrors?: boolean;
 }
 
 export default function AccountsClient({ initialAccounts }: AccountsClientProps) {
@@ -273,7 +275,7 @@ export default function AccountsClient({ initialAccounts }: AccountsClientProps)
                     ) : (
                       <div className="display-name-group-wrapper">
                         <Link href={`/transactions?accountId=${acc.id}`} className="account-display-name-link" title="View transactions for this account">
-                          {acc.syncError && <span title={acc.syncError} style={{ color: 'orange', marginRight: '4px' }}>⚠️</span>}
+                          {acc.syncError && !acc.muteSyncErrors && <span title={acc.syncError} style={{ color: 'orange', marginRight: '4px' }}>⚠️</span>}
                           <span className="account-display-name">{acc.displayName || acc.name}</span>
                         </Link>
                         <button 
@@ -283,6 +285,19 @@ export default function AccountsClient({ initialAccounts }: AccountsClientProps)
                         >
                           ✏️
                         </button>
+                        {!acc.isManual && (acc.syncError || acc.muteSyncErrors) && (
+                          <button
+                            className="icon-action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpdate(acc.id, { muteSyncErrors: !acc.muteSyncErrors });
+                            }}
+                            title={acc.muteSyncErrors ? "Unmute sync alerts for this account" : "Silence sync alerts for this account"}
+                            style={{ opacity: acc.muteSyncErrors ? 0.65 : 1 }}
+                          >
+                            {acc.muteSyncErrors ? "🔕" : "🔔"}
+                          </button>
+                        )}
                         <button 
                           className="icon-action-btn delete-account-btn" 
                           onClick={(e) => {
@@ -296,11 +311,11 @@ export default function AccountsClient({ initialAccounts }: AccountsClientProps)
                       </div>
                     )}
                     <span className="account-sub-type">
-                      {acc.type}{acc.displayName ? ` (${acc.name})` : ""}{acc.isManual ? " [Manual]" : ""}
+                      {acc.type}{acc.displayName ? ` (${acc.name})` : ""}{acc.isManual ? " [Manual]" : ""}{acc.muteSyncErrors ? " · Alerts Muted" : ""}
                     </span>
                     {acc.syncError && (
-                      <div style={{ fontSize: '0.75rem', color: '#f87171', marginTop: '2px' }}>
-                        ⚠️ Sync issue: {acc.syncError}
+                      <div style={{ fontSize: '0.75rem', color: acc.muteSyncErrors ? '#9ca3af' : '#f87171', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        <span>{acc.muteSyncErrors ? '🔕 Muted sync issue:' : '⚠️ Sync issue:'} {acc.syncError}</span>
                       </div>
                     )}
                   </div>
@@ -426,7 +441,7 @@ export default function AccountsClient({ initialAccounts }: AccountsClientProps)
                     ) : (
                       <div className="display-name-group-wrapper">
                         <Link href={`/transactions?accountId=${acc.id}`} className="account-display-name-link" title="View transactions for this account">
-                          {acc.syncError && <span title={acc.syncError} style={{ color: 'orange', marginRight: '4px' }}>⚠️</span>}
+                          {acc.syncError && !acc.muteSyncErrors && <span title={acc.syncError} style={{ color: 'orange', marginRight: '4px' }}>⚠️</span>}
                           <span className="account-display-name">{acc.displayName || acc.name}</span>
                         </Link>
                         <button 
@@ -436,6 +451,19 @@ export default function AccountsClient({ initialAccounts }: AccountsClientProps)
                         >
                           ✏️
                         </button>
+                        {!acc.isManual && (acc.syncError || acc.muteSyncErrors) && (
+                          <button
+                            className="icon-action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpdate(acc.id, { muteSyncErrors: !acc.muteSyncErrors });
+                            }}
+                            title={acc.muteSyncErrors ? "Unmute sync alerts for this account" : "Silence sync alerts for this account"}
+                            style={{ opacity: acc.muteSyncErrors ? 0.65 : 1 }}
+                          >
+                            {acc.muteSyncErrors ? "🔕" : "🔔"}
+                          </button>
+                        )}
                         <button 
                           className="icon-action-btn delete-account-btn" 
                           onClick={(e) => {
@@ -449,11 +477,11 @@ export default function AccountsClient({ initialAccounts }: AccountsClientProps)
                       </div>
                     )}
                     <span className="account-sub-type">
-                      {acc.type}{acc.displayName ? ` (${acc.name})` : ""}{acc.isManual ? " [Manual]" : ""}
+                      {acc.type}{acc.displayName ? ` (${acc.name})` : ""}{acc.isManual ? " [Manual]" : ""}{acc.muteSyncErrors ? " · Alerts Muted" : ""}
                     </span>
                     {acc.syncError && (
-                      <div style={{ fontSize: '0.75rem', color: '#f87171', marginTop: '2px' }}>
-                        ⚠️ Sync issue: {acc.syncError}
+                      <div style={{ fontSize: '0.75rem', color: acc.muteSyncErrors ? '#9ca3af' : '#f87171', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        <span>{acc.muteSyncErrors ? '🔕 Muted sync issue:' : '⚠️ Sync issue:'} {acc.syncError}</span>
                       </div>
                     )}
                   </div>

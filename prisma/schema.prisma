@@ -23,6 +23,7 @@ model Account {
   excludeFromAssetCalculation Boolean         @default(false)
   showTransactions            Boolean         @default(true)
   syncError                   String?
+  muteSyncErrors              Boolean         @default(false)
   tiedCategories              Category[]
   mortgage                    MortgageDetail?
   debtDetail                  DebtDetail?

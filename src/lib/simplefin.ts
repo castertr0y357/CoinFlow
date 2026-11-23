@@ -264,6 +264,7 @@ export async function syncSimpleFin(options: SimpleFinSyncOptions = {}) {
     });
 
     let newTransactionCount = 0;
+    const unmutedSyncErrors = new Set<string>();
 
     for (const remoteAccount of data.accounts) {
       const accountSyncError = matchSimpleFinAccountError(remoteAccount, topLevelErrors, errlist);
@@ -283,6 +284,9 @@ export async function syncSimpleFin(options: SimpleFinSyncOptions = {}) {
           syncError: accountSyncError,
         },
       });
+      if (accountSyncError && !account.muteSyncErrors) {
+        unmutedSyncErrors.add(accountSyncError);
+      }
 
       const newTransactions = remoteAccount.transactions.filter(tx => !existingRemoteIds.has(tx.id));
       logger.info("SimpleFIN", `Account ${remoteAccount.name}: ${newTransactions.length} new / ${remoteAccount.transactions.length} scanned.`);
@@ -343,7 +347,7 @@ export async function syncSimpleFin(options: SimpleFinSyncOptions = {}) {
       accountCount: data.accounts.length,
       transactionCount: totalTransactions,
       newTransactionCount,
-      syncErrors: allErrorMessages,
+      syncErrors: Array.from(unmutedSyncErrors),
     };
   } catch (err) {
     clearTimeout(timeoutId);

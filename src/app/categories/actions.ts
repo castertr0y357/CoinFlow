@@ -91,6 +91,7 @@ const UpdateAccountSettingsSchema = z.object({
     isDebt: z.boolean().optional(),
     showTransactions: z.boolean().optional(),
     balance: z.number().optional(),
+    muteSyncErrors: z.boolean().optional(),
   }),
 });
 
@@ -525,6 +526,7 @@ export async function updateAccountSettings(
     isDebt?: boolean;
     showTransactions?: boolean;
     balance?: number;
+    muteSyncErrors?: boolean;
   }
 ) {
   const session = await getSession();

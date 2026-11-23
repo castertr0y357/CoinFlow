@@ -25,6 +25,7 @@ export default async function AccountsPage() {
     excludeFromAssetCalculation: a.excludeFromAssetCalculation,
     showTransactions: a.showTransactions,
     syncError: a.syncError,
+    muteSyncErrors: a.muteSyncErrors,
     isManual: a.remoteId.startsWith("manual-")
   }));
 

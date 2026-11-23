@@ -21,6 +21,7 @@ interface Account {
   excludeFromAssetCalculation: boolean;
   showTransactions?: boolean;
   syncError?: string | null;
+  muteSyncErrors?: boolean;
 }
 
 interface SidebarProps {
@@ -303,7 +304,7 @@ export default function Sidebar({ accounts: initialAccounts }: SidebarProps) {
                       >
                         <div className="account-info">
                           <span className="account-name">
-                            {acc.syncError && <span title={acc.syncError} style={{ color: 'orange', marginRight: '4px' }}>⚠️</span>}
+                            {acc.syncError && !acc.muteSyncErrors && <span title={acc.syncError} style={{ color: 'orange', marginRight: '4px' }}>⚠️</span>}
                             {acc.displayName || acc.name}
                           </span>
                         </div>
@@ -329,7 +330,7 @@ export default function Sidebar({ accounts: initialAccounts }: SidebarProps) {
                       >
                         <div className="account-info">
                           <span className="account-name">
-                            {acc.syncError && <span title={acc.syncError} style={{ color: 'orange', marginRight: '4px' }}>⚠️</span>}
+                            {acc.syncError && !acc.muteSyncErrors && <span title={acc.syncError} style={{ color: 'orange', marginRight: '4px' }}>⚠️</span>}
                             {acc.displayName || acc.name}
                           </span>
                         </div>

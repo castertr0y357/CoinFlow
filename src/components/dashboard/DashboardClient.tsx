@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { mutate } from "swr";
 import { useBudget } from "@/hooks/useBudget";
+import { updateAccountSettings } from "@/app/categories/actions";
 import CashHealth from "./CashHealth";
 import CategorySpreadsheet from "./CategorySpreadsheet";
 import Link from "next/link";
@@ -32,7 +34,25 @@ export default function DashboardClient({ year }: { year?: number }) {
     return null;
   }
 
-  const syncErrorAccounts = (tally.accounts || []).filter((a: { syncError?: string | null }) => !!a.syncError);
+  const syncErrorAccounts = (tally.accounts || []).filter(
+    (a: { syncError?: string | null; muteSyncErrors?: boolean }) => !!a.syncError && !a.muteSyncErrors
+  );
+  const [isSilencing, setIsSilencing] = useState(false);
+
+  const handleSilenceAlerts = async () => {
+    setIsSilencing(true);
+    try {
+      await Promise.all(
+        syncErrorAccounts.map((a: { id: string }) =>
+          updateAccountSettings(a.id, { muteSyncErrors: true })
+        )
+      );
+      refreshBudget();
+      mutate("/api/v1/budget/tally");
+    } finally {
+      setIsSilencing(false);
+    }
+  };
 
   return (
     <div className="dashboard-layout-content animate-fade-in">
@@ -75,9 +95,21 @@ export default function DashboardClient({ year }: { year?: number }) {
               {syncErrorAccounts.map((a: { displayName?: string | null; name: string; syncError?: string | null }) => `${a.displayName || a.name} (${a.syncError})`).join(' · ')}
             </span>
           </div>
-          <Link href="/accounts" className="btn-inbox" style={{ borderColor: 'rgba(239, 68, 68, 0.4)', color: '#f87171', background: 'rgba(239, 68, 68, 0.15)' }}>
-            View Accounts &rarr;
-          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+            <button
+              type="button"
+              onClick={handleSilenceAlerts}
+              disabled={isSilencing}
+              className="btn-inbox"
+              style={{ borderColor: 'rgba(239, 68, 68, 0.4)', color: '#fca5a5', background: 'rgba(239, 68, 68, 0.12)', cursor: 'pointer' }}
+              title="Silence alerts for these accounts until unmuted in Accounts"
+            >
+              {isSilencing ? 'Silencing...' : '🔕 Silence'}
+            </button>
+            <Link href="/accounts" className="btn-inbox" style={{ borderColor: 'rgba(239, 68, 68, 0.4)', color: '#f87171', background: 'rgba(239, 68, 68, 0.15)' }}>
+              View Accounts &rarr;
+            </Link>
+          </div>
         </div>
       )}
       <div className="budget-status-header">

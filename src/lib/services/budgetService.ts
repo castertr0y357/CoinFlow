@@ -398,7 +398,8 @@ export async function getMonthlyTally(year?: number) {
       showInSidebar: a.showInSidebar,
       excludeFromAssetCalculation: a.excludeFromAssetCalculation,
       showTransactions: a.showTransactions,
-      syncError: a.syncError
+      syncError: a.syncError,
+      muteSyncErrors: a.muteSyncErrors
     }))
   };
 }
@@ -442,7 +443,8 @@ export async function getSidebarData() {
     showInSidebar: a.showInSidebar,
     excludeFromAssetCalculation: a.excludeFromAssetCalculation,
     showTransactions: a.showTransactions,
-    syncError: a.syncError
+    syncError: a.syncError,
+    muteSyncErrors: a.muteSyncErrors
   }));
 }
 
