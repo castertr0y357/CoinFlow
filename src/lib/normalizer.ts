@@ -17,6 +17,7 @@ export interface DetectedSubscription {
 const CANONICAL_MERCHANT_RULES: Array<{ pattern: RegExp; name: string }> = [
   { pattern: /\b(amzn|amazon|amazon\.com|amzn mktp)\b/i, name: "Amazon" },
   { pattern: /\b(wal-mart|walmart|wm supercenter|wm\.com)\b|^wm\s+/i, name: "Walmart" },
+  { pattern: /\b(lowe'?s|lowes)\s+foods?\b/i, name: "Lowe's Foods" },
   { pattern: /\b(lowe'?s|lowes)\b/i, name: "Lowe's" },
   { pattern: /\btarget\b/i, name: "Target" },
   { pattern: /\bcostco\b/i, name: "Costco" },
@@ -265,20 +266,25 @@ const MULTI_CATEGORY_RETAILERS = [
  */
 export function isMultiCategoryRetailer(payee: string): boolean {
   const lower = payee.toLowerCase();
+  if (lower.includes("lowe's food") || lower.includes("lowes food")) {
+    return false;
+  }
   return MULTI_CATEGORY_RETAILERS.some((r) => lower.includes(r));
 }
 
 export interface PayeeMemoryInput {
   commitments: Array<{ name: string; categoryId: string | null }>;
   historicalSplits: Array<{ payee: string; categoryId: string }>;
+  minOccurrences?: number;
 }
 
 /**
  * Builds a deterministic normalized-payee -> categoryId lookup map from:
  * 1) Active commitments with an assigned categoryId
- * 2) Historical categorized transactions (>= 2 occurrences with >= 75% consistency)
+ * 2) Historical categorized transactions (>= minOccurrences with >= 75% consistency)
  */
 export function buildPayeeCategoryMemory(input: PayeeMemoryInput): Map<string, string> {
+  const minOccurrences = input.minOccurrences ?? 2;
   const memory = new Map<string, string>();
 
   // 1. Commitments are explicit user-defined recurring rules
@@ -316,12 +322,43 @@ export function buildPayeeCategoryMemory(input: PayeeMemoryInput): Map<string, s
       }
     }
 
-    if (total >= 2 && topCount / total >= 0.75 && topCategoryId) {
+    if (total >= minOccurrences && topCount / total >= 0.75 && topCategoryId) {
       memory.set(key, topCategoryId);
     }
   }
 
   return memory;
+}
+
+/**
+ * Looks up a categoryId from payee memory using:
+ * 1) Exact cleaned merchant key (strips prefixes like TST* even if historyMap preserved them)
+ * 2) Compact alphanumeric key (handles missing spaces like REPUBLICSERVICES vs REPUBLIC SERVICES)
+ * 3) Prefix match for >= 10-char merchants (handles truncated bank strings like REPUBLIC SERVICES TRAS)
+ */
+export function lookupPayeeCategory(payee: string, memory: Map<string, string>): string | null {
+  if (!payee || memory.size === 0) return null;
+  const key = cleanMerchantNameDeterministic(payee).toLowerCase().trim();
+  if (!key || isMultiCategoryRetailer(key)) return null;
+
+  const exact = memory.get(key);
+  if (exact) return exact;
+
+  const compact = key.replace(/[^a-z0-9]/g, "");
+  if (!compact) return null;
+
+  for (const [memKey, catId] of memory.entries()) {
+    const memCompact = memKey.replace(/[^a-z0-9]/g, "");
+    if (!memCompact) continue;
+    if (memCompact === compact) return catId;
+    if (compact.length >= 10 && memCompact.length >= 10) {
+      if (memCompact.startsWith(compact) || compact.startsWith(memCompact)) {
+        return catId;
+      }
+    }
+  }
+
+  return null;
 }
 
 const RETAIL_KEYWORD_GROUPS: Array<{ keywords: string[]; categoryHints: string[] }> = [

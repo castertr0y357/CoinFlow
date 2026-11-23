@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import { logger } from "./logger";
 import { detectSourceFromPayee, matchTransactionToPendingOrder } from "./external-orders";
-import { cleanMerchantNameDeterministic, buildPayeeCategoryMemory } from "./normalizer";
+import { cleanMerchantNameDeterministic, buildPayeeCategoryMemory, lookupPayeeCategory } from "./normalizer";
 import { recordMonthlyNetWorthSnapshot } from "./services/netWorthService";
 
 interface SimpleFinTransaction {
@@ -306,7 +306,9 @@ export async function syncSimpleFin(options: SimpleFinSyncOptions = {}) {
         }
 
         const cleanName = cleanMerchantNameDeterministic(remoteTx.description, historyMap);
-        const autoCategoryId = payeeCategoryMemory.get(cleanName.toLowerCase().trim()) || null;
+        const autoCategoryId =
+          lookupPayeeCategory(cleanName, payeeCategoryMemory) ||
+          lookupPayeeCategory(remoteTx.description, payeeCategoryMemory);
 
         const createdTx = await prisma.transaction.create({
           data: {

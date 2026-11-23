@@ -5,6 +5,8 @@ import {
   detectSubscriptionsDeterministic,
   buildPayeeCategoryMemory,
   suggestItemCategoryDeterministic,
+  isMultiCategoryRetailer,
+  lookupPayeeCategory,
 } from "./normalizer";
 
 describe("cleanMerchantNameDeterministic", () => {
@@ -107,5 +109,27 @@ describe("detectSubscriptionsDeterministic", () => {
     expect(
       suggestItemCategoryDeterministic("Purina Dog Kibble 30lb Bag", categories, pastMemos)
     ).toBe("Pets");
+  });
+
+  it("matches Lowe's Foods, TST* prefixed payees, and compact/prefix merchant names", () => {
+    expect(isMultiCategoryRetailer("Lowe's Foods")).toBe(false);
+    expect(isMultiCategoryRetailer("LOWE'S FOODS #236")).toBe(false);
+    expect(isMultiCategoryRetailer("Lowe's")).toBe(true);
+
+    const memory = buildPayeeCategoryMemory({
+      commitments: [],
+      historicalSplits: [
+        { payee: "Lowe's Foods", categoryId: "cat-house" },
+        { payee: "Lowe's Foods", categoryId: "cat-house" },
+        { payee: "TST*THE HABIT COFFEE C", categoryId: "cat-fun" },
+        { payee: "TST*THE HABIT COFFEE C", categoryId: "cat-fun" },
+        { payee: "REPUBLIC SERVICES TRAS", categoryId: "cat-util" },
+        { payee: "REPUBLIC SERVICES TRAS", categoryId: "cat-util" },
+      ],
+    });
+
+    expect(lookupPayeeCategory("LOWE'S FOODS #236", memory)).toBe("cat-house");
+    expect(lookupPayeeCategory("TST*THE HABIT COFFEE C", memory)).toBe("cat-fun");
+    expect(lookupPayeeCategory("Republicservices", memory)).toBe("cat-util");
   });
 });

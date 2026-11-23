@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/api-utils";
 import { getCategorySuggestions } from "@/lib/services/aiService";
 import { getTransactions, getCategories } from "@/lib/services/transactionService";
-import { cleanMerchantNameDeterministic } from "@/lib/normalizer";
+import { buildPayeeCategoryMemory, lookupPayeeCategory } from "@/lib/normalizer";
 import prisma from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
@@ -24,49 +24,43 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ suggestions: {} });
       }
 
-      // 2. Tier 1: Deterministic Historical Payee -> Category Frequency Lookup
-      const pastSplits = await prisma.transactionSplit.findMany({
-        where: { categoryId: { not: null } },
-        take: 500,
-        orderBy: { updatedAt: 'desc' },
-        select: {
-          categoryId: true,
-          transaction: { select: { payee: true } },
-          category: { select: { name: true } }
-        }
-      });
+      // 2. Tier 1: Deterministic Historical Payee -> Category Frequency & Commitment Lookup
+      const [commitments, pastSplits] = await Promise.all([
+        prisma.commitment.findMany({
+          where: { categoryId: { not: null } },
+          select: { name: true, categoryId: true },
+        }),
+        prisma.transactionSplit.findMany({
+          where: { categoryId: { not: null } },
+          take: 1500,
+          orderBy: { transaction: { date: 'desc' } },
+          select: {
+            categoryId: true,
+            transaction: { select: { payee: true } },
+            category: { select: { name: true } }
+          }
+        }),
+      ]);
 
-      const payeeCategoryCounts = new Map<string, Map<string, number>>();
-      for (const s of pastSplits) {
-        if (!s.categoryId) continue;
-        const normPayee = cleanMerchantNameDeterministic(s.transaction.payee).toLowerCase();
-        if (!normPayee) continue;
-        if (!payeeCategoryCounts.has(normPayee)) {
-          payeeCategoryCounts.set(normPayee, new Map());
-        }
-        const counts = payeeCategoryCounts.get(normPayee)!;
-        counts.set(s.categoryId, (counts.get(s.categoryId) || 0) + 1);
-      }
+      const payeeMemory = buildPayeeCategoryMemory({
+        commitments,
+        historicalSplits: pastSplits
+          .filter((s) => s.categoryId && s.transaction?.payee)
+          .map((s) => ({
+            payee: s.transaction.payee,
+            categoryId: s.categoryId as string,
+          })),
+        minOccurrences: 1,
+      });
 
       const mappedSuggestions: Record<string, string> = {};
       const unmatchedTransactions = [];
 
       for (const tx of targetTransactions) {
-        const normPayee = cleanMerchantNameDeterministic(tx.payee).toLowerCase();
-        const counts = payeeCategoryCounts.get(normPayee);
-        if (counts && counts.size > 0) {
-          let bestCategoryId = "";
-          let bestCount = -1;
-          for (const [catId, count] of counts.entries()) {
-            if (count > bestCount) {
-              bestCount = count;
-              bestCategoryId = catId;
-            }
-          }
-          if (bestCategoryId) {
-            mappedSuggestions[tx.id] = bestCategoryId;
-            continue;
-          }
+        const matchedCatId = lookupPayeeCategory(tx.payee, payeeMemory);
+        if (matchedCatId) {
+          mappedSuggestions[tx.id] = matchedCatId;
+          continue;
         }
         unmatchedTransactions.push(tx);
       }
