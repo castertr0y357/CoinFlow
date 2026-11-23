@@ -612,7 +612,6 @@ export async function createManualAccountAction(data: {
     revalidatePath("/net-worth");
     revalidatePath("/accounts");
     revalidatePath("/transactions");
-    revalidatePath("/debts");
   } catch (error) {
     console.error("[CATEGORY ACTION ERROR] createManualAccountAction failed:", error);
     throw error;
@@ -643,7 +642,6 @@ export async function deleteAccountAction(accountId: string) {
     revalidatePath("/net-worth");
     revalidatePath("/accounts");
     revalidatePath("/transactions");
-    revalidatePath("/debts");
   } catch (error) {
     console.error("[CATEGORY ACTION ERROR] deleteAccountAction failed:", error);
     throw error;

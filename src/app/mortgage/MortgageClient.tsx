@@ -94,7 +94,7 @@ export default function MortgageClient({ initialMortgages, accounts, hasRentcast
     address: activeMortgage?.address || "",
   });
 
-  const [newProvider, setNewProvider] = useState({ name: "Zillow", url: "" });
+  const [newProvider, setNewProvider] = useState({ name: "RentCast", url: "" });
 
   // Sync state if initialMortgages prop changes
   useEffect(() => {
@@ -1072,7 +1072,7 @@ export default function MortgageClient({ initialMortgages, accounts, hasRentcast
           {/* Valuation Sources */}
           <Card className="valuation-sources glass">
             <h3>Home Valuation Sources</h3>
-            <p className="text-muted text-xs">Link Zillow, Redfin, or Realtor listing pages to automatically pull estimates.</p>
+            <p className="text-muted text-xs">Connect RentCast property or tax assessment estimates to track your home value.</p>
             
             <div className="providers-list mt-4">
               {activeMortgage.providers?.length === 0 ? (
@@ -1110,9 +1110,6 @@ export default function MortgageClient({ initialMortgages, accounts, hasRentcast
                   onChange={e => setNewProvider({...newProvider, name: e.target.value})}
                   className="bg-black/20 border border-glass-border text-white text-xs rounded p-2"
                 >
-                  <option>Zillow</option>
-                  <option>Redfin</option>
-                  <option>Realtor</option>
                   <option>RentCast</option>
                   <option>RentCast Tax Assessment</option>
                 </select>
