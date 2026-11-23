@@ -13,12 +13,19 @@ interface SimpleFinTransaction {
   date?: string; 
 }
 
+export interface SimpleFinErrorItem {
+  code?: string;
+  msg?: string;
+  conn_id?: string;
+}
+
 interface SimpleFinAccount {
   id: string;
   name: string;
   balance: string;
   currency: string;
   "balance-date"?: number;
+  conn_id?: string;
   org?: {
     name?: string;
     domain?: string;
@@ -31,21 +38,45 @@ interface SimpleFinAccount {
 
 interface SimpleFinResponse {
   errors?: string[];
+  errlist?: SimpleFinErrorItem[];
   accounts: SimpleFinAccount[];
 }
 
 /**
- * Matches top-level SimpleFIN `errors[]` messages to a specific account
- * using `org.name`, `org.domain`, `account.name`, or stale `balance-date`.
+ * Matches SimpleFIN v2 `errlist[]` (via `conn_id`) or v1 `errors[]` messages
+ * (via `org.name`, `org.domain`, `account.name`, or stale `balance-date`) to a specific account.
  */
 export function matchSimpleFinAccountError(
   remoteAccount: SimpleFinAccount,
-  topLevelErrors: string[] = []
+  topLevelErrors: string[] = [],
+  errlist: SimpleFinErrorItem[] = []
 ): string | null {
   if (remoteAccount.err || remoteAccount.error) {
     return remoteAccount.err || remoteAccount.error || null;
   }
-  if (!topLevelErrors || topLevelErrors.length === 0) return null;
+
+  // SimpleFIN v2: exact or suffix match by conn_id in errlist (accounts often prefix "MX-" to conn_id)
+  if (remoteAccount.conn_id && errlist.length > 0) {
+    const normAccConn = remoteAccount.conn_id.replace(/^MX-/i, "");
+    const connMatches = errlist
+      .filter((e) => {
+        if (!e.conn_id) return false;
+        const normErrConn = e.conn_id.replace(/^MX-/i, "");
+        return e.conn_id === remoteAccount.conn_id || normErrConn === normAccConn;
+      })
+      .map((e) => e.msg || e.code)
+      .filter((m): m is string => !!m);
+    if (connMatches.length > 0) {
+      return connMatches.join("; ");
+    }
+  }
+
+  const unattributedMessages = [
+    ...errlist.filter((e) => !e.conn_id).map((e) => e.msg || e.code).filter((m): m is string => !!m),
+    ...(topLevelErrors || []),
+  ];
+
+  if (unattributedMessages.length === 0) return null;
 
   const candidates = [
     remoteAccount.org?.name,
@@ -55,7 +86,7 @@ export function matchSimpleFinAccountError(
     .filter((s): s is string => !!s && s.trim().length >= 3)
     .map((s) => s.toLowerCase().trim());
 
-  const matched = topLevelErrors.filter((err) => {
+  const matched = unattributedMessages.filter((err) => {
     const lowerErr = err.toLowerCase();
     return candidates.some((c) => lowerErr.includes(c));
   });
@@ -64,12 +95,12 @@ export function matchSimpleFinAccountError(
     return matched.join("; ");
   }
 
-  // Fallback: if balance-date is > 3 days old and there are general errors, flag as potentially stale
+  // Fallback: if balance-date is > 3 days old and there are unattributed errors, flag as potentially stale
   const balanceDate = remoteAccount["balance-date"];
   if (balanceDate) {
     const ageDays = (Date.now() / 1000 - balanceDate) / 86400;
     if (ageDays > 3) {
-      return topLevelErrors[0];
+      return unattributedMessages[0];
     }
   }
 
@@ -150,8 +181,13 @@ export async function syncSimpleFin(options: SimpleFinSyncOptions = {}) {
 
     const data: SimpleFinResponse = await response.json();
     const topLevelErrors = Array.isArray(data.errors) ? data.errors : [];
-    if (topLevelErrors.length > 0) {
-      logger.warn("SimpleFIN", `SimpleFIN returned ${topLevelErrors.length} connection error(s): ${topLevelErrors.join(" | ")}`);
+    const errlist = Array.isArray(data.errlist) ? data.errlist : [];
+    const allErrorMessages = [
+      ...errlist.map((e) => e.msg || e.code).filter((m): m is string => !!m),
+      ...topLevelErrors,
+    ];
+    if (allErrorMessages.length > 0) {
+      logger.warn("SimpleFIN", `SimpleFIN returned ${allErrorMessages.length} connection error(s): ${allErrorMessages.join(" | ")}`);
     }
     logger.info("SimpleFIN", `Found ${data.accounts.length} accounts.`);
 
@@ -230,7 +266,7 @@ export async function syncSimpleFin(options: SimpleFinSyncOptions = {}) {
     let newTransactionCount = 0;
 
     for (const remoteAccount of data.accounts) {
-      const accountSyncError = matchSimpleFinAccountError(remoteAccount, topLevelErrors);
+      const accountSyncError = matchSimpleFinAccountError(remoteAccount, topLevelErrors, errlist);
       const account = await prisma.account.upsert({
         where: { remoteId: remoteAccount.id },
         update: {
@@ -307,7 +343,7 @@ export async function syncSimpleFin(options: SimpleFinSyncOptions = {}) {
       accountCount: data.accounts.length,
       transactionCount: totalTransactions,
       newTransactionCount,
-      syncErrors: topLevelErrors,
+      syncErrors: allErrorMessages,
     };
   } catch (err) {
     clearTimeout(timeoutId);

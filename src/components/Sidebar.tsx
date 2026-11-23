@@ -7,7 +7,7 @@ import useSWR, { mutate } from "swr";
 import Image from "next/image";
 import { useNotification } from "@/components/ui/NotificationProvider";
 
-const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null));
+const fetcher = (url: string) => fetch(url, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null));
 
 interface Account {
   id: string;
@@ -34,7 +34,8 @@ export default function Sidebar({ accounts: initialAccounts }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { showToast } = useNotification();
   const { data: tally } = useSWR("/api/v1/budget/tally", fetcher, {
-    revalidateOnFocus: false,
+    refreshInterval: 15000,
+    revalidateOnFocus: true,
   });
 
   const accounts: Account[] = Array.isArray(tally?.accounts) ? tally.accounts : initialAccounts;

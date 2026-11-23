@@ -65,7 +65,15 @@ export default function IntegrationsClient({
           if (task.status === "completed") {
             const newCount = task.result?.newTransactionCount ?? task.result?.transactionCount ?? 0;
             const scannedCount = task.result?.transactionCount ?? 0;
-            showToast(`Synced ${newCount} new transactions (scanned ${scannedCount})`, "success");
+            const syncErrors: string[] = Array.isArray(task.result?.syncErrors) ? task.result.syncErrors : [];
+            if (syncErrors.length > 0) {
+              showToast(`Synced ${newCount} new tx, but SimpleFIN reported: ${syncErrors[0]}`, "error");
+            } else {
+              showToast(`Synced ${newCount} new transactions (scanned ${scannedCount})`, "success");
+            }
+            mutate("/api/v1/budget/tally");
+            mutate((key: unknown) => typeof key === "string" && key.startsWith("/api/v1/transactions"));
+            router.refresh();
             break;
           }
           if (task.status === "failed") {

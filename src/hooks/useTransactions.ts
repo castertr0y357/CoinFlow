@@ -1,6 +1,7 @@
 import useSWR, { mutate as globalMutate } from 'swr';
 
 const fetcher = (url: string) => fetch(url, {
+  cache: 'no-store',
   headers: {
     'X-API-KEY': process.env.NEXT_PUBLIC_INTERNAL_API_KEY || ''
   }
@@ -8,7 +9,10 @@ const fetcher = (url: string) => fetch(url, {
 
 export function useTransactions(inboxOnly: boolean = true, includeHidden: boolean = false, hiddenOnly: boolean = false) {
   const url = `/api/v1/transactions?inboxOnly=${inboxOnly}&includeHidden=${includeHidden}&hiddenOnly=${hiddenOnly}`;
-  const { data, error, isLoading, mutate } = useSWR(url, fetcher);
+  const { data, error, isLoading, mutate } = useSWR(url, fetcher, {
+    refreshInterval: 15000,
+    revalidateOnFocus: true,
+  });
 
   const refresh = () => {
     mutate();

@@ -1,6 +1,10 @@
-# Project Status: CoinFlow Browser Extension (v2.35.0)
+# Project Status: CoinFlow Browser Extension (v2.36.0)
 
 ## Current Progress
+- [x] **Live Inbox Badge Polling, Account Removal, and SimpleFIN v2 Sync Error Detection (v2.36.0)**:
+  - **Live Transactions Count Bubble (`src/components/Sidebar.tsx`, `src/hooks/useTransactions.ts`, `src/app/settings/integrations/IntegrationsClient.tsx`)**: Enabled `cache: "no-store"`, `revalidateOnFocus: true`, and `refreshInterval: 15000` on both `/api/v1/budget/tally` and `/api/v1/transactions` SWR hooks, and added SWR cache revalidation after Full-Year Sync on `/settings/integrations`.
+  - **Delete Unused / Duplicate Accounts (`src/app/accounts/AccountsClient.tsx`)**: Enabled the `🗑️` delete button for all accounts (both manual and synced) on `/accounts` with an explicit confirmation prompt and immediate SWR revalidation of `/api/v1/budget/tally` and `/api/v1/transactions`.
+  - **SimpleFIN v2 Sync Error Detection (`src/lib/simplefin.ts`, `src/lib/simplefin.test.ts`)**: Fixed `syncSimpleFin()` and `matchSimpleFinAccountError()` to parse SimpleFIN `version=2`'s `errlist[]` + `conn_id` (normalizing the `MX-` prefix on `account.conn_id`) in addition to v1 `errors[]` fallback, verified against live SimpleFIN data and unit tests.
 - [x] **Amazon Per-Shipment Card Charge Matching (v2.35.0)**:
   - **Dynamic Sidebar Inbox Badge (`src/hooks/useTransactions.ts`)**: Updated `useTransactions().refresh()` to also revalidate `/api/v1/budget/tally` via SWR `globalMutate`, so the Sidebar's `Transactions` notification badge updates immediately whenever transactions are categorized, cleared/hidden, bulk-applied, deleted, or added.
   - **Extension Scraping (`extension/content-scripts/amazon.js`)**: Extracted the `"Credit Card transactions"` section from Amazon's Order Details page (`charges: [{ date, amount }]`) to capture exact per-shipment card charges rather than just the order total.

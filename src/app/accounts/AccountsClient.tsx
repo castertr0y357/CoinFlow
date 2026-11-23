@@ -91,12 +91,17 @@ export default function AccountsClient({ initialAccounts }: AccountsClientProps)
     });
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this manual account? This will permanently delete the account, its balance, and any associated details or transaction splits.")) {
+  const handleDelete = (acc: Account) => {
+    const label = acc.displayName || acc.name;
+    const msg = acc.isManual
+      ? `Are you sure you want to delete manual account "${label}"? This will permanently delete the account, its balance, and any associated details or transaction splits.`
+      : `Are you sure you want to delete "${label}"? This will permanently delete the account and all of its transactions/splits.\n\nNote: If this account is still active in SimpleFIN, it will be re-imported on the next sync.`;
+    if (confirm(msg)) {
       startTransition(async () => {
-        await deleteAccountAction(id);
+        await deleteAccountAction(acc.id);
         router.refresh();
         mutate("/api/v1/budget/tally");
+        mutate((key: unknown) => typeof key === "string" && key.startsWith("/api/v1/transactions"));
       });
     }
   };
@@ -278,18 +283,16 @@ export default function AccountsClient({ initialAccounts }: AccountsClientProps)
                         >
                           ✏️
                         </button>
-                        {acc.isManual && (
-                          <button 
-                            className="icon-action-btn delete-account-btn" 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(acc.id);
-                            }}
-                            title="Delete manual account"
-                          >
-                            🗑️
-                          </button>
-                        )}
+                        <button 
+                          className="icon-action-btn delete-account-btn" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(acc);
+                          }}
+                          title="Delete account"
+                        >
+                          🗑️
+                        </button>
                       </div>
                     )}
                     <span className="account-sub-type">
@@ -433,18 +436,16 @@ export default function AccountsClient({ initialAccounts }: AccountsClientProps)
                         >
                           ✏️
                         </button>
-                        {acc.isManual && (
-                          <button 
-                            className="icon-action-btn delete-account-btn" 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(acc.id);
-                            }}
-                            title="Delete manual account"
-                          >
-                            🗑️
-                          </button>
-                        )}
+                        <button 
+                          className="icon-action-btn delete-account-btn" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(acc);
+                          }}
+                          title="Delete account"
+                        >
+                          🗑️
+                        </button>
                       </div>
                     )}
                     <span className="account-sub-type">
