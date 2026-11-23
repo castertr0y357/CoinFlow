@@ -303,3 +303,15 @@ model SavingsGoal {
 
   @@index([categoryId])
 }
+
+model NetWorthSnapshot {
+  id          String   @id @default(cuid())
+  monthKey    String   @unique
+  assets      Decimal
+  debts       Decimal
+  homeValue   Decimal  @default(0)
+  investments Decimal  @default(0)
+  netWorth    Decimal
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

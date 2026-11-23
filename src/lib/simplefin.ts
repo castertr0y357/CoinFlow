@@ -2,6 +2,7 @@ import prisma from "@/lib/prisma";
 import { logger } from "./logger";
 import { detectSourceFromPayee, matchTransactionToPendingOrder } from "./external-orders";
 import { cleanMerchantNameDeterministic, buildPayeeCategoryMemory } from "./normalizer";
+import { recordMonthlyNetWorthSnapshot } from "./services/netWorthService";
 
 interface SimpleFinTransaction {
   id: string;
@@ -341,6 +342,12 @@ export async function syncSimpleFin(options: SimpleFinSyncOptions = {}) {
       where: { id: 'global' },
       data: { lastSync: new Date() },
     });
+
+    try {
+      await recordMonthlyNetWorthSnapshot();
+    } catch (snapErr) {
+      logger.warn("SimpleFIN", "Failed to record monthly net worth snapshot", { error: snapErr });
+    }
 
     return {
       success: true,

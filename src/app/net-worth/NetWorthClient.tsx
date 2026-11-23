@@ -12,7 +12,7 @@ interface NetWorthClientProps {
     totalAssets: number;
     totalDebts: number;
     homeValue: number;
-    history: { monthName: string; assets: number; debts: number; netWorth: number }[];
+    history: { monthName: string; assets: number; debts: number; netWorth: number; isSnapshot?: boolean }[];
     accounts: {
       id: string;
       name: string;

@@ -127,8 +127,10 @@ export default function Sidebar({ accounts: initialAccounts }: SidebarProps) {
   ];
 
   const toolLinks = [
+    { label: "Cash Flow", href: "/cash-flow", icon: "🌊" },
     { label: "Net Worth", href: "/net-worth", icon: "💼" },
     { label: "Mortgage", href: "/mortgage", icon: "🏠" },
+    { label: "Wealth", href: "/wealth", icon: "🚀" },
   ];
 
   const isToolActive = toolLinks.some(link => 

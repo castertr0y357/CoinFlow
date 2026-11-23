@@ -1,6 +1,10 @@
-# Project Status: CoinFlow Browser Extension (v2.36.0)
+# Project Status: CoinFlow Browser Extension (v2.37.0)
 
 ## Current Progress
+- [x] **Cash Flow Timeline, Wealth & FI Trajectory, and Net Worth Snapshots (v2.37.0)**:
+  - **Cash Flow Timeline (`/cash-flow`, `src/lib/services/planningService.ts`, `CashFlowClient.tsx`)**: Added a 30/60/90-day forward-looking checking balance timeline using live on-budget cash, Paycheck Forecasting schedules, Commitments, and optional credit card statement payoffs, highlighting **Safe to Sweep Now** above a configurable safety buffer.
+  - **Wealth & FI Trajectory (`/wealth`, `WealthClient.tsx`, `planningService.ts`)**: Added a long-term investment growth & FI projector seeded with live 401(k)/IRA/brokerage balances, monthly contribution/return/horizon sliders, and mortgage payoff inflection modeling (redirecting freed mortgage payments into investments).
+  - **Real Net Worth Snapshots (`prisma/schema.prisma`, `netWorthService.ts`, `simplefin.ts`)**: Added `NetWorthSnapshot` table (`20261122230500_add_net_worth_snapshots`), automatic monthly snapshot recording during SimpleFIN syncs and `/net-worth` visits, and snapshot-backed 6-month history in `getNetWorthData()`.
 - [x] **Live Inbox Badge Polling, Account Removal, and SimpleFIN v2 Sync Error Detection (v2.36.0)**:
   - **Planning Tools Cleanup (`Sidebar.tsx`, `MortgageClient.tsx`, removed `/debts` & `/fire-drill`)**: Removed the unused `/debts` and `/fire-drill` pages and their links from the `Planning` sidebar group, leaving **Net Worth** and **Mortgage**. Cleaned up the dead `Zillow`, `Redfin`, and `Realtor` options from `MortgageClient.tsx` so Home Valuation Sources defaults to and lists only supported `RentCast` providers.
   - **Silence Sync Alerts (`prisma/schema.prisma`, `DashboardClient.tsx`, `AccountsClient.tsx`, `Sidebar.tsx`, `simplefin.ts`, `budgetService.ts`, `categories/actions.ts`)**: Added `Account.muteSyncErrors` (default `false`) with Prisma migration `20261122224500_add_mute_sync_errors`. Added a **🔕 Silence** button on the Dashboard Bank Sync Issue banner and **🔔/🔕** per-account mute/unmute toggles on `/accounts`. Muted accounts are excluded from the Dashboard alert banner, Sidebar `⚠️` indicators, and post-sync error toast notifications while still showing dimmed status on `/accounts` so they can be unmuted anytime.

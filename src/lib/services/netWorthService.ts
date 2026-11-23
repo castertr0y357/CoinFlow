@@ -6,47 +6,101 @@ function safeNumber(val: unknown): number {
   return isNaN(n) ? 0 : n;
 }
 
-export async function getNetWorthData() {
-  const accounts = await prisma.account.findMany({
-    orderBy: { name: "asc" }
-  });
+export function isInvestmentAccountName(name: string, type?: string | null): boolean {
+  const combined = `${name} ${type || ""}`;
+  return /401\s*\(?k\)?|ira|roth|brokerage|stock|etf|fidelity|etrade|vanguard|schwab|investment/i.test(combined);
+}
 
-  const transactions = await prisma.transaction.findMany({
-    orderBy: { date: "desc" },
-    select: {
-      accountId: true,
-      amount: true,
-      date: true
-    }
-  });
+export function getMonthKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
 
-  const mortgages = await prisma.mortgageDetail.findMany();
+export async function recordMonthlyNetWorthSnapshot() {
+  const [accounts, mortgages] = await Promise.all([
+    prisma.account.findMany({ orderBy: { name: "asc" } }),
+    prisma.mortgageDetail.findMany(),
+  ]);
+
   const homeValue = mortgages.reduce((sum, m) => {
     const effValue = m.manualHomeValue !== null ? m.manualHomeValue : m.homeValue;
     return sum + (effValue ? safeNumber(effValue) : 0);
   }, 0);
 
-  // 1. Group accounts by asset vs debt
-  // Asset: !isDebt, Debt: isDebt
-  const currentAssets = accounts
-    .filter(a => !a.isDebt && !a.excludeFromAssetCalculation)
-    .reduce((sum, a) => sum + safeNumber(a.balance), 0) + homeValue;
+  const includedAssets = accounts.filter(a => !a.isDebt && !a.excludeFromAssetCalculation);
+  const currentAssets = includedAssets.reduce((sum, a) => sum + safeNumber(a.balance), 0) + homeValue;
+  const investments = includedAssets
+    .filter(a => isInvestmentAccountName(a.displayName || a.name, a.type))
+    .reduce((sum, a) => sum + safeNumber(a.balance), 0);
 
   const currentDebts = accounts
     .filter(a => a.isDebt && !a.excludeFromAssetCalculation)
     .reduce((sum, a) => sum + Math.abs(safeNumber(a.balance)), 0);
 
   const currentNetWorth = currentAssets - currentDebts;
+  const monthKey = getMonthKey(new Date());
+
+  await prisma.netWorthSnapshot.upsert({
+    where: { monthKey },
+    update: {
+      assets: currentAssets,
+      debts: currentDebts,
+      homeValue,
+      investments,
+      netWorth: currentNetWorth,
+    },
+    create: {
+      monthKey,
+      assets: currentAssets,
+      debts: currentDebts,
+      homeValue,
+      investments,
+      netWorth: currentNetWorth,
+    },
+  });
+
+  return { currentAssets, currentDebts, homeValue, investments, currentNetWorth, accounts };
+}
+
+export async function getNetWorthData() {
+  const { currentAssets, currentDebts, homeValue, currentNetWorth, accounts } =
+    await recordMonthlyNetWorthSnapshot();
+
+  const [transactions, snapshots] = await Promise.all([
+    prisma.transaction.findMany({
+      orderBy: { date: "desc" },
+      select: {
+        accountId: true,
+        amount: true,
+        date: true
+      }
+    }),
+    prisma.netWorthSnapshot.findMany(),
+  ]);
+
+  const snapshotMap = new Map(snapshots.map(s => [s.monthKey, s]));
 
   // 2. Generate historical net worth for the last 6 months (including current month)
-  // We'll calculate the value at the end of each month.
-  const history: { monthName: string; assets: number; debts: number; netWorth: number }[] = [];
+  const history: { monthName: string; assets: number; debts: number; netWorth: number; isSnapshot: boolean }[] = [];
   const today = new Date();
 
   for (let i = 5; i >= 0; i--) {
     // End of that historical month
     const d = new Date(today.getFullYear(), today.getMonth() - i + 1, 0, 23, 59, 59, 999);
-    
+    const monthKey = getMonthKey(d);
+    const monthLabel = d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+
+    const snap = snapshotMap.get(monthKey);
+    if (snap) {
+      history.push({
+        monthName: monthLabel,
+        assets: Math.round(safeNumber(snap.assets)),
+        debts: Math.round(safeNumber(snap.debts)),
+        netWorth: Math.round(safeNumber(snap.netWorth)),
+        isSnapshot: true,
+      });
+      continue;
+    }
+
     let monthAssets = homeValue; // Start with property value asset (assumed constant)
     let monthDebts = 0;
 
@@ -71,12 +125,12 @@ export async function getNetWorthData() {
       }
     }
 
-    const monthLabel = d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
     history.push({
       monthName: monthLabel,
       assets: Math.round(monthAssets),
       debts: Math.round(monthDebts),
-      netWorth: Math.round(monthAssets - monthDebts)
+      netWorth: Math.round(monthAssets - monthDebts),
+      isSnapshot: false,
     });
   }
 
