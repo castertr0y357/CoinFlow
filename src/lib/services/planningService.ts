@@ -362,7 +362,16 @@ export async function getCashFlowPageData() {
     prisma.settings.findUnique({ where: { id: "global" } }),
     prisma.mortgageDetail.findMany({ select: { accountId: true } }),
     prisma.yearlyCategory.findMany({
-      where: { year: { year: now.getFullYear() }, category: { isPaused: false, tiedAccountId: null } },
+      where: {
+        year: { year: now.getFullYear() },
+        category: {
+          isPaused: false,
+          OR: [
+            { tiedAccountId: null },
+            { tiedAccount: { excludeFromSurplus: false } },
+          ],
+        },
+      },
       select: { categoryId: true, monthlyBudget: true },
     }),
   ]);
@@ -453,7 +462,16 @@ export async function getWealthPageData() {
       include: { account: { select: { balance: true } } },
     }),
     prisma.yearlyCategory.findMany({
-      where: { year: { year: new Date().getFullYear() }, category: { isPaused: false, tiedAccountId: null } },
+      where: {
+        year: { year: new Date().getFullYear() },
+        category: {
+          isPaused: false,
+          OR: [
+            { tiedAccountId: null },
+            { tiedAccount: { excludeFromSurplus: false } },
+          ],
+        },
+      },
       select: { monthlyBudget: true },
     }),
   ]);
