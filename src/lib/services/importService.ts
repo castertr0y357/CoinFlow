@@ -1,168 +1,433 @@
 import prisma from "@/lib/prisma";
-import { suggestHistoricalMapping } from "./aiService";
+import { createHash } from "crypto";
 import * as XLSX from "xlsx";
+import { logger } from "@/lib/logger";
 
-interface HistoricalMapping {
-  isTransactionSheet: boolean;
+export interface HistoricalMapping {
   sheetName: string;
+  isTransactionSheet: boolean;
+  headerRowIndex: number; // 0-based row index of the header row
+  headers: string[];
   suggestedCategory: string;
   dateColumn: string;
   payeeColumn: string;
+  memoColumn: string;
   amountColumn: string;
+  estimatedTransactionCount: number;
+  skippedBudgetRowCount: number;
+  detectedRollover: number | null;
+  detectedMonthlyProvision: number | null;
 }
 
-export async function analyzeXlsx(buffer: Buffer) {
-  const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
-  const sheetInfo = workbook.SheetNames.map(name => {
-    const sheet = workbook.Sheets[name];
-    const data = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as unknown[][];
-    const headers = (data[0] || []).map(h => String(h));
-    const samples = data.slice(1, 4); // Take 3 sample rows
-    
-    // Map samples back to header keys for the LLM
-    const mappedSamples = samples.map(row => {
-      const obj: Record<string, unknown> = {};
-      headers.forEach((h: string, i: number) => {
-        obj[h] = row[i];
-      });
-      return obj;
-    });
+export interface HistoricalImportOptions {
+  skipBudgetRows?: boolean;
+  applyRolloverAndBudget?: boolean;
+}
 
-    return { name, headers, samples: mappedSamples };
-  });
+const SKIPPED_SHEET_PATTERNS = [
+  /budget/i,
+  /^summary$/i,
+  /^overview$/i,
+  /^totals?$/i,
+  /^incomes?$/i,
+  /^debits?$/i,
+  /^charges?$/i,
+  /^transfers?$/i,
+];
 
-  // Deterministic header detection first so importer works without AI
-  const deterministicMappings: HistoricalMapping[] = sheetInfo.map((s) => {
-    const findCol = (patterns: string[]) =>
-      s.headers.find((h) => patterns.some((p) => h.toLowerCase().includes(p))) || "";
+const INTERNAL_BUDGET_ROW_PATTERNS = [
+  /^year\s*start$/i,
+  /^(january|february|march|april|may|june|july|august|september|october|november|december)\s+addition$/i,
+  /^month\s*start\s*provision/i,
+  /^boost$/i,
+  /^adjustment$/i,
+];
 
-    const dateColumn = findCol(["date", "posted", "time"]);
-    const payeeColumn = findCol(["payee", "description", "merchant", "name", "memo"]);
-    const amountColumn = findCol(["amount", "cost", "price", "debit", "total", "spent"]);
+export function isSkippedSheetName(name: string): boolean {
+  const trimmed = name.trim();
+  return SKIPPED_SHEET_PATTERNS.some((re) => re.test(trimmed));
+}
 
-    return {
-      isTransactionSheet: !!(dateColumn && payeeColumn && amountColumn),
-      sheetName: s.name,
-      suggestedCategory: s.name,
-      dateColumn,
-      payeeColumn,
-      amountColumn,
-    };
-  });
+export function isInternalBudgetRow(description: string): boolean {
+  const trimmed = description.trim();
+  if (!trimmed) return false;
+  return INTERNAL_BUDGET_ROW_PATTERNS.some((re) => re.test(trimmed));
+}
 
-  const allMapped = deterministicMappings.length > 0 && deterministicMappings.every((m) => m.isTransactionSheet);
-  if (allMapped) {
-    return { sheetInfo, suggestions: deterministicMappings };
+export function parseExcelDate(raw: unknown): Date | null {
+  if (raw === null || raw === undefined || raw === "") return null;
+  if (raw instanceof Date) {
+    return isNaN(raw.getTime()) ? null : raw;
   }
+  if (typeof raw === "number" && Number.isFinite(raw) && raw > 20000 && raw < 80000) {
+    // Excel serial date (days since 1899-12-30)
+    const utcMs = Math.round((raw - 25569) * 86400 * 1000);
+    const d = new Date(utcMs);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const str = String(raw).trim();
+  if (!str) return null;
+  // Handle YYYY-MM-DD as UTC noon to avoid timezone day-shift
+  const isoMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (isoMatch) {
+    const d = new Date(Date.UTC(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3]), 12, 0, 0));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const parsed = new Date(str);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
 
-  const settings = await prisma.settings.findUnique({ where: { id: "global" } });
-  if (settings?.aiEnabled) {
-    const categories = await prisma.category.findMany();
-    const suggestions = await suggestHistoricalMapping(sheetInfo, categories);
-    if (suggestions?.mappings?.length) {
-      return { sheetInfo, suggestions: suggestions.mappings };
+export function parseCurrencyAmount(raw: unknown): number {
+  if (typeof raw === "number") {
+    return Number.isFinite(raw) ? raw : NaN;
+  }
+  if (raw === null || raw === undefined) return NaN;
+  const str = String(raw).trim();
+  if (!str) return NaN;
+  const isParenNegative = str.startsWith("(") && str.endsWith(")");
+  const cleaned = str.replace(/[$,\s()]/g, "");
+  const num = Number(cleaned);
+  if (!Number.isFinite(num)) return NaN;
+  return isParenNegative ? -Math.abs(num) : num;
+}
+
+function normalizeNameForMatch(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function matchExistingCategory(sheetName: string, existingCategories: string[]): string {
+  const normSheet = normalizeNameForMatch(sheetName);
+  // 1. Exact normalized match (e.g. "Vitamins and Medicine" <-> "Vitamins & Medicine")
+  for (const cat of existingCategories) {
+    if (normalizeNameForMatch(cat) === normSheet) return cat;
+  }
+  // 2. Common abbreviations
+  if (normSheet.includes("homeownersassociation") || normSheet === "hoa") {
+    const hoa = existingCategories.find((c) => normalizeNameForMatch(c) === "hoa");
+    if (hoa) return hoa;
+  }
+  // 3. Substring match if one clearly contains the other (min 4 chars)
+  if (normSheet.length >= 4) {
+    for (const cat of existingCategories) {
+      const normCat = normalizeNameForMatch(cat);
+      if (normCat.length >= 4 && (normSheet.includes(normCat) || normCat.includes(normSheet))) {
+        return cat;
+      }
+    }
+  }
+  return sheetName.trim();
+}
+
+export function detectHeaderRow(rows: unknown[][]): {
+  headerRowIndex: number;
+  headers: string[];
+  dateColumn: string;
+  payeeColumn: string;
+  memoColumn: string;
+  amountColumn: string;
+} | null {
+  const scanLimit = Math.min(rows.length, 10);
+
+  for (let r = 0; r < scanLimit; r++) {
+    const row = rows[r] || [];
+    const cells = row.map((c) => String(c ?? "").trim());
+    const nonEmpty = cells.filter((c) => c.length > 0);
+    if (nonEmpty.length < 2) continue;
+
+    const dateCol = cells.find((c) => /^date$|^trans(action)?\s*date$|^posted$/i.test(c)) || "";
+    const amountCol = cells.find((c) => /^amount$|^total$|^cost$|^price$|^spent$/i.test(c)) || "";
+
+    if (dateCol && amountCol) {
+      const locationCol =
+        cells.find((c) => /^(purchase\s*)?location(\/store)?$|^store$|^merchant$|^payee$|^vendor$/i.test(c)) || "";
+      const descCol =
+        cells.find((c) => /^description$|^desc$|^item$|^memo$|^notes?$|^details?$/i.test(c)) || "";
+
+      // Only include headers up to the main table (stop before empty gaps for side-tables)
+      const mainHeaders: string[] = [];
+      for (const cell of cells) {
+        if (!cell) {
+          if (mainHeaders.length >= 3) break;
+          continue;
+        }
+        mainHeaders.push(cell);
+      }
+
+      return {
+        headerRowIndex: r,
+        headers: mainHeaders.length > 0 ? mainHeaders : nonEmpty,
+        dateColumn: dateCol,
+        payeeColumn: locationCol || descCol,
+        memoColumn: locationCol && descCol ? descCol : "",
+        amountColumn: amountCol,
+      };
     }
   }
 
+  return null;
+}
+
+function extractMonthlyProvision(rows: unknown[][], headerRowIndex: number): number | null {
+  for (let r = 0; r < headerRowIndex; r++) {
+    const row = rows[r] || [];
+    for (let c = 0; c < row.length; c++) {
+      const cell = String(row[c] ?? "").trim();
+      if (/monthly\s*provision/i.test(cell)) {
+        // Look ahead on the same row for the first valid number
+        for (let k = c + 1; k < Math.min(row.length, c + 5); k++) {
+          const val = parseCurrencyAmount(row[k]);
+          if (Number.isFinite(val)) {
+            return Math.round(val * 100) / 100;
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
+
+export async function analyzeXlsx(buffer: Buffer) {
+  const workbook = XLSX.read(buffer, { type: "buffer" });
+  const categories = await prisma.category.findMany({
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+  const existingCategoryNames = categories.map((c) => c.name);
+
+  const suggestions: HistoricalMapping[] = [];
+
+  for (const sheetName of workbook.SheetNames) {
+    const sheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" }) as unknown[][];
+    const detected = detectHeaderRow(rows);
+
+    if (!detected) {
+      suggestions.push({
+        sheetName,
+        isTransactionSheet: false,
+        headerRowIndex: 0,
+        headers: [],
+        suggestedCategory: matchExistingCategory(sheetName, existingCategoryNames),
+        dateColumn: "",
+        payeeColumn: "",
+        memoColumn: "",
+        amountColumn: "",
+        estimatedTransactionCount: 0,
+        skippedBudgetRowCount: 0,
+        detectedRollover: null,
+        detectedMonthlyProvision: null,
+      });
+      continue;
+    }
+
+    const headerRow = (rows[detected.headerRowIndex] || []).map((c) => String(c ?? "").trim());
+    const dateIdx = headerRow.indexOf(detected.dateColumn);
+    const amountIdx = headerRow.indexOf(detected.amountColumn);
+    const payeeIdx = headerRow.indexOf(detected.payeeColumn);
+    const memoIdx = detected.memoColumn ? headerRow.indexOf(detected.memoColumn) : -1;
+
+    let estimatedTransactionCount = 0;
+    let skippedBudgetRowCount = 0;
+    let detectedRollover: number | null = null;
+
+    for (let r = detected.headerRowIndex + 1; r < rows.length; r++) {
+      const row = rows[r] || [];
+      const parsedDate = parseExcelDate(row[dateIdx]);
+      const parsedAmount = parseCurrencyAmount(row[amountIdx]);
+      const descText = String((memoIdx >= 0 ? row[memoIdx] : row[payeeIdx]) ?? "").trim();
+
+      if (!parsedDate || !Number.isFinite(parsedAmount)) continue;
+
+      if (/^year\s*start$/i.test(descText)) {
+        detectedRollover = Math.round(parsedAmount * 100) / 100;
+        skippedBudgetRowCount++;
+        continue;
+      }
+
+      if (isInternalBudgetRow(descText)) {
+        skippedBudgetRowCount++;
+        continue;
+      }
+
+      estimatedTransactionCount++;
+    }
+
+    const detectedMonthlyProvision = extractMonthlyProvision(rows, detected.headerRowIndex);
+    const isSkipped = isSkippedSheetName(sheetName);
+
+    suggestions.push({
+      sheetName,
+      isTransactionSheet: !isSkipped && (estimatedTransactionCount > 0 || detectedRollover !== null),
+      headerRowIndex: detected.headerRowIndex,
+      headers: detected.headers,
+      suggestedCategory: matchExistingCategory(sheetName, existingCategoryNames),
+      dateColumn: detected.dateColumn,
+      payeeColumn: detected.payeeColumn,
+      memoColumn: detected.memoColumn,
+      amountColumn: detected.amountColumn,
+      estimatedTransactionCount,
+      skippedBudgetRowCount,
+      detectedRollover,
+      detectedMonthlyProvision,
+    });
+  }
+
   return {
-    sheetInfo,
-    suggestions: deterministicMappings,
+    existingCategories: existingCategoryNames,
+    suggestions,
   };
 }
 
 export async function executeHistoricalImport(
-  buffer: Buffer, 
-  year: number, 
-  mappings: HistoricalMapping[]
+  buffer: Buffer,
+  year: number,
+  mappings: HistoricalMapping[],
+  options: HistoricalImportOptions = {}
 ) {
-  const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
-  
-  // 1. Ensure the Year exists
+  const { skipBudgetRows = true, applyRolloverAndBudget = true } = options;
+  const workbook = XLSX.read(buffer, { type: "buffer" });
+
   let budgetYear = await prisma.budgetYear.findUnique({ where: { year } });
   if (!budgetYear) {
     budgetYear = await prisma.budgetYear.create({ data: { year } });
   }
 
+  const defaultAccount =
+    (await prisma.account.findFirst({
+      where: { name: "Historical Import Archive" },
+    })) ||
+    (await prisma.account.create({
+      data: {
+        name: "Historical Import Archive",
+        remoteId: `hist-${year}`,
+        excludeFromSurplus: true,
+        showTransactions: true,
+      },
+    }));
+
   const results = {
     transactionsCreated: 0,
+    transactionsSkippedDuplicate: 0,
+    budgetRowsSkipped: 0,
     categoriesCreated: 0,
-    errors: [] as string[]
+    errors: [] as string[],
   };
 
-  // 2. Process each mapped sheet
   for (const mapping of mappings) {
     if (!mapping.isTransactionSheet) continue;
 
     const sheet = workbook.Sheets[mapping.sheetName];
-    const data = XLSX.utils.sheet_to_json(sheet) as Record<string, unknown>[];
+    if (!sheet) continue;
 
-    // Find or create the category
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" }) as unknown[][];
+    const headerRowIndex = mapping.headerRowIndex ?? 0;
+    const headerRow = (rows[headerRowIndex] || []).map((c) => String(c ?? "").trim());
+
+    const dateIdx = headerRow.indexOf(mapping.dateColumn);
+    const amountIdx = headerRow.indexOf(mapping.amountColumn);
+    const payeeIdx = headerRow.indexOf(mapping.payeeColumn);
+    const memoIdx = mapping.memoColumn ? headerRow.indexOf(mapping.memoColumn) : -1;
+
+    if (dateIdx < 0 || amountIdx < 0) {
+      results.errors.push(`Sheet "${mapping.sheetName}": Could not locate Date or Amount column.`);
+      continue;
+    }
+
+    const categoryName = mapping.suggestedCategory.trim() || mapping.sheetName.trim();
     let category = await prisma.category.findUnique({
-      where: { name: mapping.suggestedCategory }
+      where: { name: categoryName },
     });
 
     if (!category) {
       category = await prisma.category.create({
-        data: { name: mapping.suggestedCategory }
+        data: { name: categoryName },
       });
       results.categoriesCreated++;
     }
 
-    // Ensure YearlyCategory exists for this year
     await prisma.yearlyCategory.upsert({
-      where: { 
+      where: {
         yearId_categoryId: {
           yearId: budgetYear.id,
-          categoryId: category.id
-        }
+          categoryId: category.id,
+        },
       },
-      update: {}, // Don't overwrite if it exists
+      update: applyRolloverAndBudget
+        ? {
+            ...(mapping.detectedMonthlyProvision !== null ? { monthlyBudget: mapping.detectedMonthlyProvision } : {}),
+            ...(mapping.detectedRollover !== null ? { rollover: mapping.detectedRollover } : {}),
+          }
+        : {},
       create: {
         yearId: budgetYear.id,
         categoryId: category.id,
-        monthlyBudget: 0
-      }
+        monthlyBudget: applyRolloverAndBudget && mapping.detectedMonthlyProvision !== null ? mapping.detectedMonthlyProvision : 0,
+        rollover: applyRolloverAndBudget && mapping.detectedRollover !== null ? mapping.detectedRollover : 0,
+      },
     });
 
-    // 3. Import transactions
-    // Note: We'll put them in a default "Historical Import" account if not specified,
-    // but the schema requires an accountId.
-    const defaultAccount = await prisma.account.findFirst({
-      where: { name: "Historical Import Archive" }
-    }) || await prisma.account.create({
-      data: {
-        name: "Historical Import Archive",
-        remoteId: `hist-${year}`,
-        excludeFromSurplus: true // Don't mess up current surplus
+    for (let r = headerRowIndex + 1; r < rows.length; r++) {
+      const row = rows[r] || [];
+      const date = parseExcelDate(row[dateIdx]);
+      const amount = parseCurrencyAmount(row[amountIdx]);
+      if (!date || !Number.isFinite(amount)) continue;
+
+      const rawPayee = payeeIdx >= 0 ? String(row[payeeIdx] ?? "").trim() : "";
+      const rawMemo = memoIdx >= 0 ? String(row[memoIdx] ?? "").trim() : "";
+      const checkText = rawMemo || rawPayee;
+
+      if (skipBudgetRows && isInternalBudgetRow(checkText)) {
+        results.budgetRowsSkipped++;
+        continue;
       }
-    });
 
-    for (const row of data) {
-      const date = new Date(row[mapping.dateColumn] as string | number | Date);
-      const payee = row[mapping.payeeColumn] as string;
-      const amount = Number(row[mapping.amountColumn]);
+      const payee = rawPayee || rawMemo || categoryName;
+      const memo = rawMemo && rawMemo !== payee ? rawMemo : null;
+      const roundedAmount = Math.round(amount * 100) / 100;
 
-      if (isNaN(date.getTime()) || !payee || isNaN(amount)) {
+      // Deterministic remoteId for duplicate protection across re-imports
+      const hashInput = `${year}|${category.id}|${r}|${date.toISOString().slice(0, 10)}|${payee}|${memo || ""}|${roundedAmount.toFixed(2)}`;
+      const remoteId = `hist-${createHash("sha256").update(hashInput).digest("hex").slice(0, 24)}`;
+
+      const existing = await prisma.transaction.findUnique({
+        where: { remoteId },
+        select: { id: true },
+      });
+
+      if (existing) {
+        results.transactionsSkippedDuplicate++;
         continue;
       }
 
       await prisma.transaction.create({
         data: {
+          remoteId,
           date,
           payee,
-          amount,
+          memo,
+          amount: roundedAmount,
           accountId: defaultAccount.id,
+          posted: true,
           splits: {
             create: {
               categoryId: category.id,
-              amount: amount
-            }
-          }
-        }
+              amount: roundedAmount,
+              memo,
+            },
+          },
+        },
       });
       results.transactionsCreated++;
     }
   }
+
+  logger.info("HistoricalImport", `Imported ${results.transactionsCreated} transactions for ${year}`, {
+    action: "import.historical.complete",
+    context: results,
+  });
 
   return results;
 }

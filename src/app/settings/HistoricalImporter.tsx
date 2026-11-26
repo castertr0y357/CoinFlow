@@ -8,10 +8,25 @@ import { useNotification } from "@/components/ui/NotificationProvider";
 interface Mapping {
   sheetName: string;
   isTransactionSheet: boolean;
+  headerRowIndex: number;
+  headers: string[];
   suggestedCategory: string;
   dateColumn: string;
   payeeColumn: string;
+  memoColumn: string;
   amountColumn: string;
+  estimatedTransactionCount: number;
+  skippedBudgetRowCount: number;
+  detectedRollover: number | null;
+  detectedMonthlyProvision: number | null;
+}
+
+interface ImportResults {
+  transactionsCreated: number;
+  transactionsSkippedDuplicate?: number;
+  budgetRowsSkipped?: number;
+  categoriesCreated: number;
+  errors?: string[];
 }
 
 export default function HistoricalImporter() {
@@ -21,7 +36,10 @@ export default function HistoricalImporter() {
   const [step, setStep] = useState(1); // 1: Upload, 2: Mapping, 3: Success
   const [isProcessing, setIsProcessing] = useState(false);
   const [mappings, setMappings] = useState<Mapping[]>([]);
-  const [results, setResults] = useState<{ transactionsCreated: number; categoriesCreated: number } | null>(null);
+  const [existingCategories, setExistingCategories] = useState<string[]>([]);
+  const [skipBudgetRows, setSkipBudgetRows] = useState(true);
+  const [applyRolloverAndBudget, setApplyRolloverAndBudget] = useState(true);
+  const [results, setResults] = useState<ImportResults | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) setFile(e.target.files[0]);
@@ -42,9 +60,10 @@ export default function HistoricalImporter() {
       const data = await res.json();
       if (data.suggestions) {
         setMappings(data.suggestions);
+        setExistingCategories(data.existingCategories || []);
         setStep(2);
       } else {
-        showToast("Failed to analyze spreadsheet structure.", "error");
+        showToast(data.error || "Failed to analyze spreadsheet structure.", "error");
       }
     } catch (err) {
       console.error(err);
@@ -63,12 +82,17 @@ export default function HistoricalImporter() {
       formData.append("phase", "execute");
       formData.append("year", year.toString());
       formData.append("mappings", JSON.stringify(mappings));
+      formData.append("options", JSON.stringify({ skipBudgetRows, applyRolloverAndBudget }));
 
       const res = await fetch("/api/v1/import/historical", {
         method: "POST",
         body: formData
       });
       const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || "Import failed.", "error");
+        return;
+      }
       setResults(data);
       setStep(3);
     } catch (err) {
@@ -84,6 +108,11 @@ export default function HistoricalImporter() {
     newMappings[index] = { ...newMappings[index], [field]: value } as Mapping;
     setMappings(newMappings);
   };
+
+  const selectedCount = mappings.filter((m) => m.isTransactionSheet).length;
+  const totalEstTx = mappings
+    .filter((m) => m.isTransactionSheet)
+    .reduce((sum, m) => sum + (m.estimatedTransactionCount || 0), 0);
 
   return (
     <div className="historical-importer">
@@ -105,22 +134,22 @@ export default function HistoricalImporter() {
             </div>
 
             <div className="form-group">
-              <label>Spreadsheet File (.xlsx)</label>
+              <label>Spreadsheet File (.xlsx / .csv)</label>
               <label htmlFor="xlsx-upload" className="upload-zone glass">
                 <input
                   type="file"
-                  accept=".xlsx"
+                  accept=".xlsx,.xls,.csv"
                   onChange={handleFileChange}
                   id="xlsx-upload"
                   style={{ display: "none" }}
                 />
                 <span className="upload-icon">📊</span>
                 <span className="upload-label">
-                  {file ? file.name : "Choose XLSX Spreadsheet..."}
+                  {file ? file.name : "Choose XLSX or CSV Spreadsheet..."}
                 </span>
               </label>
               <p className="help-text">
-                AI will inspect your tabs and suggest category/column mappings before importing.
+                Automatically detects header rows, columns, rollovers, and monthly provisions.
               </p>
             </div>
           </div>
@@ -132,7 +161,7 @@ export default function HistoricalImporter() {
                 onClick={handleAnalyze}
                 disabled={isProcessing}
               >
-                {isProcessing ? "AI Analyzing Structure..." : "Analyze Spreadsheet ✨"}
+                {isProcessing ? "Analyzing Spreadsheet..." : "Analyze Spreadsheet 🔍"}
               </Button>
             </div>
           )}
@@ -141,73 +170,149 @@ export default function HistoricalImporter() {
 
       {step === 2 && (
         <div className="step-mapping animate-fade-in">
-          <h3>Confirm AI Mappings for {year}</h3>
-          <p className="text-muted text-sm mb-4">We&apos;ve guessed the categories based on your sheets. Adjust as needed.</p>
-          
-          <div className="mapping-list space-y-4">
-            {mappings.map((m, i) => (
-              <Card key={i} className="mapping-item glass p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <strong>Sheet: {m.sheetName}</strong>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input 
-                      type="checkbox" 
-                      checked={m.isTransactionSheet} 
-                      onChange={e => updateMapping(i, "isTransactionSheet", e.target.checked)}
-                    />
-                    Import this sheet
-                  </label>
-                </div>
-                
-                {m.isTransactionSheet && (
-                  <div className="grid grid-cols-2 gap-4 mt-2">
-                    <div className="form-group">
-                      <label className="text-xs">Category Name</label>
-                      <input 
-                        type="text" 
-                        value={m.suggestedCategory} 
-                        onChange={e => updateMapping(i, "suggestedCategory", e.target.value)}
-                        className="text-sm p-1 bg-black/20 border border-white/10 rounded w-full"
+          <div className="mapping-header">
+            <div>
+              <h3>Review Sheet Mappings for {year}</h3>
+              <p className="text-muted text-sm">
+                {selectedCount} of {mappings.length} sheets selected (~{totalEstTx} transactions)
+              </p>
+            </div>
+            <div className="mapping-toggles">
+              <label className="toggle-option">
+                <input
+                  type="checkbox"
+                  checked={skipBudgetRows}
+                  onChange={(e) => setSkipBudgetRows(e.target.checked)}
+                />
+                <span>Skip internal rows (Year Start, Monthly Additions, Boost, Adjustment)</span>
+              </label>
+              <label className="toggle-option">
+                <input
+                  type="checkbox"
+                  checked={applyRolloverAndBudget}
+                  onChange={(e) => setApplyRolloverAndBudget(e.target.checked)}
+                />
+                <span>Import Year Start as Rollover &amp; Monthly Provision as Monthly Budget</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="mapping-list">
+            {mappings.map((m, i) => {
+              const categoryOptions = existingCategories.includes(m.suggestedCategory)
+                ? existingCategories
+                : [m.suggestedCategory, ...existingCategories];
+
+              return (
+                <Card key={m.sheetName} className={`mapping-item glass ${!m.isTransactionSheet ? "skipped-sheet" : ""}`}>
+                  <div className="sheet-row-header">
+                    <label className="sheet-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={m.isTransactionSheet}
+                        disabled={m.headers.length === 0}
+                        onChange={(e) => updateMapping(i, "isTransactionSheet", e.target.checked)}
                       />
-                    </div>
-                    <div className="form-group">
-                      <label className="text-xs">Date Column</label>
-                      <input 
-                        type="text" 
-                        value={m.dateColumn} 
-                        onChange={e => updateMapping(i, "dateColumn", e.target.value)}
-                        className="text-sm p-1 bg-black/20 border border-white/10 rounded w-full"
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label className="text-xs">Payee Column</label>
-                      <input 
-                        type="text" 
-                        value={m.payeeColumn} 
-                        onChange={e => updateMapping(i, "payeeColumn", e.target.value)}
-                        className="text-sm p-1 bg-black/20 border border-white/10 rounded w-full"
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label className="text-xs">Amount Column</label>
-                      <input 
-                        type="text" 
-                        value={m.amountColumn} 
-                        onChange={e => updateMapping(i, "amountColumn", e.target.value)}
-                        className="text-sm p-1 bg-black/20 border border-white/10 rounded w-full"
-                      />
+                      <strong>{m.sheetName}</strong>
+                    </label>
+                    <div className="sheet-badges">
+                      {m.headers.length === 0 ? (
+                        <span className="sheet-badge muted">Summary / No table</span>
+                      ) : (
+                        <>
+                          <span className="sheet-badge primary">{m.estimatedTransactionCount} tx</span>
+                          {m.detectedMonthlyProvision !== null && (
+                            <span className="sheet-badge accent">Budget: ${m.detectedMonthlyProvision}/mo</span>
+                          )}
+                          {m.detectedRollover !== null && m.detectedRollover !== 0 && (
+                            <span className="sheet-badge muted">Rollover: ${m.detectedRollover}</span>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
-                )}
-              </Card>
-            ))}
+
+                  {m.isTransactionSheet && (
+                    <div className="mapping-cols-grid">
+                      <div className="form-group">
+                        <label className="col-label">Target Category</label>
+                        <select
+                          value={m.suggestedCategory}
+                          onChange={(e) => updateMapping(i, "suggestedCategory", e.target.value)}
+                          className="col-select"
+                        >
+                          {categoryOptions.map((cat) => (
+                            <option key={cat} value={cat}>
+                              {existingCategories.includes(cat) ? cat : `+ Create "${cat}"`}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="form-group">
+                        <label className="col-label">Date Column</label>
+                        <select
+                          value={m.dateColumn}
+                          onChange={(e) => updateMapping(i, "dateColumn", e.target.value)}
+                          className="col-select"
+                        >
+                          {m.headers.map((h) => (
+                            <option key={h} value={h}>{h}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="form-group">
+                        <label className="col-label">Payee / Store</label>
+                        <select
+                          value={m.payeeColumn}
+                          onChange={(e) => updateMapping(i, "payeeColumn", e.target.value)}
+                          className="col-select"
+                        >
+                          {m.headers.map((h) => (
+                            <option key={h} value={h}>{h}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="form-group">
+                        <label className="col-label">Memo (Optional)</label>
+                        <select
+                          value={m.memoColumn}
+                          onChange={(e) => updateMapping(i, "memoColumn", e.target.value)}
+                          className="col-select"
+                        >
+                          <option value="">(None)</option>
+                          {m.headers.map((h) => (
+                            <option key={h} value={h}>{h}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="form-group">
+                        <label className="col-label">Amount Column</label>
+                        <select
+                          value={m.amountColumn}
+                          onChange={(e) => updateMapping(i, "amountColumn", e.target.value)}
+                          className="col-select"
+                        >
+                          {m.headers.map((h) => (
+                            <option key={h} value={h}>{h}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
           </div>
 
           <div className="actions mt-6 flex gap-4">
-            <Button variant="primary" onClick={handleImport} disabled={isProcessing} className="flex-1">
-              {isProcessing ? "Importing Data..." : "Execute Import 🚀"}
+            <Button variant="primary" onClick={handleImport} disabled={isProcessing || selectedCount === 0} className="flex-1">
+              {isProcessing ? "Importing Data..." : `Execute Import (${selectedCount} sheets) 🚀`}
             </Button>
-            <Button variant="ghost" onClick={() => setStep(1)}>Back</Button>
+            <Button variant="ghost" onClick={() => setStep(1)} disabled={isProcessing}>Back</Button>
           </div>
         </div>
       )}
@@ -218,8 +323,14 @@ export default function HistoricalImporter() {
           <h2>Import Complete!</h2>
           <div className="stats glass p-4 mt-4 inline-block text-left">
             <p>Year: <strong>{year}</strong></p>
-            <p>Transactions Created: <strong>{results?.transactionsCreated}</strong></p>
-            <p>New Categories: <strong>{results?.categoriesCreated}</strong></p>
+            <p>Transactions Created: <strong>{results?.transactionsCreated ?? 0}</strong></p>
+            {!!results?.transactionsSkippedDuplicate && (
+              <p>Duplicates Skipped: <strong>{results.transactionsSkippedDuplicate}</strong></p>
+            )}
+            {!!results?.budgetRowsSkipped && (
+              <p>Internal Budget Rows Skipped: <strong>{results.budgetRowsSkipped}</strong></p>
+            )}
+            <p>New Categories Created: <strong>{results?.categoriesCreated ?? 0}</strong></p>
           </div>
           <div className="mt-6">
             <Button variant="primary" onClick={() => window.location.href = `/history/${year}`}>
@@ -281,6 +392,107 @@ export default function HistoricalImporter() {
           border-radius: 10px;
           color: var(--text-main);
           font-size: 1rem;
+        }
+        .mapping-header {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+          margin-bottom: 1.25rem;
+        }
+        .mapping-toggles {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 1.25rem;
+          padding: 0.85rem 1rem;
+          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid var(--glass-border);
+        }
+        .toggle-option {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.85rem;
+          color: var(--text-dim);
+          cursor: pointer;
+        }
+        .mapping-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+          max-height: 520px;
+          overflow-y: auto;
+          padding-right: 4px;
+        }
+        .mapping-item {
+          padding: 0.9rem 1.1rem !important;
+        }
+        .mapping-item.skipped-sheet {
+          opacity: 0.6;
+        }
+        .sheet-row-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 0.75rem;
+          flex-wrap: wrap;
+        }
+        .sheet-checkbox {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.6rem;
+          cursor: pointer;
+          font-size: 0.95rem;
+        }
+        .sheet-badges {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.4rem;
+        }
+        .sheet-badge {
+          font-size: 0.72rem;
+          font-weight: 600;
+          padding: 2px 8px;
+          border-radius: 999px;
+        }
+        .sheet-badge.primary {
+          background: rgba(99, 102, 241, 0.16);
+          color: var(--primary);
+        }
+        .sheet-badge.accent {
+          background: rgba(16, 185, 129, 0.15);
+          color: var(--accent);
+        }
+        .sheet-badge.muted {
+          background: rgba(255, 255, 255, 0.06);
+          color: var(--text-muted);
+        }
+        .mapping-cols-grid {
+          display: grid;
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          gap: 0.75rem;
+          margin-top: 0.85rem;
+          padding-top: 0.85rem;
+          border-top: 1px solid var(--glass-border);
+        }
+        @media (max-width: 992px) {
+          .mapping-cols-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+        .col-label {
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: var(--text-muted);
+        }
+        .col-select {
+          width: 100%;
+          padding: 0.45rem 0.65rem;
+          border-radius: 8px;
+          border: 1px solid var(--glass-border);
+          background: rgba(0, 0, 0, 0.35);
+          color: var(--text-main);
+          font-size: 0.82rem;
         }
       `}</style>
     </div>

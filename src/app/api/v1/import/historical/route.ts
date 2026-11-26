@@ -36,12 +36,14 @@ export async function POST(req: NextRequest) {
       } else if (phase === "execute") {
         const year = parseInt(formData.get("year") as string);
         const mappings = JSON.parse(formData.get("mappings") as string);
+        const optionsRaw = formData.get("options") as string | null;
+        const options = optionsRaw ? JSON.parse(optionsRaw) : {};
         
         if (isNaN(year)) {
           return NextResponse.json({ error: "Invalid year" }, { status: 400 });
         }
 
-        const results = await executeHistoricalImport(buffer, year, mappings);
+        const results = await executeHistoricalImport(buffer, year, mappings, options);
         return NextResponse.json(results);
       }
 
