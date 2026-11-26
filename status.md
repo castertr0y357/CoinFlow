@@ -1,6 +1,7 @@
-# Project Status: CoinFlow Browser Extension (v2.37.1)
+# Project Status: CoinFlow Browser Extension (v2.37.2)
 
 ## Current Progress
+- [x] **Removed Automatic Startup Database Seeding (v2.37.2)**: Removed the unconditional `prisma db seed` execution from `entrypoint.sh` so production containers no longer auto-seed on startup. Manual seeding remains available via `npx prisma db seed` if needed for fresh local development setups.
 - [x] **Improved External Order Popover & Single-Item Inline Display (v2.37.1)**: Widened `.order-details-popover` in `Transactions.css` with full multi-line item title wrapping and interactive hover/scroll support (`pointer-events: auto` with hover bridge). Updated `TransactionRow.tsx` so single-item external orders replace the redundant Smart Split button with a compact `📦 Order` pill and display the item description inline beneath the payee for immediate at-a-glance categorization.
 - [x] **Cash Flow Timeline, Wealth & FI Trajectory, and Net Worth Snapshots (v2.37.0)**:
   - **Zero-Click Inbox Suggestions & Sync Auto-Unmute (`TransactionsClient.tsx`, `api/v1/ai/categorize/route.ts`, `simplefin.ts`)**: Added `deterministicOnly` mode to `/api/v1/ai/categorize` and auto-triggered it on Inbox load in `TransactionsClient.tsx` so `✓ Accept` pills and `✅ Apply All` appear immediately without clicking. Updated `syncSimpleFin()` to automatically clear `muteSyncErrors = false` when a previously-failing account recovers (`accountSyncError === null`).
