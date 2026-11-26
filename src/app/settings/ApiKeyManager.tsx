@@ -50,14 +50,14 @@ export default function ApiKeyManager({ initialKeys }: { initialKeys: ApiKey[] }
         ))}
       </div>
 
-      <form onSubmit={handleGenerate} className="generate-key-form">
+      <form onSubmit={handleGenerate} className="inline-key-form">
         <Input 
           label="New Key Name"
           placeholder="e.g. Wife's iPhone"
           value={newKeyName}
           onChange={(e) => setNewKeyName(e.target.value)}
         />
-        <Button type="submit" variant="secondary">Generate Key</Button>
+        <Button type="submit" variant="primary" style={{ height: "48px" }}>Generate Key</Button>
       </form>
 
       {revealedKey && (

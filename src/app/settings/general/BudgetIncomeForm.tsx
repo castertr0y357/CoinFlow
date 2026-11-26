@@ -41,79 +41,76 @@ export default function BudgetIncomeForm({ categories, initialSettings }: Budget
     <form action={handleSubmit}>
       <Card className="settings-form">
         <div className="form-section">
-          <h2>Savings & Income Targets</h2>
+          <h2>Savings &amp; Income Targets</h2>
 
-          <div className="form-group">
-            <label htmlFor="savingsCategoryId">Dynamic Savings Target</label>
-            <select
-              id="savingsCategoryId"
-              name="savingsCategoryId"
-              defaultValue={initialSettings.savingsCategoryId || ""}
-              className="settings-select"
-            >
-              <option value="">(Manual Target Only)</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
-            <p className="help-text">
-              If selected, your savings target will automatically match this category&apos;s monthly provision.
-            </p>
+          <div className="settings-grid-3">
+            <div className="form-group">
+              <label htmlFor="savingsCategoryId">Dynamic Savings Target</label>
+              <select
+                id="savingsCategoryId"
+                name="savingsCategoryId"
+                defaultValue={initialSettings.savingsCategoryId || ""}
+                className="settings-select"
+              >
+                <option value="">(Manual Target Only)</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+              <p className="help-text">
+                Automatically matches this category&apos;s monthly provision.
+              </p>
+            </div>
+
+            <Input
+              label="Fallback Savings Target ($)"
+              type="number"
+              id="savingsTarget"
+              name="savingsTarget"
+              step="0.01"
+              defaultValue={initialSettings.savingsTarget}
+              helpText="Used if no category is selected or budgeted."
+              required
+            />
+
+            <Input
+              label="Expected Monthly Income ($)"
+              type="number"
+              id="expectedMonthlyIncome"
+              name="expectedMonthlyIncome"
+              step="0.01"
+              defaultValue={initialSettings.monthlyIncome}
+              helpText="Used for forecasting your month-end cash balance."
+              required
+            />
           </div>
-
-          <Input
-            label="Fallback/Manual Savings Target ($)"
-            type="number"
-            id="savingsTarget"
-            name="savingsTarget"
-            step="0.01"
-            defaultValue={initialSettings.savingsTarget}
-            helpText="Used if no category is selected or if the selected category has no budget."
-            required
-          />
-
-          <Input
-            label="Expected Monthly Income ($)"
-            type="number"
-            id="expectedMonthlyIncome"
-            name="expectedMonthlyIncome"
-            step="0.01"
-            defaultValue={initialSettings.monthlyIncome}
-            helpText="Used for forecasting your month-end cash balance."
-            required
-          />
         </div>
 
         <div className="form-section">
-          <h2>Paycheck-Based Forecasting</h2>
+          <div className="section-header-row">
+            <h2>Paycheck-Based Forecasting</h2>
+            <label className="settings-toggle" htmlFor="paycheckEnabled">
+              <input
+                type="checkbox"
+                id="paycheckEnabled"
+                name="paycheckEnabled"
+                checked={paycheckEnabled}
+                onChange={(e) => setPaycheckEnabled(e.target.checked)}
+              />
+              <span className="settings-toggle-slider" />
+              <span className="settings-toggle-label">
+                {paycheckEnabled ? "Enabled" : "Disabled"}
+              </span>
+            </label>
+          </div>
           <p className="help-text">
             Track your exact payroll schedule to generate high-precision cash flow projections, rather than assuming a flat monthly income amount.
           </p>
 
-          <div
-            className="form-group checkbox-group"
-            style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: "0.75rem", cursor: "pointer" }}
-          >
-            <input
-              type="checkbox"
-              id="paycheckEnabled"
-              name="paycheckEnabled"
-              checked={paycheckEnabled}
-              onChange={(e) => setPaycheckEnabled(e.target.checked)}
-              style={{ width: "18px", height: "18px", cursor: "pointer", accentColor: "var(--accent)" }}
-            />
-            <label
-              htmlFor="paycheckEnabled"
-              style={{ cursor: "pointer", margin: 0, fontWeight: 600, fontSize: "0.95rem", color: "var(--text-main)" }}
-            >
-              Enable Paycheck Forecasting
-            </label>
-          </div>
-
           {paycheckEnabled && (
-            <div className="flex flex-col gap-6 animate-fade-in">
+            <div className="settings-grid-3 animate-fade-in">
               <div className="form-group">
                 <label htmlFor="paycheckFrequency">Paycheck Frequency</label>
                 <select
@@ -127,7 +124,7 @@ export default function BudgetIncomeForm({ categories, initialSettings }: Budget
                   <option value="SEMI_MONTHLY">Semi-Monthly (Twice a month, e.g. 1st &amp; 15th)</option>
                   <option value="MONTHLY">Monthly (Once a month)</option>
                 </select>
-                <p className="help-text">Select how often you receive your paycheck.</p>
+                <p className="help-text">How often you receive your paycheck.</p>
               </div>
 
               <Input
@@ -137,7 +134,7 @@ export default function BudgetIncomeForm({ categories, initialSettings }: Budget
                 name="paycheckAmount"
                 step="0.01"
                 defaultValue={initialSettings.paycheckAmount}
-                helpText="The net amount of each individual paycheck."
+                helpText="Net amount of each individual paycheck."
               />
 
               <div className="form-group">
@@ -150,7 +147,7 @@ export default function BudgetIncomeForm({ categories, initialSettings }: Budget
                   className="settings-input"
                 />
                 <p className="help-text">
-                  Any past or upcoming paycheck date. Used as an anchor to calculate your pay cycle schedule.
+                  Any past or upcoming payday to anchor your cycle.
                 </p>
               </div>
             </div>

@@ -31,36 +31,38 @@ export default async function CategoriesSettingsPage() {
         </div>
       </Card>
 
-      <Card className="settings-form">
-        <div className="form-section">
-          <h2>Year-End Processing</h2>
-          <p className="text-muted">
-            Finalize your current year accounting and roll over balances to the next calendar year.
-          </p>
-          <YearManager currentYear={currentYear} />
-        </div>
-      </Card>
-
-      <Card className="settings-form">
-        <div className="form-section">
-          <h2>Historical Archives</h2>
-          <p className="text-muted">Quick access to finalized budgets from previous years.</p>
-          <div className="flex flex-wrap gap-2 mt-4">
-            {pastYears.map((y) => (
-              <Link
-                key={y.id}
-                href={`/history/${y.year}`}
-                className="year-link glass p-3 rounded-lg border border-white/10 hover:border-primary transition-all"
-              >
-                📅 {y.year} Budget
-              </Link>
-            ))}
-            {pastYears.length === 0 && (
-              <p className="text-sm italic opacity-50">No historical archives found yet.</p>
-            )}
+      <div className="settings-bento-2">
+        <Card className="settings-form">
+          <div className="form-section">
+            <h2>Year-End Processing</h2>
+            <p className="text-muted">
+              Finalize your current year accounting and roll over balances to the next calendar year.
+            </p>
+            <YearManager currentYear={currentYear} />
           </div>
-        </div>
-      </Card>
+        </Card>
+
+        <Card className="settings-form">
+          <div className="form-section">
+            <h2>Historical Archives</h2>
+            <p className="text-muted">Quick access to finalized budgets from previous years.</p>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {pastYears.map((y) => (
+                <Link
+                  key={y.id}
+                  href={`/history/${y.year}`}
+                  className="year-link glass p-3 rounded-lg border border-white/10 hover:border-primary transition-all"
+                >
+                  📅 {y.year} Budget
+                </Link>
+              ))}
+              {pastYears.length === 0 && (
+                <p className="text-sm italic opacity-50">No historical archives found yet.</p>
+              )}
+            </div>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }

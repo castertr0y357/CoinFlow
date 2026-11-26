@@ -370,14 +370,33 @@ export default function BackupManager() {
             <input
               type="checkbox"
               checked={config.backupEnabled}
-              onChange={(e) => setConfig({ ...config, backupEnabled: e.target.checked })}
+              onChange={async (e) => {
+                const nextEnabled = e.target.checked;
+                const nextConfig = { ...config, backupEnabled: nextEnabled };
+                setConfig(nextConfig);
+                if (!nextEnabled) {
+                  try {
+                    const res = await fetch("/api/v1/data/backups/config", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(nextConfig),
+                    });
+                    if (res.ok) {
+                      setStatus("Automated GFS backup schedule disabled.");
+                    }
+                  } catch {
+                    setStatus("Error saving disabled schedule state.");
+                  }
+                }
+              }}
             />
             <span className="toggle-slider"></span>
             <span className="toggle-label">{config.backupEnabled ? "Active Schedule" : "Disabled"}</span>
           </label>
         </div>
 
-        <form onSubmit={handleSaveConfig} className="gfs-form">
+        {config.backupEnabled && (
+        <form onSubmit={handleSaveConfig} className="gfs-form animate-fade-in">
           <div className="form-subheading">
             <span>📅 Schedule & GFS Retention Policy</span>
           </div>
@@ -718,6 +737,7 @@ export default function BackupManager() {
             </Button>
           </div>
         </form>
+        )}
       </div>
 
       {/* 3. Snapshots Catalog Table */}

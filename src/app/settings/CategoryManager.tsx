@@ -92,7 +92,7 @@ export default function CategoryManager({ initialCategories }: { initialCategori
               </div>
             ) : (
               <>
-                <span className="cat-name">{cat.name}</span>
+                <span className="cat-name" title={cat.name}>{cat.name}</span>
                 <div className="cat-actions">
                   <button 
                     className="action-btn" 
@@ -133,17 +133,28 @@ export default function CategoryManager({ initialCategories }: { initialCategori
         }
         .category-list {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
           gap: 0.75rem;
         }
         .category-item {
           display: flex;
           justify-content: space-between;
           align-items: center;
+          gap: 0.65rem;
           padding: 0.75rem 1rem;
           border-radius: 12px;
           background: rgba(255, 255, 255, 0.03);
-          min-height: 50px;
+          min-height: 48px;
+          overflow: hidden;
+        }
+        .cat-name {
+          flex: 1;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          font-size: 0.92rem;
+          font-weight: 500;
         }
         .edit-container {
           display: flex;
@@ -153,7 +164,8 @@ export default function CategoryManager({ initialCategories }: { initialCategori
         }
         .cat-actions {
           display: flex;
-          gap: 0.5rem;
+          gap: 0.4rem;
+          flex-shrink: 0;
         }
         .action-btn {
           background: none;

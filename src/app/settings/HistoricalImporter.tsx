@@ -89,31 +89,52 @@ export default function HistoricalImporter() {
     <div className="historical-importer">
       {step === 1 && (
         <div className="step-upload animate-fade-in">
-          <div className="form-group mb-4">
-            <label>Target Year for Historical Data</label>
-            <input 
-              type="number" 
-              value={year} 
-              onChange={e => setYear(parseInt(e.target.value))}
-              className="settings-input"
-            />
+          <div className="importer-grid">
+            <div className="form-group">
+              <label htmlFor="historical-target-year">Target Year for Historical Data</label>
+              <input
+                id="historical-target-year"
+                type="number"
+                value={year}
+                onChange={e => setYear(parseInt(e.target.value))}
+                className="settings-input"
+              />
+              <p className="help-text">
+                Select the calendar year this spreadsheet belongs to.
+              </p>
+            </div>
+
+            <div className="form-group">
+              <label>Spreadsheet File (.xlsx)</label>
+              <label htmlFor="xlsx-upload" className="upload-zone glass">
+                <input
+                  type="file"
+                  accept=".xlsx"
+                  onChange={handleFileChange}
+                  id="xlsx-upload"
+                  style={{ display: "none" }}
+                />
+                <span className="upload-icon">📊</span>
+                <span className="upload-label">
+                  {file ? file.name : "Choose XLSX Spreadsheet..."}
+                </span>
+              </label>
+              <p className="help-text">
+                AI will inspect your tabs and suggest category/column mappings before importing.
+              </p>
+            </div>
           </div>
-          <div className="upload-zone glass p-8 text-center border-dashed border-2">
-            <input type="file" accept=".xlsx" onChange={handleFileChange} id="xlsx-upload" className="hidden" />
-            <label htmlFor="xlsx-upload" className="cursor-pointer">
-              <div className="text-4xl mb-2">📊</div>
-              <p>{file ? file.name : "Click to select XLSX spreadsheet"}</p>
-            </label>
-          </div>
+
           {file && (
-            <Button 
-              variant="primary" 
-              onClick={handleAnalyze} 
-              disabled={isProcessing}
-              className="w-full mt-4"
-            >
-              {isProcessing ? "AI Analyzing Structure..." : "Analyze Spreadsheet ✨"}
-            </Button>
+            <div className="mt-4 flex justify-end">
+              <Button
+                variant="primary"
+                onClick={handleAnalyze}
+                disabled={isProcessing}
+              >
+                {isProcessing ? "AI Analyzing Structure..." : "Analyze Spreadsheet ✨"}
+              </Button>
+            </div>
           )}
         </div>
       )}
@@ -211,25 +232,55 @@ export default function HistoricalImporter() {
 
       <style jsx>{`
         .historical-importer {
-          margin-top: 1rem;
+          margin-top: 0.5rem;
+        }
+        .importer-grid {
+          display: grid;
+          grid-template-columns: 220px 1fr;
+          gap: 1.5rem;
+          align-items: start;
+        }
+        @media (max-width: 768px) {
+          .importer-grid {
+            grid-template-columns: 1fr;
+          }
         }
         .upload-zone {
-          border-color: var(--glass-border);
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 0.85rem 1.25rem;
+          border: 1px dashed var(--glass-border);
           color: var(--text-dim);
-          border-radius: 12px;
+          border-radius: 10px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          background: rgba(0, 0, 0, 0.25);
         }
         .upload-zone:hover {
           border-color: var(--primary);
-          background: rgba(255, 255, 255, 0.02);
+          background: rgba(99, 102, 241, 0.08);
+          color: var(--text-main);
+        }
+        .upload-icon {
+          font-size: 1.25rem;
+          line-height: 1;
+        }
+        .upload-label {
+          font-size: 0.95rem;
+          font-weight: 500;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
         .settings-input {
           width: 100%;
-          padding: 0.75rem;
-          background: rgba(0, 0, 0, 0.2);
+          padding: 0.85rem 1.25rem;
+          background: rgba(0, 0, 0, 0.3);
           border: 1px solid var(--glass-border);
-          border-radius: 8px;
-          color: white;
-          margin-bottom: 1rem;
+          border-radius: 10px;
+          color: var(--text-main);
+          font-size: 1rem;
         }
       `}</style>
     </div>
