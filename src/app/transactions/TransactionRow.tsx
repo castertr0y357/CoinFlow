@@ -222,6 +222,24 @@ export default function TransactionRow({
     return a.id.localeCompare(b.id);
   });
 
+  const hasExternalOrder = !!(tx.externalOrderId || tx.matchedOrderId);
+  const orderItems = tx.externalOrder?.items && tx.externalOrder.items.length > 0
+    ? tx.externalOrder.items.map((item) => ({
+        id: item.id,
+        title: item.title,
+        price: Number(item.price),
+        quantity: item.quantity,
+      }))
+    : tx.splits
+        .filter((s) => !!s.memo)
+        .map((split) => ({
+          id: split.id,
+          title: split.memo as string,
+          price: Math.abs(Number(split.amount)),
+          quantity: null as number | null,
+        }));
+  const isSingleItemOrder = hasExternalOrder && orderItems.length === 1;
+
   return (
     <div className={`tx-row-container ${isPending ? 'pending' : ''} ${suggestion ? 'has-suggestion' : ''} ${isSelected ? 'selected' : ''}`}>
       <div className="tx-row-main-content">
@@ -251,40 +269,37 @@ export default function TransactionRow({
                   )}
                 </span>
                 
-                {(tx.externalOrderId || tx.matchedOrderId) && (
+                {hasExternalOrder && (
                   <div onClick={(e) => e.stopPropagation()} style={{ display: 'inline-block' }}>
                     <div className="external-order-info">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="smart-split-btn"
-                        onClick={() => handleSmartSplit()}
-                        disabled={isAiSplitting || isPending}
-                      >
-                        {isAiSplitting ? "⚡ Splitting..." : aiEnabled ? "✨ Smart Split" : "⚡ Smart Split"}
-                      </Button>
+                      {isSingleItemOrder ? (
+                        <span className="order-badge-pill">
+                          📦 Order
+                        </span>
+                      ) : (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="smart-split-btn"
+                          onClick={() => handleSmartSplit()}
+                          disabled={isAiSplitting || isPending}
+                        >
+                          {isAiSplitting ? "⚡ Splitting..." : aiEnabled ? "✨ Smart Split" : "⚡ Smart Split"}
+                        </Button>
+                      )}
                       {(!!tx.externalOrder || !!tx.matchedOrderId) && (
                         <div className="order-details-popover glass">
                           <div className="order-header">
                             <strong>{tx.matchedOrderSource || tx.externalOrder?.source} Order #{tx.matchedOrderId || tx.externalOrder?.orderId}</strong>
                           </div>
                           <ul className="order-items">
-                            {tx.externalOrder?.items && tx.externalOrder.items.length > 0 ? (
-                              tx.externalOrder.items.map((item) => (
-                                <li key={item.id} className="order-item">
-                                  <span className="item-qty">{item.quantity}x</span>
-                                  <span className="item-title">{item.title}</span>
-                                  <span className="item-price">${Number(item.price).toFixed(2)}</span>
-                                </li>
-                              ))
-                            ) : (
-                              tx.splits.filter(s => !!s.memo).map((split) => (
-                                <li key={split.id} className="order-item">
-                                  <span className="item-title">{split.memo}</span>
-                                  <span className="item-price">${Math.abs(Number(split.amount)).toFixed(2)}</span>
-                                </li>
-                              ))
-                            )}
+                            {orderItems.map((item) => (
+                              <li key={item.id} className="order-item">
+                                {item.quantity !== null && <span className="item-qty">{item.quantity}x</span>}
+                                <span className="item-title">{item.title}</span>
+                                <span className="item-price">${item.price.toFixed(2)}</span>
+                              </li>
+                            ))}
                           </ul>
                         </div>
                       )}
@@ -292,6 +307,12 @@ export default function TransactionRow({
                   </div>
                 )}
               </div>
+
+              {isSingleItemOrder && (
+                <span className="tx-single-order-item" title={orderItems[0].title}>
+                  📦 {orderItems[0].title}
+                </span>
+              )}
 
               {tx.memo && !isEditingNote && (
                 <span className="tx-memo text-dim" style={{ fontSize: '0.75rem', opacity: 0.7, display: 'block', marginTop: '0.25rem' }}>
