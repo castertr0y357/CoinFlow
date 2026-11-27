@@ -60,7 +60,8 @@ export default function HistoryClient({ year, availableYears }: HistoryClientPro
     0
   );
   const totalSpent = categories.reduce(
-    (sum: number, c: { spent?: number }) => sum + Math.abs(Number(c.spent ?? 0)),
+    (sum: number, c: { totalSpent?: number; spent?: number }) =>
+      sum + Math.abs(Number(c.totalSpent ?? c.spent ?? 0)),
     0
   );
   const totalRemaining = categories.reduce(

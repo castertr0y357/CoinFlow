@@ -29,8 +29,13 @@ function safeNumber(val: unknown): number {
 export async function getMonthlyTally(year?: number) {
   const currentYear = year || new Date().getFullYear();
   
-  // 0. Run lazy provisioning (cached per month in memory)
-  await runMonthlyProvisioning(currentYear);
+  const now = new Date();
+  const isHistoricalYear = currentYear < now.getFullYear();
+
+  // 0. Run lazy provisioning only for current/future years (never mutate historical archives)
+  if (!isHistoricalYear) {
+    await runMonthlyProvisioning(currentYear);
+  }
 
   // 1. Get the current active budget year
   let budgetYear = await prisma.budgetYear.findUnique({
@@ -45,7 +50,6 @@ export async function getMonthlyTally(year?: number) {
 
   const yearStart = new Date(currentYear, 0, 1);
   const yearEnd = new Date(currentYear, 11, 31, 23, 59, 59, 999);
-  const now = new Date();
   const targetMonth = currentYear === now.getFullYear() ? now.getMonth() : 11;
   const monthStart = new Date(currentYear, targetMonth, 1);
   const monthEnd = new Date(currentYear, targetMonth + 1, 0, 23, 59, 59, 999);
@@ -130,8 +134,6 @@ export async function getMonthlyTally(year?: number) {
     }
   }
 
-  const isHistoricalYear = currentYear < now.getFullYear();
-
   const visibleCategories = categories.filter((c) => {
     if (!c.isArchived) return true;
     const hasActivity =
@@ -177,6 +179,7 @@ export async function getMonthlyTally(year?: number) {
       provisions: safeNumber(provisions),
       rollover: rollover,
       spent: parseFloat(averageSpent.toFixed(2)),
+      totalSpent: safeNumber(spending),
       spentThisMonth: parseFloat((monthSpendingByCat.get(c.id) || 0).toFixed(2)),
       remaining: safeNumber(remaining),
       tiedAccountId: c.tiedAccountId,
