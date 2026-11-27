@@ -6,8 +6,9 @@ This file defines the template structure for local workspace rules and skills ac
 You **MUST** run the project verification command after every code change to guarantee stability and prevent regressions.
 
 ### Rebuild and Verify Command
-This workspace uses `nerdctl` locally. Run the following command from the workspace root:
+This workspace uses `nerdctl` locally. After every code change, **always** rebuild and force-recreate the `web` container (so `nerdctl` replaces the running container with the newly built image), then run the test suite from the workspace root:
 ```bash
+nerdctl compose up --build -d --force-recreate web
 nerdctl compose exec web npm test
 ```
 
