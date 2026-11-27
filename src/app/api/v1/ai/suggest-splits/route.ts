@@ -28,7 +28,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Transaction not found or not linked to an order" }, { status: 404 });
       }
 
-      const categories = await prisma.category.findMany();
+      const categories = await prisma.category.findMany({
+        where: { isArchived: false },
+      });
       let items: { title: string; price: number }[] = [];
 
       if (transaction.externalOrder && transaction.externalOrder.items.length > 0) {

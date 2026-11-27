@@ -5,6 +5,11 @@ import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
 import { getSession } from "@/lib/auth";
 import { z } from "zod";
+import {
+  archiveCategory,
+  getCategoryMergePreview,
+  mergeCategories,
+} from "@/lib/services/categoryService";
 
 const UpdateCategoryBudgetSchema = z.object({
   categoryId: z.string().min(1),
@@ -646,4 +651,52 @@ export async function deleteAccountAction(accountId: string) {
     console.error("[CATEGORY ACTION ERROR] deleteAccountAction failed:", error);
     throw error;
   }
+}
+
+const ArchiveCategorySchema = z.object({
+  id: z.string().min(1),
+  isArchived: z.boolean(),
+});
+
+const MergeCategoriesSchema = z.object({
+  sourceId: z.string().min(1),
+  targetId: z.string().min(1),
+});
+
+export async function archiveCategoryAction(id: string, isArchived: boolean) {
+  const session = await getSession();
+  if (!session) throw new Error("Unauthorized");
+
+  const parsed = ArchiveCategorySchema.parse({ id, isArchived });
+  const updated = await archiveCategory(parsed.id, parsed.isArchived);
+
+  revalidatePath("/");
+  revalidatePath("/transactions");
+  revalidatePath("/settings/categories");
+  revalidatePath("/reports");
+  return updated;
+}
+
+export async function getCategoryMergePreviewAction(sourceId: string) {
+  const session = await getSession();
+  if (!session) throw new Error("Unauthorized");
+
+  const parsed = DeleteCategorySchema.parse({ id: sourceId });
+  return getCategoryMergePreview(parsed.id);
+}
+
+export async function mergeCategoriesAction(sourceId: string, targetId: string) {
+  const session = await getSession();
+  if (!session) throw new Error("Unauthorized");
+
+  const parsed = MergeCategoriesSchema.parse({ sourceId, targetId });
+  const result = await mergeCategories(parsed.sourceId, parsed.targetId);
+
+  revalidatePath("/");
+  revalidatePath("/transactions");
+  revalidatePath("/settings/categories");
+  revalidatePath("/reports");
+  revalidatePath("/commitments");
+  revalidatePath("/goals");
+  return result;
 }

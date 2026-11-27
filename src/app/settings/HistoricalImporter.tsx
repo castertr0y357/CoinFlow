@@ -39,6 +39,7 @@ export default function HistoricalImporter() {
   const [existingCategories, setExistingCategories] = useState<string[]>([]);
   const [skipBudgetRows, setSkipBudgetRows] = useState(true);
   const [applyRolloverAndBudget, setApplyRolloverAndBudget] = useState(true);
+  const [archiveNewCategories, setArchiveNewCategories] = useState(true);
   const [results, setResults] = useState<ImportResults | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -82,7 +83,10 @@ export default function HistoricalImporter() {
       formData.append("phase", "execute");
       formData.append("year", year.toString());
       formData.append("mappings", JSON.stringify(mappings));
-      formData.append("options", JSON.stringify({ skipBudgetRows, applyRolloverAndBudget }));
+      formData.append(
+        "options",
+        JSON.stringify({ skipBudgetRows, applyRolloverAndBudget, archiveNewCategories })
+      );
 
       const res = await fetch("/api/v1/import/historical", {
         method: "POST",
@@ -193,6 +197,14 @@ export default function HistoricalImporter() {
                   onChange={(e) => setApplyRolloverAndBudget(e.target.checked)}
                 />
                 <span>Import Year Start as Rollover &amp; Monthly Provision as Monthly Budget</span>
+              </label>
+              <label className="toggle-option">
+                <input
+                  type="checkbox"
+                  checked={archiveNewCategories}
+                  onChange={(e) => setArchiveNewCategories(e.target.checked)}
+                />
+                <span>Archive newly created categories (keeps past-year categories out of current budget)</span>
               </label>
             </div>
           </div>

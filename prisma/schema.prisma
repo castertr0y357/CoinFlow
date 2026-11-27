@@ -83,11 +83,13 @@ model Category {
   commitments   Commitment[]
   splits        TransactionSplit[]
   isPaused      Boolean            @default(false)
+  isArchived    Boolean            @default(false)
   configs       YearlyCategory[]
   savingsGoals  SavingsGoal[]
 
   @@index([name])
   @@index([tiedAccountId])
+  @@index([isArchived])
 }
 
 model BudgetYear {

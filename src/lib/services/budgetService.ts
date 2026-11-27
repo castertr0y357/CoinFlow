@@ -130,7 +130,20 @@ export async function getMonthlyTally(year?: number) {
     }
   }
 
-  const categoryTallies = categories.map(c => {
+  const isHistoricalYear = currentYear < now.getFullYear();
+
+  const visibleCategories = categories.filter((c) => {
+    if (!c.isArchived) return true;
+    const hasActivity =
+      (spendingByCat.get(c.id) || 0) > 0 ||
+      (provisionsByCat.get(c.id) || 0) > 0 ||
+      c.configs.length > 0;
+    // In historical views, show archived categories that have data in that year.
+    // In current/future years, hide archived categories unless they have actual spending this year.
+    return isHistoricalYear ? hasActivity : (spendingByCat.get(c.id) || 0) > 0;
+  });
+
+  const categoryTallies = visibleCategories.map(c => {
     const config = c.configs[0];
     const rollover = safeNumber(config?.rollover);
     const monthlyBudget = safeNumber(config?.monthlyBudget);

@@ -52,8 +52,9 @@ export async function getTransactions(options: {
 }
 
 
-export async function getCategories() {
+export async function getCategories(includeArchived = false) {
   return prisma.category.findMany({
+    where: includeArchived ? undefined : { isArchived: false },
     orderBy: { name: 'asc' },
   });
 }

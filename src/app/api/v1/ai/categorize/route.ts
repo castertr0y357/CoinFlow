@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
           select: { name: true, categoryId: true },
         }),
         prisma.transactionSplit.findMany({
-          where: { categoryId: { not: null } },
+          where: { categoryId: { not: null }, category: { isArchived: false } },
           take: 1500,
           orderBy: { transaction: { date: 'desc' } },
           select: {

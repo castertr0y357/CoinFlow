@@ -22,6 +22,7 @@ export interface HistoricalMapping {
 export interface HistoricalImportOptions {
   skipBudgetRows?: boolean;
   applyRolloverAndBudget?: boolean;
+  archiveNewCategories?: boolean;
 }
 
 const SKIPPED_SHEET_PATTERNS = [
@@ -287,7 +288,11 @@ export async function executeHistoricalImport(
   mappings: HistoricalMapping[],
   options: HistoricalImportOptions = {}
 ) {
-  const { skipBudgetRows = true, applyRolloverAndBudget = true } = options;
+  const {
+    skipBudgetRows = true,
+    applyRolloverAndBudget = true,
+    archiveNewCategories = year < new Date().getFullYear(),
+  } = options;
   const workbook = XLSX.read(buffer, { type: "buffer" });
 
   let budgetYear = await prisma.budgetYear.findUnique({ where: { year } });
@@ -343,7 +348,10 @@ export async function executeHistoricalImport(
 
     if (!category) {
       category = await prisma.category.create({
-        data: { name: categoryName },
+        data: {
+          name: categoryName,
+          isArchived: archiveNewCategories,
+        },
       });
       results.categoriesCreated++;
     }
@@ -357,8 +365,12 @@ export async function executeHistoricalImport(
       },
       update: applyRolloverAndBudget
         ? {
-            ...(mapping.detectedMonthlyProvision !== null ? { monthlyBudget: mapping.detectedMonthlyProvision } : {}),
-            ...(mapping.detectedRollover !== null ? { rollover: mapping.detectedRollover } : {}),
+            ...(mapping.detectedMonthlyProvision !== null
+              ? { monthlyBudget: { increment: mapping.detectedMonthlyProvision } }
+              : {}),
+            ...(mapping.detectedRollover !== null
+              ? { rollover: { increment: mapping.detectedRollover } }
+              : {}),
           }
         : {},
       create: {

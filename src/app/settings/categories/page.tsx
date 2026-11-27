@@ -10,7 +10,7 @@ export default async function CategoriesSettingsPage() {
   const [categories, allYears] = await Promise.all([
     prisma.category.findMany({
       orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
-      select: { id: true, name: true },
+      select: { id: true, name: true, isArchived: true },
     }),
     prisma.budgetYear.findMany({
       orderBy: { year: "desc" },
