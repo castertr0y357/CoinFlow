@@ -2,6 +2,7 @@ import prisma from "@/lib/prisma";
 import { createHash } from "crypto";
 import * as XLSX from "xlsx";
 import { logger } from "@/lib/logger";
+import { deleteHistoricalYear } from "@/lib/services/yearService";
 
 export interface HistoricalMapping {
   sheetName: string;
@@ -286,16 +287,22 @@ export async function executeHistoricalImport(
   buffer: Buffer,
   year: number,
   mappings: HistoricalMapping[],
-  options: HistoricalImportOptions = {}
+  options: HistoricalImportOptions & { replaceExistingYear?: boolean } = {}
 ) {
+  const isPastYear = year < new Date().getFullYear();
   const {
-    skipBudgetRows = true,
+    skipBudgetRows = !isPastYear,
     applyRolloverAndBudget = true,
-    archiveNewCategories = year < new Date().getFullYear(),
+    archiveNewCategories = isPastYear,
+    replaceExistingYear = false,
   } = options;
   const workbook = XLSX.read(buffer, { type: "buffer" });
 
   let budgetYear = await prisma.budgetYear.findUnique({ where: { year } });
+  if (replaceExistingYear && isPastYear && budgetYear) {
+    await deleteHistoricalYear(year, { cleanupEmptyArchivedCategories: false });
+    budgetYear = null;
+  }
   if (!budgetYear) {
     budgetYear = await prisma.budgetYear.create({ data: { year } });
   }
@@ -390,6 +397,12 @@ export async function executeHistoricalImport(
       const rawPayee = payeeIdx >= 0 ? String(row[payeeIdx] ?? "").trim() : "";
       const rawMemo = memoIdx >= 0 ? String(row[memoIdx] ?? "").trim() : "";
       const checkText = rawMemo || rawPayee;
+
+      // Always skip Year Start rows when rollover is already applied to avoid double-counting
+      if (applyRolloverAndBudget && /^year\s*start\b/i.test(checkText.trim())) {
+        results.budgetRowsSkipped++;
+        continue;
+      }
 
       if (skipBudgetRows && isInternalBudgetRow(checkText)) {
         results.budgetRowsSkipped++;

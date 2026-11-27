@@ -21,7 +21,7 @@ export default async function YearsSettingsPage() {
       </Card>
 
       <Card className="settings-form">
-        <div className="form-section">
+        <div id="historical-importer-section" className="form-section">
           <h2>Historical Data Import</h2>
           <p className="text-muted">
             Import transaction history and category budgets from previous years&apos; Excel or CSV spreadsheets.

@@ -95,6 +95,23 @@ export default function HistoricalArchivesList({
               </Link>
               <button
                 type="button"
+                className="archive-reimport-btn"
+                onClick={() => {
+                  window.dispatchEvent(
+                    new CustomEvent("coinflow:reimport-year", {
+                      detail: { year: item.year },
+                    })
+                  );
+                  document
+                    .getElementById("historical-importer-section")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                title={`Re-import ${item.year} spreadsheet`}
+              >
+                🔄 Re-import
+              </button>
+              <button
+                type="button"
                 className="archive-delete-btn"
                 onClick={() => {
                   setCleanupArchived(true);

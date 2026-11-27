@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import { useNotification } from "@/components/ui/NotificationProvider";
@@ -30,17 +31,47 @@ interface ImportResults {
 }
 
 export default function HistoricalImporter() {
+  const router = useRouter();
   const { showToast } = useNotification();
+  const currentYear = new Date().getFullYear();
   const [file, setFile] = useState<File | null>(null);
-  const [year, setYear] = useState(new Date().getFullYear() - 1);
+  const [year, setYear] = useState(currentYear - 1);
   const [step, setStep] = useState(1); // 1: Upload, 2: Mapping, 3: Success
   const [isProcessing, setIsProcessing] = useState(false);
   const [mappings, setMappings] = useState<Mapping[]>([]);
   const [existingCategories, setExistingCategories] = useState<string[]>([]);
-  const [skipBudgetRows, setSkipBudgetRows] = useState(true);
+  const [skipBudgetRows, setSkipBudgetRows] = useState(false);
   const [applyRolloverAndBudget, setApplyRolloverAndBudget] = useState(true);
   const [archiveNewCategories, setArchiveNewCategories] = useState(true);
+  const [replaceExistingYear, setReplaceExistingYear] = useState(false);
   const [results, setResults] = useState<ImportResults | null>(null);
+
+  const isPastYear = year < currentYear;
+
+  useEffect(() => {
+    setSkipBudgetRows(!isPastYear);
+    setArchiveNewCategories(isPastYear);
+    if (!isPastYear) setReplaceExistingYear(false);
+  }, [isPastYear]);
+
+  useEffect(() => {
+    const onReimport = (e: Event) => {
+      const targetYear = (e as CustomEvent<{ year: number }>).detail?.year;
+      if (typeof targetYear === "number" && !isNaN(targetYear)) {
+        setYear(targetYear);
+        setReplaceExistingYear(true);
+        setStep(1);
+        setFile(null);
+        setResults(null);
+        showToast(
+          `Ready to re-import ${targetYear}. Choose your spreadsheet below — existing ${targetYear} data will be replaced.`,
+          "info"
+        );
+      }
+    };
+    window.addEventListener("coinflow:reimport-year", onReimport);
+    return () => window.removeEventListener("coinflow:reimport-year", onReimport);
+  }, [showToast]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) setFile(e.target.files[0]);
@@ -85,7 +116,12 @@ export default function HistoricalImporter() {
       formData.append("mappings", JSON.stringify(mappings));
       formData.append(
         "options",
-        JSON.stringify({ skipBudgetRows, applyRolloverAndBudget, archiveNewCategories })
+        JSON.stringify({
+          skipBudgetRows,
+          applyRolloverAndBudget,
+          archiveNewCategories,
+          replaceExistingYear: isPastYear && replaceExistingYear,
+        })
       );
 
       const res = await fetch("/api/v1/import/historical", {
@@ -99,6 +135,7 @@ export default function HistoricalImporter() {
       }
       setResults(data);
       setStep(3);
+      router.refresh();
     } catch (err) {
       console.error(err);
       showToast("Import failed.", "error");
@@ -206,6 +243,16 @@ export default function HistoricalImporter() {
                 />
                 <span>Archive newly created categories (keeps past-year categories out of current budget)</span>
               </label>
+              {isPastYear && (
+                <label className="toggle-option">
+                  <input
+                    type="checkbox"
+                    checked={replaceExistingYear}
+                    onChange={(e) => setReplaceExistingYear(e.target.checked)}
+                  />
+                  <span>Replace existing {year} data before importing (clean re-import)</span>
+                </label>
+              )}
             </div>
           </div>
 
