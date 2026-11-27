@@ -16,6 +16,12 @@ export interface DeleteYearResult {
   archivedCategoriesCleaned: number;
 }
 
+const REFERENCE_LEDGER_NAMES = [
+  "Historical Income",
+  "Direct Debits",
+  "Uncategorized Charges",
+];
+
 export async function getHistoricalYearSummaries(
   currentYear: number = new Date().getFullYear()
 ): Promise<HistoricalYearSummary[]> {
@@ -23,8 +29,13 @@ export async function getHistoricalYearSummaries(
     where: { year: { lt: currentYear } },
     orderBy: { year: "desc" },
     include: {
-      _count: {
-        select: { configs: true },
+      configs: {
+        where: {
+          category: {
+            name: { notIn: REFERENCE_LEDGER_NAMES },
+          },
+        },
+        select: { id: true },
       },
     },
   });
@@ -34,15 +45,20 @@ export async function getHistoricalYearSummaries(
       const start = new Date(Date.UTC(by.year, 0, 1));
       const end = new Date(Date.UTC(by.year + 1, 0, 1));
 
-      const [txAgg, spentAgg] = await Promise.all([
+      const [txCount, spentAgg] = await Promise.all([
         prisma.transaction.count({
           where: { date: { gte: start, lt: end } },
         }),
-        prisma.transaction.aggregate({
+        prisma.transactionSplit.aggregate({
           where: {
-            date: { gte: start, lt: end },
             amount: { lt: 0 },
-            isHidden: false,
+            category: {
+              name: { notIn: REFERENCE_LEDGER_NAMES },
+            },
+            transaction: {
+              date: { gte: start, lt: end },
+              isHidden: false,
+            },
           },
           _sum: { amount: true },
         }),
@@ -51,8 +67,8 @@ export async function getHistoricalYearSummaries(
       return {
         id: by.id,
         year: by.year,
-        transactionCount: txAgg,
-        categoryCount: by._count.configs,
+        transactionCount: txCount,
+        categoryCount: by.configs.length,
         totalSpent: Math.abs(Number(spentAgg._sum.amount ?? 0)),
       };
     })
