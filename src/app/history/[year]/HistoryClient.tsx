@@ -54,17 +54,25 @@ export default function HistoryClient({ year, availableYears }: HistoryClientPro
   }
 
   const categories = tally.categories || [];
-  const totalBudgeted = categories.reduce(
+  const incomeCategory = categories.find(
+    (c: { name: string }) => c.name === "Historical Income"
+  );
+  const budgetCategories = categories.filter(
+    (c: { name: string }) => c.name !== "Historical Income"
+  );
+
+  const totalIncome = incomeCategory ? Number(incomeCategory.provisions ?? 0) : 0;
+  const totalBudgeted = budgetCategories.reduce(
     (sum: number, c: { budget?: number; provisions?: number; rollover?: number }) =>
       sum + Number(c.provisions ?? c.budget ?? 0) + Number(c.rollover ?? 0),
     0
   );
-  const totalSpent = categories.reduce(
+  const totalSpent = budgetCategories.reduce(
     (sum: number, c: { totalSpent?: number; spent?: number }) =>
       sum + Math.abs(Number(c.totalSpent ?? c.spent ?? 0)),
     0
   );
-  const totalRemaining = categories.reduce(
+  const totalRemaining = budgetCategories.reduce(
     (sum: number, c: { remaining?: number }) => sum + Number(c.remaining ?? 0),
     0
   );
@@ -125,9 +133,17 @@ export default function HistoryClient({ year, availableYears }: HistoryClientPro
         </Card>
 
         <Card className="history-stat-card glass">
-          <span className="history-stat-label">Categories</span>
-          <span className="history-stat-value">{categories.length}</span>
-          <span className="history-stat-sub">Active & archived in {year}</span>
+          <span className="history-stat-label">
+            {totalIncome > 0 ? "Total Income" : "Categories"}
+          </span>
+          <span className={`history-stat-value ${totalIncome > 0 ? "positive" : ""}`}>
+            {totalIncome > 0 ? formatCurrency(totalIncome) : categories.length}
+          </span>
+          <span className="history-stat-sub">
+            {totalIncome > 0
+              ? `Recorded income in ${year} · ${budgetCategories.length} categories`
+              : `Active & archived in ${year}`}
+          </span>
         </Card>
       </div>
 

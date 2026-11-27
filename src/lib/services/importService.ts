@@ -478,7 +478,20 @@ export async function executeHistoricalImport(
       const payee = rawPayee || rawMemo || categoryName;
       const memo = rawMemo && rawMemo !== payee ? rawMemo : null;
       const rawRounded = Math.round(amount * 100) / 100;
-      const roundedAmount = sheetRole === "income" ? Math.abs(rawRounded) : rawRounded;
+
+      // On Charges (bar-tab style), negative rows are credit card payments (transfers), not spending
+      if (sheetRole === "charge" && rawRounded < 0) {
+        results.budgetRowsSkipped++;
+        continue;
+      }
+
+      // Income is always positive; Debits & Charges are bar-tab style (positive in Excel = outflow in CoinFlow)
+      const roundedAmount =
+        sheetRole === "income"
+          ? Math.abs(rawRounded)
+          : sheetRole === "debit" || sheetRole === "charge"
+            ? -Math.abs(rawRounded)
+            : rawRounded;
 
       // Pass 2 deduplication: skip debit/charge rows already imported in Pass 1 (within ±2 days, same amount)
       if ((sheetRole === "debit" || sheetRole === "charge") && consumeCrossSheetMatch(importedTxIndex, date, roundedAmount, 2)) {
