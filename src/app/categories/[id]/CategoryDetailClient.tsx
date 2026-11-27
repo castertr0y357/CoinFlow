@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, memo } from "react";
 import { useRouter } from "next/navigation";
 import { mutate } from "swr";
 import Card from "@/components/ui/Card";
@@ -46,6 +46,67 @@ interface CategoryDetailClientProps {
   accounts: { id: string, name: string }[];
 }
 
+interface TxEditFormProps {
+  tx: DetailTransaction;
+  onSave: (txId: string, data: { payee: string; amount: number; date: string; memo: string }) => Promise<void>;
+  onCancel: () => void;
+  onDelete: (txId: string) => void;
+}
+
+const TxEditForm = memo(function TxEditForm({ tx, onSave, onCancel, onDelete }: TxEditFormProps) {
+  const [date, setDate] = useState(() => new Date(tx.date).toISOString().split("T")[0]);
+  const [payee, setPayee] = useState(tx.payee);
+  const [amount, setAmount] = useState(tx.amount);
+  const [memoText, setMemoText] = useState(tx.memo || "");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSave = async () => {
+    setIsSubmitting(true);
+    try {
+      await onSave(tx.id, { payee, amount, date, memo: memoText });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="tx-edit-form">
+      <div className="edit-fields">
+        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        <Input value={payee} onChange={(e) => setPayee(e.target.value)} />
+        <Input
+          type="number"
+          step="0.01"
+          value={amount}
+          onChange={(e) => setAmount(Number(e.target.value))}
+        />
+        <div className="edit-fields-full">
+          <Input
+            placeholder="Note / Memo"
+            value={memoText}
+            onChange={(e) => setMemoText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSave();
+              if (e.key === "Escape") onCancel();
+            }}
+          />
+        </div>
+      </div>
+      <div className="edit-btns">
+        <Button size="sm" onClick={handleSave} disabled={isSubmitting}>
+          {isSubmitting ? "Saving..." : "Save"}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
+          Cancel
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => onDelete(tx.id)} disabled={isSubmitting}>
+          🗑️
+        </Button>
+      </div>
+    </div>
+  );
+});
+
 export default function CategoryDetailClient({ category, transactions, otherCategories, accounts }: CategoryDetailClientProps) {
   const router = useRouter();
   const [budget, setBudget] = useState(category.budget);
@@ -56,14 +117,9 @@ export default function CategoryDetailClient({ category, transactions, otherCate
   const [editingTxId, setEditingTxId] = useState<string | null>(null);
   const [splittingTxId, setSplittingTxId] = useState<string | null>(null);
   const [splitData, setSplitData] = useState({ amount: 0, targetCategoryId: "" });
-  const [editFormData, setEditFormData] = useState<{
-    payee: string;
-    amount: number;
-    date: string;
-    memo: string;
-  } | null>(null);
   const [sortBy, setSortBy] = useState<'date' | 'payee' | 'amount'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [visibleCount, setVisibleCount] = useState(50);
 
   const refreshUI = () => {
     router.refresh();
@@ -91,17 +147,13 @@ export default function CategoryDetailClient({ category, transactions, otherCate
 
   const startEditing = (tx: DetailTransaction) => {
     setEditingTxId(tx.id);
-    setEditFormData({
-      payee: tx.payee,
-      amount: tx.amount,
-      date: new Date(tx.date).toISOString().split('T')[0],
-      memo: tx.memo || ""
-    });
   };
 
-  const saveEdit = async () => {
-    if (!editingTxId || !editFormData) return;
-    await updateTransaction(editingTxId, editFormData);
+  const saveEdit = async (
+    txId: string,
+    data: { payee: string; amount: number; date: string; memo: string }
+  ) => {
+    await updateTransaction(txId, data);
     refreshUI();
     setEditingTxId(null);
   };
@@ -137,17 +189,24 @@ export default function CategoryDetailClient({ category, transactions, otherCate
     }
   };
 
-  const sortedTransactions = [...transactions].sort((a, b) => {
-    let comparison = 0;
-    if (sortBy === 'date') {
-      comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
-    } else if (sortBy === 'payee') {
-      comparison = a.payee.localeCompare(b.payee);
-    } else if (sortBy === 'amount') {
-      comparison = Number(a.amount) - Number(b.amount);
-    }
-    return sortOrder === 'asc' ? comparison : -comparison;
-  });
+  const sortedTransactions = useMemo(() => {
+    return [...transactions].sort((a, b) => {
+      let comparison = 0;
+      if (sortBy === 'date') {
+        comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+      } else if (sortBy === 'payee') {
+        comparison = a.payee.localeCompare(b.payee);
+      } else if (sortBy === 'amount') {
+        comparison = Number(a.amount) - Number(b.amount);
+      }
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+  }, [transactions, sortBy, sortOrder]);
+
+  const visibleTransactions = useMemo(
+    () => sortedTransactions.slice(0, visibleCount),
+    [sortedTransactions, visibleCount]
+  );
 
   const renderSortIcon = (field: 'date' | 'payee' | 'amount') => {
     if (sortBy !== field) return <span className="sort-icon-placeholder">↕️</span>;
@@ -336,28 +395,19 @@ export default function CategoryDetailClient({ category, transactions, otherCate
                 {sortedTransactions.length === 0 ? (
                   <div className="empty-state">No transactions in this category yet.</div>
                 ) : (
-                  sortedTransactions.map(tx => {
-                     const isEditing = editingTxId === tx.id;
-                     const data = editFormData;
-                     return (
-                       <div key={tx.id} className={`detail-tx-row ${isEditing ? 'editing' : ''}`}>
-                         {isEditing && data ? (
-                           <div className="tx-edit-form">
-                             <div className="edit-fields">
-                               <Input type="date" value={data.date} onChange={e => setEditFormData({...data, date: e.target.value})} />
-                               <Input value={data.payee} onChange={e => setEditFormData({...data, payee: e.target.value})} />
-                               <Input type="number" step="0.01" value={data.amount} onChange={e => setEditFormData({...data, amount: Number(e.target.value)})} />
-                               <div className="edit-fields-full">
-                                 <Input placeholder="Note / Memo" value={data.memo} onChange={e => setEditFormData({...data, memo: e.target.value})} />
-                               </div>
-                             </div>
-                             <div className="edit-btns">
-                               <Button size="sm" onClick={saveEdit}>Save</Button>
-                               <Button size="sm" variant="ghost" onClick={() => setEditingTxId(null)}>Cancel</Button>
-                               <Button size="sm" variant="ghost" onClick={() => handleDeleteTx(tx.id)}>🗑️</Button>
-                             </div>
-                           </div>
-                         ) : (
+                  <>
+                    {visibleTransactions.map(tx => {
+                      const isEditing = editingTxId === tx.id;
+                      return (
+                        <div key={tx.id} className={`detail-tx-row ${isEditing ? 'editing' : ''}`}>
+                          {isEditing ? (
+                            <TxEditForm
+                              tx={tx}
+                              onSave={saveEdit}
+                              onCancel={() => setEditingTxId(null)}
+                              onDelete={handleDeleteTx}
+                            />
+                          ) : (
                            <>
                              <div className="tx-info" onClick={() => startEditing(tx)}>
                                <span className="tx-date">{new Date(tx.date).toLocaleDateString(undefined, { timeZone: 'UTC' })}</span>
@@ -421,10 +471,22 @@ export default function CategoryDetailClient({ category, transactions, otherCate
                            </>
                          )}
                        </div>
-                     );
-                   })
+                      );
+                    })}
+                    {visibleCount < sortedTransactions.length && (
+                      <div style={{ padding: "1rem", textAlign: "center" }}>
+                        <Button
+                          variant="glass"
+                          size="sm"
+                          onClick={() => setVisibleCount((c) => c + 50)}
+                        >
+                          Show More ({sortedTransactions.length - visibleCount} remaining)
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 )}
-             </div>
+              </div>
           </Card>
         </div>
       </div>

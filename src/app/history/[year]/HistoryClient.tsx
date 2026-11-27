@@ -163,6 +163,7 @@ export default function HistoryClient({ year, availableYears }: HistoryClientPro
           integrityWarnings={tally.integrityWarnings || []}
           onRefresh={refresh}
           isHistorical={true}
+          year={year}
         />
       </div>
 

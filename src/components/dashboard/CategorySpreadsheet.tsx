@@ -27,6 +27,7 @@ interface CategorySpreadsheetProps {
   integrityWarnings?: { accountId?: string; message: string; severity: string }[];
   onRefresh: () => void;
   isHistorical?: boolean;
+  year?: number;
 }
 
 export default function CategorySpreadsheet({
@@ -34,6 +35,7 @@ export default function CategorySpreadsheet({
   integrityWarnings = [],
   onRefresh,
   isHistorical = false,
+  year,
 }: CategorySpreadsheetProps) {
   const [isEditingOrder, setIsEditingOrder] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -138,7 +140,7 @@ export default function CategorySpreadsheet({
                     </td>
                   )}
                   <td className="sticky-col">
-                    <Link href={`/categories/${cat.id}`} className="row-link">
+                    <Link href={year ? `/categories/${cat.id}?year=${year}` : `/categories/${cat.id}`} className="row-link">
                       <span className="cat-name">{cat.name}</span>
                       {cat.tiedAccountId && <span className="tied-badge" title={cat.isOffBudget ? "Tied to Off-Budget Account" : "Tied to specific account"}>⚓</span>}
                       {cat.isOffBudget && <span className="off-budget-badge" title="Excluded from Available to Budget">🏦</span>}
