@@ -13,6 +13,7 @@ interface Category {
   provisions: number;
   rollover: number;
   spent: number;
+  totalSpent?: number;
   spentThisMonth?: number;
   remaining: number;
   tiedAccountId?: string | null;
@@ -25,9 +26,15 @@ interface CategorySpreadsheetProps {
   categories: Category[];
   integrityWarnings?: { accountId?: string; message: string; severity: string }[];
   onRefresh: () => void;
+  isHistorical?: boolean;
 }
 
-export default function CategorySpreadsheet({ categories, integrityWarnings = [], onRefresh }: CategorySpreadsheetProps) {
+export default function CategorySpreadsheet({
+  categories,
+  integrityWarnings = [],
+  onRefresh,
+  isHistorical = false,
+}: CategorySpreadsheetProps) {
   const [isEditingOrder, setIsEditingOrder] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [editingBudgetId, setEditingBudgetId] = useState<string | null>(null);
@@ -94,10 +101,22 @@ export default function CategorySpreadsheet({ categories, integrityWarnings = []
             <tr>
               {isEditingOrder && <th className="order-th">Order</th>}
               <th className="sticky-col">Category</th>
-              <th className="text-right">Budgeted</th>
-              <th className="text-right">This Month</th>
-              <th className="text-right">Balance</th>
-              <th className="text-right">Average Spending</th>
+              {isHistorical ? (
+                <>
+                  <th className="text-right">Monthly Budget (Avg)</th>
+                  <th className="text-right">Total Budgeted</th>
+                  <th className="text-right">Total Spent</th>
+                  <th className="text-right">Ending Balance</th>
+                  <th className="text-right">Avg Monthly Spend</th>
+                </>
+              ) : (
+                <>
+                  <th className="text-right">Budgeted</th>
+                  <th className="text-right">This Month</th>
+                  <th className="text-right">Balance</th>
+                  <th className="text-right">Average Spending</th>
+                </>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -129,76 +148,96 @@ export default function CategorySpreadsheet({ categories, integrityWarnings = []
                       )}
                     </Link>
                   </td>
-                  <td className="text-right budgeted-cell">
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'flex-end', width: '100%' }}>
-                      {((cat.commitments ?? 0) > 0 && cat.budget < (cat.commitments ?? 0)) ? (
-                        <span className="underfunded-badge" title={`Underfunded! Obligations require $${cat.commitments!.toLocaleString()}/mo, but you only budgeted $${cat.budget.toLocaleString()}/mo.`}>
-                          ⚠️
-                        </span>
-                      ) : null}
-                      {editingBudgetId === cat.id ? (
-                        <input
-                          type="number"
-                          step="1"
-                          min="0"
-                          autoFocus
-                          value={editingBudgetVal}
-                          onChange={(e) => setEditingBudgetVal(e.target.value)}
-                          onBlur={() => handleSaveInlineBudget(cat.id, cat.budget)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleSaveInlineBudget(cat.id, cat.budget);
-                            if (e.key === "Escape") setEditingBudgetId(null);
-                          }}
-                          style={{
-                            width: "5.5rem",
-                            textAlign: "right",
-                            background: "rgba(0,0,0,0.35)",
-                            border: "1px solid var(--accent)",
-                            borderRadius: "4px",
-                            color: "var(--text-main)",
-                            padding: "2px 6px",
-                            fontSize: "0.9rem",
-                          }}
-                        />
-                      ) : (
-                        <span
-                          onClick={() => {
-                            setEditingBudgetId(cat.id);
-                            setEditingBudgetVal(String(cat.budget));
-                          }}
-                          title="Click to edit monthly budget inline"
-                          style={{ cursor: "pointer", borderBottom: "1px dashed rgba(255,255,255,0.2)" }}
-                        >
-                          ${cat.budget.toLocaleString()}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="text-right">
-                    {(() => {
-                      const monthSpent = cat.spentThisMonth ?? 0;
-                      const pct = cat.budget > 0 ? Math.min(100, Math.round((monthSpent / cat.budget) * 100)) : 0;
-                      const isOver = cat.budget > 0 && monthSpent > cat.budget;
-                      return (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
-                          <span className="font-mono" style={{ color: isOver ? 'var(--danger)' : 'var(--text-main)', fontSize: '0.88rem' }}>
-                            ${monthSpent.toLocaleString()}
-                          </span>
-                          {cat.budget > 0 && (
-                            <div style={{ width: '64px', height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
-                              <div
-                                style={{
-                                  width: `${pct}%`,
-                                  height: '100%',
-                                  background: isOver ? 'var(--danger)' : pct > 85 ? 'var(--warning)' : 'var(--accent)',
-                                }}
-                              />
-                            </div>
+                  {isHistorical ? (
+                    <>
+                      <td className="text-right budgeted-cell font-mono">
+                        ${(
+                          cat.provisions > 0
+                            ? Math.round((cat.provisions / 12) * 100) / 100
+                            : cat.budget
+                        ).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="text-right font-mono">
+                        ${cat.provisions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="text-right font-mono">
+                        ${(cat.totalSpent ?? Math.round(cat.spent * 12 * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="text-right budgeted-cell">
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'flex-end', width: '100%' }}>
+                          {((cat.commitments ?? 0) > 0 && cat.budget < (cat.commitments ?? 0)) ? (
+                            <span className="underfunded-badge" title={`Underfunded! Obligations require $${cat.commitments!.toLocaleString()}/mo, but you only budgeted $${cat.budget.toLocaleString()}/mo.`}>
+                              ⚠️
+                            </span>
+                          ) : null}
+                          {editingBudgetId === cat.id ? (
+                            <input
+                              type="number"
+                              step="1"
+                              min="0"
+                              autoFocus
+                              value={editingBudgetVal}
+                              onChange={(e) => setEditingBudgetVal(e.target.value)}
+                              onBlur={() => handleSaveInlineBudget(cat.id, cat.budget)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleSaveInlineBudget(cat.id, cat.budget);
+                                if (e.key === "Escape") setEditingBudgetId(null);
+                              }}
+                              style={{
+                                width: "5.5rem",
+                                textAlign: "right",
+                                background: "rgba(0,0,0,0.35)",
+                                border: "1px solid var(--accent)",
+                                borderRadius: "4px",
+                                color: "var(--text-main)",
+                                padding: "2px 6px",
+                                fontSize: "0.9rem",
+                              }}
+                            />
+                          ) : (
+                            <span
+                              onClick={() => {
+                                setEditingBudgetId(cat.id);
+                                setEditingBudgetVal(String(cat.budget));
+                              }}
+                              title="Click to edit monthly budget inline"
+                              style={{ cursor: "pointer", borderBottom: "1px dashed rgba(255,255,255,0.2)" }}
+                            >
+                              ${cat.budget.toLocaleString()}
+                            </span>
                           )}
                         </div>
-                      );
-                    })()}
-                  </td>
+                      </td>
+                      <td className="text-right">
+                        {(() => {
+                          const monthSpent = cat.spentThisMonth ?? 0;
+                          const pct = cat.budget > 0 ? Math.min(100, Math.round((monthSpent / cat.budget) * 100)) : 0;
+                          const isOver = cat.budget > 0 && monthSpent > cat.budget;
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
+                              <span className="font-mono" style={{ color: isOver ? 'var(--danger)' : 'var(--text-main)', fontSize: '0.88rem' }}>
+                                ${monthSpent.toLocaleString()}
+                              </span>
+                              {cat.budget > 0 && (
+                                <div style={{ width: '64px', height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
+                                  <div
+                                    style={{
+                                      width: `${pct}%`,
+                                      height: '100%',
+                                      background: isOver ? 'var(--danger)' : pct > 85 ? 'var(--warning)' : 'var(--accent)',
+                                    }}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </td>
+                    </>
+                  )}
                   <td className={`text-right balance-cell ${cat.remaining < 0 ? 'neg' : 'pos'}`}>
                     ${cat.remaining.toLocaleString()}
                   </td>
