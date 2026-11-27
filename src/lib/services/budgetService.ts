@@ -136,13 +136,14 @@ export async function getMonthlyTally(year?: number) {
 
   const visibleCategories = categories.filter((c) => {
     if (!c.isArchived) return true;
-    const hasActivity =
+    // In current/future years, always hide archived categories from the live Dashboard.
+    if (!isHistoricalYear) return false;
+    // In historical archive views, show archived categories that had data in that year.
+    return (
       (spendingByCat.get(c.id) || 0) > 0 ||
       (provisionsByCat.get(c.id) || 0) > 0 ||
-      c.configs.length > 0;
-    // In historical views, show archived categories that have data in that year.
-    // In current/future years, hide archived categories unless they have actual spending this year.
-    return isHistoricalYear ? hasActivity : (spendingByCat.get(c.id) || 0) > 0;
+      c.configs.length > 0
+    );
   });
 
   const categoryTallies = visibleCategories.map(c => {
