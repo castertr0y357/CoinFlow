@@ -3,6 +3,8 @@ import {
   detectHeaderRow,
   isInternalBudgetRow,
   isSkippedSheetName,
+  getLedgerSheetRole,
+  consumeCrossSheetMatch,
   parseExcelDate,
   parseCurrencyAmount,
 } from "./importService";
@@ -43,14 +45,30 @@ describe("Historical Excel Import Parser", () => {
     expect(detected?.amountColumn).toBe("Amount");
   });
 
-  it("skips summary, income, debit, and charge ledger sheets by default", () => {
+  it("skips summary/budget sheets and classifies income, debit, and charge ledger sheets", () => {
     expect(isSkippedSheetName("2025 Budget")).toBe(true);
-    expect(isSkippedSheetName("Incomes")).toBe(true);
-    expect(isSkippedSheetName("Debits")).toBe(true);
-    expect(isSkippedSheetName("Charges")).toBe(true);
+    expect(isSkippedSheetName("Summary")).toBe(true);
+    expect(isSkippedSheetName("Incomes")).toBe(false);
+    expect(isSkippedSheetName("Debits")).toBe(false);
+    expect(isSkippedSheetName("Charges")).toBe(false);
     expect(isSkippedSheetName("Household")).toBe(false);
-    expect(isSkippedSheetName("Gas")).toBe(false);
-    expect(isSkippedSheetName("Home Tech/Shooting")).toBe(false);
+
+    expect(getLedgerSheetRole("Incomes")).toBe("income");
+    expect(getLedgerSheetRole("Debits")).toBe("debit");
+    expect(getLedgerSheetRole("Charges")).toBe("charge");
+    expect(getLedgerSheetRole("Household")).toBe("category");
+  });
+
+  it("deduplicates cross-sheet debit/charge rows within ±2 days and consumes each match once", () => {
+    const index = new Map<string, { dateMs: number; consumed: boolean }[]>();
+    index.set("45.20", [{ dateMs: new Date("2025-03-10T12:00:00Z").getTime(), consumed: false }]);
+
+    // Within ±2 days -> matches and consumes
+    expect(consumeCrossSheetMatch(index, new Date("2025-03-11T12:00:00Z"), -45.2, 2)).toBe(true);
+    // Second identical charge on same day -> already consumed, so not dropped
+    expect(consumeCrossSheetMatch(index, new Date("2025-03-11T12:00:00Z"), -45.2, 2)).toBe(false);
+    // Different amount -> no match
+    expect(consumeCrossSheetMatch(index, new Date("2025-03-10T12:00:00Z"), -99.99, 2)).toBe(false);
   });
 
   it("identifies internal budget rows (Year Start, Monthly Additions, Boost, Adjustment)", () => {

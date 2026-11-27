@@ -4,9 +4,12 @@ import * as XLSX from "xlsx";
 import { logger } from "@/lib/logger";
 import { deleteHistoricalYear } from "@/lib/services/yearService";
 
+export type SheetRole = "category" | "income" | "debit" | "charge";
+
 export interface HistoricalMapping {
   sheetName: string;
   isTransactionSheet: boolean;
+  sheetRole?: SheetRole;
   headerRowIndex: number; // 0-based row index of the header row
   headers: string[];
   suggestedCategory: string;
@@ -31,11 +34,44 @@ const SKIPPED_SHEET_PATTERNS = [
   /^summary$/i,
   /^overview$/i,
   /^totals?$/i,
-  /^incomes?$/i,
-  /^debits?$/i,
-  /^charges?$/i,
   /^transfers?$/i,
 ];
+
+export function getLedgerSheetRole(name: string): SheetRole {
+  const trimmed = name.trim();
+  if (/^incomes?$/i.test(trimmed)) return "income";
+  if (/^debits?$/i.test(trimmed)) return "debit";
+  if (/^charges?$/i.test(trimmed)) return "charge";
+  return "category";
+}
+
+function getDefaultLedgerCategoryName(role: SheetRole): string {
+  if (role === "income") return "Historical Income";
+  if (role === "debit") return "Direct Debits";
+  if (role === "charge") return "Uncategorized Charges";
+  return "";
+}
+
+export function consumeCrossSheetMatch(
+  index: Map<string, { dateMs: number; consumed: boolean }[]>,
+  date: Date,
+  amount: number,
+  windowDays: number = 2
+): boolean {
+  const key = Math.abs(amount).toFixed(2);
+  const bucket = index.get(key);
+  if (!bucket || bucket.length === 0) return false;
+
+  const targetMs = date.getTime();
+  const windowMs = windowDays * 86400 * 1000;
+  for (const entry of bucket) {
+    if (!entry.consumed && Math.abs(entry.dateMs - targetMs) <= windowMs) {
+      entry.consumed = true;
+      return true;
+    }
+  }
+  return false;
+}
 
 const INTERNAL_BUDGET_ROW_PATTERNS = [
   /^year\s*start$/i,
@@ -259,13 +295,19 @@ export async function analyzeXlsx(buffer: Buffer) {
 
     const detectedMonthlyProvision = extractMonthlyProvision(rows, detected.headerRowIndex);
     const isSkipped = isSkippedSheetName(sheetName);
+    const sheetRole = getLedgerSheetRole(sheetName);
+    const suggestedCategory =
+      sheetRole !== "category"
+        ? getDefaultLedgerCategoryName(sheetRole)
+        : matchExistingCategory(sheetName, existingCategoryNames);
 
     suggestions.push({
       sheetName,
       isTransactionSheet: !isSkipped && (estimatedTransactionCount > 0 || detectedRollover !== null),
+      sheetRole,
       headerRowIndex: detected.headerRowIndex,
       headers: detected.headers,
-      suggestedCategory: matchExistingCategory(sheetName, existingCategoryNames),
+      suggestedCategory,
       dateColumn: detected.dateColumn,
       payeeColumn: detected.payeeColumn,
       memoColumn: detected.memoColumn,
@@ -323,13 +365,37 @@ export async function executeHistoricalImport(
   const results = {
     transactionsCreated: 0,
     transactionsSkippedDuplicate: 0,
+    crossSheetDuplicatesSkipped: 0,
     budgetRowsSkipped: 0,
     categoriesCreated: 0,
     errors: [] as string[],
   };
 
-  for (const mapping of mappings) {
+  // Two-pass ordering: category sheets first (Pass 1), then income/debit/charge ledgers (Pass 2)
+  const roleOrder: Record<SheetRole, number> = {
+    category: 0,
+    income: 1,
+    debit: 2,
+    charge: 3,
+  };
+  const orderedMappings = [...mappings].sort((a, b) => {
+    const ra = a.sheetRole ?? getLedgerSheetRole(a.sheetName);
+    const rb = b.sheetRole ?? getLedgerSheetRole(b.sheetName);
+    return roleOrder[ra] - roleOrder[rb];
+  });
+
+  // Cross-sheet deduplication index: abs(amount).toFixed(2) -> [{ dateMs, consumed }]
+  const importedTxIndex = new Map<string, { dateMs: number; consumed: boolean }[]>();
+  const recordForDedup = (date: Date, amount: number) => {
+    const key = Math.abs(amount).toFixed(2);
+    const bucket = importedTxIndex.get(key) || [];
+    bucket.push({ dateMs: date.getTime(), consumed: false });
+    importedTxIndex.set(key, bucket);
+  };
+
+  for (const mapping of orderedMappings) {
     if (!mapping.isTransactionSheet) continue;
+    const sheetRole = mapping.sheetRole ?? getLedgerSheetRole(mapping.sheetName);
 
     const sheet = workbook.Sheets[mapping.sheetName];
     if (!sheet) continue;
@@ -411,7 +477,14 @@ export async function executeHistoricalImport(
 
       const payee = rawPayee || rawMemo || categoryName;
       const memo = rawMemo && rawMemo !== payee ? rawMemo : null;
-      const roundedAmount = Math.round(amount * 100) / 100;
+      const rawRounded = Math.round(amount * 100) / 100;
+      const roundedAmount = sheetRole === "income" ? Math.abs(rawRounded) : rawRounded;
+
+      // Pass 2 deduplication: skip debit/charge rows already imported in Pass 1 (within ±2 days, same amount)
+      if ((sheetRole === "debit" || sheetRole === "charge") && consumeCrossSheetMatch(importedTxIndex, date, roundedAmount, 2)) {
+        results.crossSheetDuplicatesSkipped++;
+        continue;
+      }
 
       // Deterministic remoteId for duplicate protection across re-imports
       const hashInput = `${year}|${category.id}|${r}|${date.toISOString().slice(0, 10)}|${payee}|${memo || ""}|${roundedAmount.toFixed(2)}`;
@@ -445,6 +518,9 @@ export async function executeHistoricalImport(
           },
         },
       });
+      if (sheetRole === "category" || sheetRole === "debit") {
+        recordForDedup(date, roundedAmount);
+      }
       results.transactionsCreated++;
     }
   }
