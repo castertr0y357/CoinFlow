@@ -219,38 +219,33 @@ export default function HistoricalImporter() {
               </p>
             </div>
             <div className="mapping-toggles">
-              <label className="toggle-option">
-                <input
-                  type="checkbox"
-                  checked={skipBudgetRows}
-                  onChange={(e) => setSkipBudgetRows(e.target.checked)}
-                />
-                <span>Skip internal rows (Year Start, Monthly Additions, Boost, Adjustment)</span>
-              </label>
-              <label className="toggle-option">
-                <input
-                  type="checkbox"
-                  checked={applyRolloverAndBudget}
-                  onChange={(e) => setApplyRolloverAndBudget(e.target.checked)}
-                />
-                <span>Import Year Start as Rollover &amp; Monthly Provision as Monthly Budget</span>
-              </label>
-              <label className="toggle-option">
-                <input
-                  type="checkbox"
-                  checked={archiveNewCategories}
-                  onChange={(e) => setArchiveNewCategories(e.target.checked)}
-                />
-                <span>Archive newly created categories (keeps past-year categories out of current budget)</span>
-              </label>
-              {isPastYear && (
+              {isPastYear ? (
+                <>
+                  <label className="toggle-option">
+                    <input
+                      type="checkbox"
+                      checked={archiveNewCategories}
+                      onChange={(e) => setArchiveNewCategories(e.target.checked)}
+                    />
+                    <span>Archive newly created categories (keeps past-year categories out of current budget)</span>
+                  </label>
+                  <label className="toggle-option">
+                    <input
+                      type="checkbox"
+                      checked={replaceExistingYear}
+                      onChange={(e) => setReplaceExistingYear(e.target.checked)}
+                    />
+                    <span>Replace existing {year} data before importing (clean re-import)</span>
+                  </label>
+                </>
+              ) : (
                 <label className="toggle-option">
                   <input
                     type="checkbox"
-                    checked={replaceExistingYear}
-                    onChange={(e) => setReplaceExistingYear(e.target.checked)}
+                    checked={skipBudgetRows}
+                    onChange={(e) => setSkipBudgetRows(e.target.checked)}
                   />
-                  <span>Replace existing {year} data before importing (clean re-import)</span>
+                  <span>Skip internal budget rows (Year Start, Monthly Additions, Boost, Adjustment)</span>
                 </label>
               )}
             </div>
