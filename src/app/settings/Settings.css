@@ -814,3 +814,166 @@
   outline-offset: 4px;
   border-radius: 6px;
 }
+
+/* Historical Archives List (Years & Import tab) */
+.archive-year-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.archive-year-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.archive-year-row:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.archive-year-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.archive-year-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.archive-year-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: rgba(99, 102, 241, 0.16);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  color: #a5b4fc;
+}
+
+.archive-year-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.archive-year-stats {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+}
+
+.archive-year-stats strong {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.archive-stat-sep {
+  opacity: 0.45;
+}
+
+.archive-year-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.archive-view-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: #fff;
+  background: rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(99, 102, 241, 0.42);
+  transition: all 0.15s ease;
+}
+
+.archive-view-btn:hover {
+  background: rgba(99, 102, 241, 0.34);
+  border-color: rgba(99, 102, 241, 0.65);
+}
+
+.archive-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.archive-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #fecaca;
+}
+
+.archive-delete-confirm-btn {
+  padding: 0.45rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+  background: #dc2626;
+  border: 1px solid #ef4444;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.archive-delete-confirm-btn:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.archive-delete-confirm-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.archive-empty-state {
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 680px) {
+  .archive-year-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .archive-year-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

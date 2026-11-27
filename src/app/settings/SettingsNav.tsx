@@ -5,10 +5,11 @@ import { usePathname } from "next/navigation";
 
 const navItems = [
   { label: "Budget & Income", href: "/settings/general", icon: "💰" },
-  { label: "Categories & Years", href: "/settings/categories", icon: "🏷️" },
+  { label: "Categories", href: "/settings/categories", icon: "🏷️" },
+  { label: "Years & Import", href: "/settings/years", icon: "📅" },
   { label: "Integrations & API", href: "/settings/integrations", icon: "🔌" },
   { label: "AI Assistant", href: "/settings/ai", icon: "✨" },
-  { label: "Backups & Data", href: "/settings/maintenance", icon: "🗄️" },
+  { label: "Backups & Recovery", href: "/settings/maintenance", icon: "🗄️" },
 ];
 
 export default function SettingsNav() {
