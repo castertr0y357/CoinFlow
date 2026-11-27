@@ -131,3 +131,54 @@
     grid-template-columns: 1fr;
   }
 }
+
+.history-ledgers-card {
+  margin-top: 1.25rem;
+  padding: 1.25rem 1.5rem;
+}
+
+.history-ledgers-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.history-ledgers-header h3 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
+  color: var(--text-main);
+}
+
+.history-ledgers-pills {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.history-ledger-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 10px;
+  text-decoration: none;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.15s ease;
+}
+
+.history-ledger-pill strong {
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+}
+
+.history-ledger-pill:hover {
+  color: #fff;
+  border-color: rgba(99, 102, 241, 0.45);
+  background: rgba(99, 102, 241, 0.12);
+}

@@ -53,12 +53,22 @@ export default function HistoryClient({ year, availableYears }: HistoryClientPro
     );
   }
 
+  const LEDGER_CATEGORY_NAMES = new Set([
+    "Historical Income",
+    "Direct Debits",
+    "Uncategorized Charges",
+  ]);
+
   const categories = tally.categories || [];
   const incomeCategory = categories.find(
     (c: { name: string }) => c.name === "Historical Income"
   );
+  const referenceLedgers = categories.filter(
+    (c: { name: string }) =>
+      c.name === "Direct Debits" || c.name === "Uncategorized Charges"
+  );
   const budgetCategories = categories.filter(
-    (c: { name: string }) => c.name !== "Historical Income"
+    (c: { name: string }) => !LEDGER_CATEGORY_NAMES.has(c.name)
   );
 
   const totalIncome = incomeCategory ? Number(incomeCategory.provisions ?? 0) : 0;
@@ -121,7 +131,7 @@ export default function HistoryClient({ year, availableYears }: HistoryClientPro
         <Card className="history-stat-card glass">
           <span className="history-stat-label">Total Spent</span>
           <span className="history-stat-value">{formatCurrency(totalSpent)}</span>
-          <span className="history-stat-sub">Across {categories.length} categories</span>
+          <span className="history-stat-sub">Across {budgetCategories.length} budget categories</span>
         </Card>
 
         <Card className="history-stat-card glass">
@@ -149,12 +159,44 @@ export default function HistoryClient({ year, availableYears }: HistoryClientPro
 
       <div className="dashboard-spreadsheet-section">
         <CategorySpreadsheet
-          categories={categories}
+          categories={budgetCategories}
           integrityWarnings={tally.integrityWarnings || []}
           onRefresh={refresh}
           isHistorical={true}
         />
       </div>
+
+      {referenceLedgers.length > 0 && (
+        <Card className="history-ledgers-card glass">
+          <div className="history-ledgers-header">
+            <div>
+              <h3>Reference Ledgers</h3>
+              <p className="text-muted text-sm">
+                Imported bank &amp; card ledgers for {year}. Excluded from budget totals to prevent double-counting with categorized spending, while remaining fully searchable.
+              </p>
+            </div>
+            <div className="history-ledgers-pills">
+              {referenceLedgers.map(
+                (ledger: { id: string; name: string; totalSpent?: number; spent?: number }) => {
+                  const ledgerTotal = Math.abs(
+                    Number(ledger.totalSpent ?? (ledger.spent ?? 0) * 12)
+                  );
+                  return (
+                    <Link
+                      key={ledger.id}
+                      href={`/categories/${ledger.id}`}
+                      className="history-ledger-pill"
+                    >
+                      <span>{ledger.name}</span>
+                      <strong>{formatCurrency(ledgerTotal)}</strong>
+                    </Link>
+                  );
+                }
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
