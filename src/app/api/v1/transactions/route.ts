@@ -10,8 +10,19 @@ export async function GET(req: NextRequest) {
     const inboxOnly = searchParams.get("inboxOnly") === "true";
     const includeHidden = searchParams.get("includeHidden") === "true";
     const hiddenOnly = searchParams.get("hiddenOnly") === "true";
+    const search = searchParams.get("q") || undefined;
+    const yearParam = searchParams.get("year");
+    const year = yearParam ? parseInt(yearParam, 10) : undefined;
 
-    const transactions = await getTransactions({ take, skip, inboxOnly, includeHidden, hiddenOnly });
+    const transactions = await getTransactions({
+      take,
+      skip,
+      inboxOnly,
+      includeHidden,
+      hiddenOnly,
+      search,
+      year: year && !isNaN(year) ? year : undefined,
+    });
     return NextResponse.json(transactions);
   });
 }

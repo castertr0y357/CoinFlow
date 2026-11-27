@@ -7,8 +7,21 @@ const fetcher = (url: string) => fetch(url, {
   }
 }).then(res => res.json());
 
-export function useTransactions(inboxOnly: boolean = true, includeHidden: boolean = false, hiddenOnly: boolean = false) {
-  const url = `/api/v1/transactions?inboxOnly=${inboxOnly}&includeHidden=${includeHidden}&hiddenOnly=${hiddenOnly}`;
+export function useTransactions(
+  inboxOnly: boolean = true,
+  includeHidden: boolean = false,
+  hiddenOnly: boolean = false,
+  search: string = ""
+) {
+  const params = new URLSearchParams({
+    inboxOnly: String(inboxOnly),
+    includeHidden: String(includeHidden),
+    hiddenOnly: String(hiddenOnly),
+  });
+  if (search.trim()) {
+    params.set("q", search.trim());
+  }
+  const url = `/api/v1/transactions?${params.toString()}`;
   const { data, error, isLoading, mutate } = useSWR(url, fetcher, {
     refreshInterval: 15000,
     revalidateOnFocus: true,

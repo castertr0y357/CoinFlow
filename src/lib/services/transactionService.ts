@@ -6,9 +6,19 @@ export async function getTransactions(options: {
   skip?: number, 
   inboxOnly?: boolean,
   includeHidden?: boolean,
-  hiddenOnly?: boolean 
+  hiddenOnly?: boolean,
+  search?: string,
+  year?: number
 } = {}) {
-  const { take = 1000, skip = 0, inboxOnly = false, includeHidden = false, hiddenOnly = false } = options;
+  const {
+    take = 1000,
+    skip = 0,
+    inboxOnly = false,
+    includeHidden = false,
+    hiddenOnly = false,
+    search,
+    year,
+  } = options;
 
   const where: Prisma.TransactionWhereInput = {
     account: {
@@ -16,6 +26,35 @@ export async function getTransactions(options: {
       showTransactions: true
     }
   };
+
+  if (year && !isNaN(year)) {
+    where.date = {
+      gte: new Date(Date.UTC(year, 0, 1)),
+      lt: new Date(Date.UTC(year + 1, 0, 1)),
+    };
+  }
+
+  const trimmedSearch = search?.trim();
+  if (trimmedSearch) {
+    const orConditions: Prisma.TransactionWhereInput[] = [
+      { payee: { contains: trimmedSearch, mode: 'insensitive' } },
+      { splits: { some: { memo: { contains: trimmedSearch, mode: 'insensitive' } } } },
+      { splits: { some: { category: { name: { contains: trimmedSearch, mode: 'insensitive' } } } } },
+      { externalOrder: { items: { some: { title: { contains: trimmedSearch, mode: 'insensitive' } } } } },
+      { account: { name: { contains: trimmedSearch, mode: 'insensitive' } } },
+      { account: { displayName: { contains: trimmedSearch, mode: 'insensitive' } } },
+    ];
+
+    const numericSearch = Number(trimmedSearch.replace(/[$,]/g, ''));
+    if (!isNaN(numericSearch) && isFinite(numericSearch)) {
+      orConditions.push({ amount: numericSearch });
+      if (numericSearch !== 0) {
+        orConditions.push({ amount: -numericSearch });
+      }
+    }
+
+    where.OR = orConditions;
+  }
 
   if (hiddenOnly) {
     where.isHidden = true;

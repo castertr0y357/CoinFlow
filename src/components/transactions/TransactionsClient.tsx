@@ -22,10 +22,13 @@ export default function TransactionsClient({
   const { showToast } = useNotification();
   const [showAddModal, setShowAddModal] = useState(false);
   const [view, setView] = useState<'inbox' | 'all' | 'hidden'>('inbox');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const { transactions, isLoading, refresh } = useTransactions(
     view === 'inbox', 
     view === 'all' || view === 'hidden', 
-    view === 'hidden'
+    view === 'hidden',
+    debouncedSearchQuery
   );
   const searchParams = useSearchParams();
   const initialAccountId = searchParams.get("accountId") || "all";
@@ -37,8 +40,6 @@ export default function TransactionsClient({
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [isNormalizeLoading, setIsNormalizeLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<Record<string, string>>({});
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [isBulkLoading, setIsBulkLoading] = useState(false);
 
   useEffect(() => {
@@ -220,10 +221,15 @@ export default function TransactionsClient({
   };
 
   const filteredTransactions = (transactions as Transaction[])?.filter(tx => {
-    const query = debouncedSearchQuery.toLowerCase();
-    const matchesSearch = !query || tx.payee.toLowerCase().includes(query) ||
+    const query = debouncedSearchQuery.trim().toLowerCase();
+    const matchesSearch =
+      !query ||
+      tx.payee.toLowerCase().includes(query) ||
       tx.amount.toString().includes(query) ||
-      tx.splits.some(s => s.memo?.toLowerCase().includes(query));
+      tx.splits.some(s => s.memo?.toLowerCase().includes(query)) ||
+      tx.externalOrder?.items?.some(item => item.title.toLowerCase().includes(query)) ||
+      tx.account?.name?.toLowerCase().includes(query) ||
+      tx.account?.displayName?.toLowerCase().includes(query);
 
     const matchesAccount = selectedAccountId === "all" || tx.accountId === selectedAccountId;
 
@@ -249,7 +255,7 @@ export default function TransactionsClient({
           <span style={{ marginRight: '0.5rem' }}>🔍</span>
           <input 
             type="text" 
-            placeholder="Search payees, amounts, or memos..." 
+            placeholder="Search payees, items (e.g. ground beef), memos, or amounts..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{ background: 'none', border: 'none', color: 'white', padding: '0.75rem 0', width: '100%', outline: 'none' }}
