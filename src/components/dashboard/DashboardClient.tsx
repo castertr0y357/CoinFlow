@@ -18,6 +18,7 @@ import { formatDistanceToNow } from 'date-fns';
 export default function DashboardClient({ year }: { year?: number }) {
   const { tally, isLoading: budgetLoading, isError: budgetError, refresh: refreshBudget } = useBudget(year);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [isSilencing, setIsSilencing] = useState(false);
 
   if (budgetError || (tally && tally.error)) {
     return (
@@ -37,7 +38,6 @@ export default function DashboardClient({ year }: { year?: number }) {
   const syncErrorAccounts = (tally.accounts || []).filter(
     (a: { syncError?: string | null; muteSyncErrors?: boolean }) => !!a.syncError && !a.muteSyncErrors
   );
-  const [isSilencing, setIsSilencing] = useState(false);
 
   const handleSilenceAlerts = async () => {
     setIsSilencing(true);
