@@ -189,6 +189,24 @@ export default function CategoryDetailClient({ category, transactions, otherCate
     }
   };
 
+  const runningBalanceById = useMemo(() => {
+    // Compute chronological running balance starting from Year Start Rollover
+    const chronological = transactions
+      .map((tx, idx) => ({ tx, idx }))
+      .sort((a, b) => {
+        const diff = new Date(a.tx.date).getTime() - new Date(b.tx.date).getTime();
+        // When dates tie, older-listed (higher idx in desc list) comes first
+        return diff !== 0 ? diff : b.idx - a.idx;
+      });
+    const map = new Map<string, number>();
+    let running = Number(category.rollover || 0);
+    for (const { tx } of chronological) {
+      running = Math.round((running + Number(tx.amount)) * 100) / 100;
+      map.set(tx.id, running);
+    }
+    return map;
+  }, [transactions, category.rollover]);
+
   const sortedTransactions = useMemo(() => {
     return [...transactions].sort((a, b) => {
       let comparison = 0;
@@ -388,6 +406,9 @@ export default function CategoryDetailClient({ category, transactions, otherCate
                  >
                    Amount {renderSortIcon('amount')}
                  </span>
+                 <span style={{ textAlign: 'right', fontSize: '0.75rem', opacity: 0.7 }}>
+                   Balance
+                 </span>
                </div>
              </div>
 
@@ -418,8 +439,27 @@ export default function CategoryDetailClient({ category, transactions, otherCate
                              </div>
                              <div className="tx-actions">
                                <span className={`tx-amount ${tx.amount > 0 ? 'text-success' : ''}`}>
-                                 ${tx.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                 {tx.amount < 0 ? '-' : ''}${Math.abs(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                </span>
+                               {(() => {
+                                 const bal = runningBalanceById.get(tx.id) ?? 0;
+                                 return (
+                                   <span
+                                     className="tx-running-balance font-mono"
+                                     title="Running category balance after this transaction"
+                                     style={{
+                                       minWidth: '5.5rem',
+                                       textAlign: 'right',
+                                       fontSize: '0.82rem',
+                                       fontWeight: 600,
+                                       color: bal < 0 ? '#f87171' : '#34d399',
+                                       opacity: 0.9,
+                                     }}
+                                   >
+                                     {bal < 0 ? '-' : ''}${Math.abs(bal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                   </span>
+                                 );
+                               })()}
                                <div className="tx-row-actions">
                                  <select 
                                    className="reclassify-select"
